@@ -1,0 +1,139 @@
+﻿@{
+    ViewData["Title"] = "Login";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login — UP Sanction Scan Portal</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="bg-surface min-h-screen flex flex-col font-body">
+
+    <header class="bg-surface-card border-b border-border px-8 py-4 flex items-center gap-3 shadow-sm">
+        <div class="w-8 h-8 rounded-md overflow-hidden flex items-center justify-center">
+            <img src="~/images/logo.png" alt="Unified Payments Logo" class="w-full h-full object-contain" />
+        </div>
+        <span class="text-text-primary text-sm font-medium tracking-wide">Unified Payments</span>
+    </header>
+
+    <main class="flex-1 flex items-center justify-center px-4 py-10">
+        <div class="w-full max-w-md">
+
+            @* Title block *@
+            <div class="text-center mb-8">
+                <div class="w-14 h-14 bg-brand-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <img src="~/images/logo.png" alt="Unified Payments Logo" class="w-8 h-8 object-contain" />
+                </div>
+                <h1 class="font-display text-text-primary text-xl font-semibold mb-1">
+                    Unified Payments
+                </h1>
+                <p class="text-brand-500 text-xs font-medium uppercase tracking-widest">
+                    Sanction Scan Portal
+                </p>
+                <div class="w-10 h-0.5 bg-accent-400 mx-auto mt-3 rounded-full"></div>
+            </div>
+
+            @* Card *@
+            <div class="bg-surface-card border border-border rounded-2xl px-8 py-8 shadow-sm">
+                <p class="text-text-secondary text-sm text-center mb-6">Sign in to your account</p>
+
+                <form asp-controller="Auth" asp-action="Login" method="post">
+                    @Html.AntiForgeryToken()
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="bg-error-bg border border-error-border text-error text-sm rounded-lg px-4 py-3 mb-5">
+                            @Html.ValidationSummary(false)
+                        </div>
+                    }
+
+                    @* Email *@
+                    <div class="mb-4">
+                        <label class="block text-xs text-text-secondary font-medium mb-1.5 tracking-wide">
+                            Email address
+                        </label>
+                        <input type="email"
+                               name="Email"
+                               placeholder="you@unifiedpayments.com"
+                               required
+                               class="w-full px-4 py-2.5 bg-surface border border-border
+                        rounded-lg text-text-primary text-sm placeholder-text-muted
+                        focus:outline-none focus:border-brand-400 focus:ring-2
+                        focus:ring-brand-100 transition-colors" />
+                    </div>
+
+                    @* Password *@
+                    <div class="mb-6">
+                        <label class="block text-xs text-text-secondary font-medium mb-1.5 tracking-wide">
+                            Password
+                        </label>
+                        <div class="relative">
+                            <input type="password"
+                                   name="Password"
+                                   id="passwordInput"
+                                   placeholder="Enter your password"
+                                   required
+                                   class="w-full px-4 py-2.5 pr-10 bg-surface border border-border
+                            rounded-lg text-text-primary text-sm placeholder-text-muted
+                            focus:outline-none focus:border-brand-400 focus:ring-2
+                            focus:ring-brand-100 transition-colors" />
+                            <button type="button"
+                                    onclick="togglePassword()"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted
+                                hover:text-text-secondary transition-colors">
+
+                                @* Eye open — password hidden *@
+                                <svg id="iconEye" class="w-4 h-4" fill="none" stroke="currentColor"
+                                     stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+
+                                @* Eye with slash — password visible *@
+                                <svg id="iconEyeOff" class="w-4 h-4 hidden" fill="none" stroke="currentColor"
+                                     stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8
+                                    a18.45 18.45 0 0 1 5.06-5.94" />
+                                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8
+                                    a18.5 18.5 0 0 1-2.16 3.19" />
+                                    <line x1="1" y1="1" x2="23" y2="23" />
+                                </svg>
+
+                            </button>
+                        </div>
+                    </div>
+
+                    @* Submit *@
+                    <button type="submit"
+                            class="w-full py-2.5 bg-accent-500 hover:bg-accent-600 text-white
+                        font-medium text-sm rounded-lg transition-colors shadow-sm">
+                        Sign in
+                    </button>
+                </form>
+            </div>
+
+            <p class="text-center text-text-muted text-xs mt-6">
+                &copy; 2026 Unified Payments &middot; Sanction Scan Portal
+            </p>
+        </div>
+    </main>
+
+    <script>
+            function togglePassword() {
+                const input = document.getElementById('passwordInput');
+                const iconEye = document.getElementById('iconEye');
+                const iconEyeOff = document.getElementById('iconEyeOff');
+
+                const isHidden = input.type === 'password';
+                input.type = isHidden ? 'text' : 'password';
+                iconEye.classList.toggle('hidden', isHidden);
+                iconEyeOff.classList.toggle('hidden', !isHidden);
+            }
+    </script>
+
+</body>
+</html>
