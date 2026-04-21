@@ -44,8 +44,12 @@
 </head>
 <body class="bg-surface min-h-screen font-body pb-10">
 
+  @{
+    var hideHeader = (bool)(ViewData["HideHeader"] ?? false);
+}
+
     @* ── Full header — hidden on Dashboard/Index ── *@
-    @if (ViewData["HideHeader"] == null || !(bool)ViewData["HideHeader"])
+    @if (!hideHeader)
     {
         <header class="bg-surface-card border-b border-border px-6 py-3 flex items-center justify-between shadow-sm sticky top-0 z-40">
             <div class="flex items-center gap-1">
@@ -55,19 +59,19 @@
                 <span class="text-text-primary text-sm font-semibold tracking-wide">Sanction Screen</span>
             </div>
             <div class="flex items-center gap-3">
-                <span class="text-text-muted text-xs hidden sm:block">admin@unifiedpayments.com</span>
-                <a asp-controller="Auth" asp-action="Logout"
-                   class="text-xs text-accent-600 hover:text-accent-700 font-medium transition-colors">
-                    Sign out
-                </a>
-                @* Waffle sits inside header on other pages *@
+                @{
+    var fullName   = User.FindFirst("firstName")?.Value + " " + User.FindFirst("lastName")?.Value;
+    var userEmail  = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+    var userRole   = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    var department = User.FindFirst("department")?.Value;
+}
                 @await Html.PartialAsync("_WaffleMenu")
             </div>
         </header>
     }
 
     @* ── Waffle floats top-right on Dashboard/Index (no header) ── *@
-    @if (ViewData["HideHeader"] != null && (bool)ViewData["HideHeader"])
+    @if (hideHeader)
     {
         <div class="fixed top-4 right-4 z-50">
             @await Html.PartialAsync("_WaffleMenu")
@@ -80,6 +84,7 @@
     </main>
 
     <script>
+        //<![CDATA[
         function toggleWaffle() {
             const btn      = document.getElementById('waffleBtn');
             const dropdown = document.getElementById('waffleDropdown');
@@ -96,6 +101,7 @@
                 btn.classList.remove('open');
             }
         });
+        //]]>
     </script>
 
     @RenderSection("Scripts", required: false)

@@ -3,3 +3,525 @@
     ViewData["ActivePage"] = "Users";
     Layout = "~/Views/Shared/_DashboardLayout.cshtml";
 }
+
+<style>
+    @@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(32px) scale(0.98); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .fade-up { opacity: 0; animation: fadeUp 0.45s ease forwards; }
+    .fade-up-1 { animation-delay: 0.05s; }
+    .fade-up-2 { animation-delay: 0.15s; }
+    .fade-up-3 { animation-delay: 0.25s; }
+
+    /* Modal backdrop */
+    #userModal {
+        display: none;
+        animation: fadeIn 0.2s ease forwards;
+    }
+    #userModal.open { display: flex; }
+    #modalBox {
+        animation: slideUp 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+    }
+
+    /* Table row hover */
+    .user-row { transition: background 0.15s ease; }
+    .user-row:hover { background: var(--color-surface, #f8fafc); }
+
+    /* Status badge */
+    .badge-enabled  { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+    .badge-disabled { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+
+    /* Spinner */
+    @@keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.7s linear infinite; }
+
+    /* Confirm dialog */
+    #confirmModal {
+        display: none;
+        animation: fadeIn 0.15s ease forwards;
+    }
+    #confirmModal.open { display: flex; }
+    #confirmBox {
+        animation: slideUp 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+    }
+</style>
+
+@* ── Page header ── *@
+<div class="flex items-center justify-between mb-6 fade-up fade-up-1">
+    <div>
+        <h1 class="text-text-primary text-2xl font-semibold font-display">Users</h1>
+        <p class="text-text-muted text-sm mt-0.5">Manage system users and their access roles.</p>
+    </div>
+    <button onclick="openAddModal()"
+            class="flex items-center gap-2 px-4 py-2.5 bg-accent-500 hover:bg-accent-600
+                   text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Add New User
+    </button>
+</div>
+
+@* ── Alert area ── *@
+<div id="alertArea" class="hidden mb-4"></div>
+
+@* ── Users table card ── *@
+<div class="bg-surface-card border border-border rounded-2xl shadow-sm overflow-hidden fade-up fade-up-2">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-border bg-surface">
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">Name</th>
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">Email</th>
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden md:table-cell">Department</th>
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden sm:table-cell">Role</th>
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">Status</th>
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden lg:table-cell">Last Login</th>
+                    <th class="text-right text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody">
+                <tr>
+                    <td colspan="7" class="text-center py-12 text-text-muted">
+                        <svg class="w-5 h-5 mx-auto mb-2 spinner text-brand-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                        </svg>
+                        <span class="text-xs">Loading users…</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    @* Footer count *@
+    <div class="px-5 py-3 border-t border-border bg-surface flex items-center justify-between">
+        <span id="userCount" class="text-xs text-text-muted">—</span>
+        <span class="text-xs text-text-muted">Sanction Screen · Users</span>
+    </div>
+</div>
+
+@* ══════════════ ADD USER MODAL ══════════════ *@
+<div id="userModal"
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-center justify-center px-4">
+    <div id="modalBox"
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-md">
+
+        @* Modal header *@
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+            <h2 class="text-text-primary font-semibold text-base">Add New User</h2>
+            <button onclick="closeAddModal()"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg
+                           text-text-muted hover:text-text-primary hover:bg-surface transition-colors">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" class="w-4 h-4">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        @* Modal body *@
+        <div class="px-6 py-5 space-y-4">
+            <div id="modalAlert" class="hidden"></div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-medium text-text-secondary block mb-1">First Name</label>
+                    <input id="newFirstName" type="text" placeholder="Jane"
+                           class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm
+                                  text-text-primary placeholder-text-muted focus:outline-none
+                                  focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition-colors" />
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-text-secondary block mb-1">Last Name</label>
+                    <input id="newLastName" type="text" placeholder="Doe"
+                           class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm
+                                  text-text-primary placeholder-text-muted focus:outline-none
+                                  focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition-colors" />
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs font-medium text-text-secondary block mb-1">Email Address</label>
+                <input id="newEmail" type="email" placeholder="jane.doe@company.com"
+                       class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm
+                              text-text-primary placeholder-text-muted focus:outline-none
+                              focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition-colors" />
+            </div>
+
+            <div>
+                <label class="text-xs font-medium text-text-secondary block mb-1">Department</label>
+                <input id="newDepartment" type="text" placeholder="Compliance"
+                       class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm
+                              text-text-primary placeholder-text-muted focus:outline-none
+                              focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition-colors" />
+            </div>
+
+            <div>
+                <label class="text-xs font-medium text-text-secondary block mb-1">Role</label>
+                <select id="newRole"
+                        class="w-full px-3 py-2.5 bg-surface border border-border rounded-xl text-sm
+                               text-text-primary focus:outline-none focus:border-brand-400
+                               focus:ring-2 focus:ring-brand-100 transition-colors">
+                    <option value="Regular User">Regular User</option>
+                    <option value="Admin">Admin</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-2 bg-surface rounded-xl px-3 py-2.5 border border-border">
+                <svg class="w-4 h-4 text-text-muted flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span class="text-xs text-text-muted">Password will be set from the system default.</span>
+            </div>
+        </div>
+
+        @* Modal footer *@
+        <div class="px-6 py-4 border-t border-border flex justify-end gap-3">
+            <button onclick="closeAddModal()"
+                    class="px-4 py-2 text-sm text-text-secondary hover:text-text-primary
+                           border border-border rounded-xl transition-colors">
+                Cancel
+            </button>
+            <button id="saveUserBtn" onclick="saveUser()"
+                    class="px-5 py-2 bg-accent-500 hover:bg-accent-600 text-white
+                           text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
+                <span id="saveBtnText">Create User</span>
+                <svg id="saveBtnSpinner" class="hidden w-4 h-4 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ══════════════ CONFIRM MODAL ══════════════ *@
+<div id="confirmModal"
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-center justify-center px-4">
+    <div id="confirmBox"
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-sm px-6 py-6">
+        <div id="confirmIcon" class="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4"></div>
+        <h3 id="confirmTitle" class="text-text-primary font-semibold text-base text-center mb-1"></h3>
+        <p id="confirmMessage" class="text-text-muted text-sm text-center mb-5"></p>
+        <div class="flex gap-3">
+            <button onclick="closeConfirm()"
+                    class="flex-1 py-2 text-sm text-text-secondary border border-border rounded-xl hover:bg-surface transition-colors">
+                Cancel
+            </button>
+            <button id="confirmActionBtn"
+                    class="flex-1 py-2 text-sm font-medium text-white rounded-xl transition-colors">
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let allUsers = [];
+    let pendingAction = null;
+
+    // ── Load users on page load ──────────────────────────────────────────────
+    async function loadUsers() {
+        try {
+            const res = await fetch('/Dashboard/Settings/Users/GetAll');
+            if (!res.ok) throw new Error('Failed to fetch');
+            allUsers = await res.json();
+            renderTable(allUsers);
+        } catch (err) {
+            document.getElementById('usersTableBody').innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center py-12 text-text-muted text-xs">
+                        Failed to load users. Please refresh the page.
+                    </td>
+                </tr>`;
+        }
+    }
+
+    // ── Render table ─────────────────────────────────────────────────────────
+    function renderTable(users) {
+        const tbody = document.getElementById('usersTableBody');
+        const countEl = document.getElementById('userCount');
+
+        countEl.textContent = `${users.length} user${users.length !== 1 ? 's' : ''} total`;
+
+        if (users.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center py-12 text-text-muted text-xs">
+                        No users found. Add one to get started.
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        tbody.innerHTML = users.map(u => {
+            const fullName   = `${u.firstName || ''} ${u.lastName || ''}`.trim() || '—';
+            const isDisabled = (u.profileStatus || '').toLowerCase() === 'disabled';
+            const lastLogin  = u.lastLoginDate
+                ? new Date(u.lastLoginDate).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+                : 'Never';
+
+            return `
+            <tr class="user-row border-b border-border last:border-0" id="row-${u.id}">
+                <td class="px-5 py-3.5">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-7 h-7 rounded-full bg-brand-50 border border-brand-100
+                                    flex items-center justify-center flex-shrink-0">
+                            <span class="text-xs font-semibold text-brand-600">
+                                ${(u.firstName || u.email || '?')[0].toUpperCase()}
+                            </span>
+                        </div>
+                        <span class="text-text-primary font-medium">${escHtml(fullName)}</span>
+                    </div>
+                </td>
+                <td class="px-5 py-3.5 text-text-secondary">${escHtml(u.email || '—')}</td>
+                <td class="px-5 py-3.5 text-text-muted hidden md:table-cell">${escHtml(u.department || '—')}</td>
+                <td class="px-5 py-3.5 hidden sm:table-cell">
+                    <span class="text-xs px-2 py-0.5 rounded-full border
+                        ${u.role === 'Admin'
+                            ? 'bg-brand-50 text-brand-600 border-brand-100'
+                            : 'bg-surface text-text-muted border-border'}">
+                        ${escHtml(u.role || 'Regular User')}
+                    </span>
+                </td>
+                <td class="px-5 py-3.5">
+                    <span class="text-xs px-2.5 py-0.5 rounded-full font-medium
+                        ${isDisabled ? 'badge-disabled' : 'badge-enabled'}">
+                        ${isDisabled ? 'Disabled' : 'Enabled'}
+                    </span>
+                </td>
+                <td class="px-5 py-3.5 text-text-muted text-xs hidden lg:table-cell">${lastLogin}</td>
+                <td class="px-5 py-3.5 text-right">
+                    <div class="flex items-center justify-end gap-2">
+                        <button onclick="confirmDisable(${u.id}, ${isDisabled})"
+                                title="${isDisabled ? 'Enable' : 'Disable'} user"
+                                class="text-xs px-3 py-1.5 rounded-lg border transition-colors
+                                    ${isDisabled
+                                        ? 'border-brand-200 text-brand-600 hover:bg-brand-50'
+                                        : 'border-border text-text-secondary hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50'}">
+                            ${isDisabled ? 'Enable' : 'Disable'}
+                        </button>
+                        <button onclick="confirmDelete(${u.id}, '${escHtml(fullName)}')"
+                                title="Delete user"
+                                class="text-xs px-3 py-1.5 rounded-lg border border-border
+                                       text-text-secondary hover:border-red-300 hover:text-red-600
+                                       hover:bg-red-50 transition-colors">
+                            Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ── Escape HTML helper ───────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Confirm modal helpers ────────────────────────────────────────────────
+    function openConfirm({ icon, iconBg, title, message, btnColor, action }) {
+        document.getElementById('confirmIcon').className =
+            `w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4 ${iconBg}`;
+        document.getElementById('confirmIcon').innerHTML = icon;
+        document.getElementById('confirmTitle').textContent   = title;
+        document.getElementById('confirmMessage').textContent = message;
+
+        const btn = document.getElementById('confirmActionBtn');
+        btn.className = `flex-1 py-2 text-sm font-medium text-white rounded-xl transition-colors ${btnColor}`;
+        pendingAction = action;
+        btn.onclick = () => { pendingAction(); };
+
+        document.getElementById('confirmModal').classList.add('open');
+    }
+
+    function closeConfirm() {
+        document.getElementById('confirmModal').classList.remove('open');
+        pendingAction = null;
+    }
+
+    // ── Delete ───────────────────────────────────────────────────────────────
+    function confirmDelete(userId, name) {
+        openConfirm({
+            icon: `<svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                       <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                       <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                   </svg>`,
+            iconBg:   'bg-red-50',
+            title:    'Delete User',
+            message:  `Are you sure you want to permanently delete ${name}? This action cannot be undone.`,
+            btnColor: 'bg-red-500 hover:bg-red-600',
+            action:   () => deleteUser(userId)
+        });
+    }
+
+    async function deleteUser(userId) {
+        closeConfirm();
+        try {
+            const res = await fetch(`/Dashboard/Settings/Users/Delete/${userId}`, { method: 'POST' });
+            if (!res.ok) throw new Error();
+            document.getElementById(`row-${userId}`)?.remove();
+            allUsers = allUsers.filter(u => u.id !== userId);
+            document.getElementById('userCount').textContent =
+                `${allUsers.length} user${allUsers.length !== 1 ? 's' : ''} total`;
+            showAlert('User deleted successfully.', 'success');
+        } catch {
+            showAlert('Failed to delete user. Please try again.', 'error');
+        }
+    }
+
+    // ── Disable / Enable ─────────────────────────────────────────────────────
+    function confirmDisable(userId, isCurrentlyDisabled) {
+        const action = isCurrentlyDisabled ? 'enable' : 'disable';
+        const user   = allUsers.find(u => u.id === userId);
+        const name   = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'this user';
+
+        openConfirm({
+            icon: `<svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                       <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+                       <line x1="12" y1="16" x2="12.01" y2="16"/>
+                   </svg>`,
+            iconBg:   'bg-amber-50',
+            title:    `${isCurrentlyDisabled ? 'Enable' : 'Disable'} User`,
+            message:  `Are you sure you want to ${action} ${name}?`,
+            btnColor: 'bg-amber-500 hover:bg-amber-600',
+            action:   () => toggleDisable(userId, isCurrentlyDisabled)
+        });
+    }
+
+    async function toggleDisable(userId, isCurrentlyDisabled) {
+        closeConfirm();
+        const newStatus = isCurrentlyDisabled ? 'enabled' : 'disabled';
+        try {
+            const res = await fetch(`/Dashboard/Settings/Users/UpdateStatus/${userId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profileStatus: newStatus })
+            });
+            if (!res.ok) throw new Error();
+            const user = allUsers.find(u => u.id === userId);
+            if (user) user.profileStatus = newStatus;
+            renderTable(allUsers);
+            showAlert(`User ${newStatus} successfully.`, 'success');
+        } catch {
+            showAlert('Failed to update user status. Please try again.', 'error');
+        }
+    }
+
+    // ── Add User Modal ───────────────────────────────────────────────────────
+    function openAddModal() {
+        ['newFirstName','newLastName','newEmail','newDepartment'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        document.getElementById('newRole').value = 'Regular User';
+        document.getElementById('modalAlert').classList.add('hidden');
+        document.getElementById('userModal').classList.add('open');
+        document.getElementById('newFirstName').focus();
+    }
+
+    function closeAddModal() {
+        document.getElementById('userModal').classList.remove('open');
+    }
+
+    async function saveUser() {
+        const firstName  = document.getElementById('newFirstName').value.trim();
+        const lastName   = document.getElementById('newLastName').value.trim();
+        const email      = document.getElementById('newEmail').value.trim();
+        const department = document.getElementById('newDepartment').value.trim();
+        const role       = document.getElementById('newRole').value;
+
+        if (!firstName || !lastName || !email) {
+            showModalAlert('Please fill in first name, last name, and email.', 'error');
+            return;
+        }
+        if (!/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(email)) {
+            showModalAlert('Please enter a valid email address.', 'error');
+            return;
+        }
+
+        const btn     = document.getElementById('saveUserBtn');
+        const spinner = document.getElementById('saveBtnSpinner');
+        const btnText = document.getElementById('saveBtnText');
+        btn.disabled  = true;
+        spinner.classList.remove('hidden');
+        btnText.textContent = 'Creating…';
+
+        try {
+            const res = await fetch('/Dashboard/Settings/Users/Create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ firstName, lastName, email, department, role })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Failed to create user');
+
+            allUsers.unshift(data);
+            renderTable(allUsers);
+            closeAddModal();
+            showAlert(`User ${firstName} ${lastName} created successfully.`, 'success');
+        } catch (err) {
+            showModalAlert(err.message || 'Failed to create user. Please try again.', 'error');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            btnText.textContent = 'Create User';
+        }
+    }
+
+    // ── Alert helpers ────────────────────────────────────────────────────────
+    function showAlert(message, type) {
+        const el = document.getElementById('alertArea');
+        const isSuccess = type === 'success';
+        el.className = `mb-4 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
+            ${isSuccess
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : 'bg-red-50 text-red-700 border-red-200'}`;
+        el.innerHTML = `
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                ${isSuccess
+                    ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+                    : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+            </svg>
+            ${escHtml(message)}`;
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+
+    function showModalAlert(message, type) {
+        const el = document.getElementById('modalAlert');
+        el.className = `mb-1 px-3 py-2 rounded-xl text-xs border
+            ${type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`;
+        el.textContent = message;
+        el.classList.remove('hidden');
+    }
+
+    // Close modals on backdrop click
+    document.getElementById('userModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAddModal();
+    });
+    document.getElementById('confirmModal').addEventListener('click', function(e) {
+        if (e.target === this) closeConfirm();
+    });
+
+    // Enter key in modal fields
+    ['newFirstName','newLastName','newEmail','newDepartment'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', e => {
+            if (e.key === 'Enter') saveUser();
+        });
+    });
+
+    // Load on page ready
+    loadUsers();
+</script>
+}
