@@ -1,12 +1,20 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Upsanctionscreener.Classess.Utils;
 using Upsanctionscreener.Data;
-using Upsanctionscreener.Classess;
+using Upsanctionscreener.Services;
+using static Upsanctionscreener.Classess.Search.BKTree;
+
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
+//----BK Tree ------------------------------------------
+builder.Services.AddSingleton(_ => SanctionBKTree.Instance);
+builder.Services.AddHostedService<SanctionListRefreshService>();
 
 // ── Database ──────────────────────────────────────────────────────────────────
 string? encryptedConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -55,8 +63,63 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<UpSanctionSettingsService>();
+
+
 
 var app = builder.Build();
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var settingsService = scope.ServiceProvider.GetRequiredService<UpSanctionSettingsService>();
+
+    var result = await settingsService.GetScanSettingsAsync();
+
+    if (result.Success)
+    {
+        Console.WriteLine($"Scan Settings Retrieved");
+        var scanSettings = result.Data;
+        double ScanSettingsThreshold = scanSettings.ScanThreshold / 100.0;
+
+        var filePath = Path.Combine(
+    GlobalVariables.root_folder,
+    "SanctionDatabase", "basesource",
+    "UPSanctionDB.xlsx"
+);
+
+        if (!File.Exists(filePath))
+        {
+            Console.WriteLine("Could not Read base UPSanctionDatabase: " + filePath);
+            return;
+        }
+       
+
+        var sanction_entries = await Task.Run(() =>
+                  SanctionExcelReader.LoadFromExcel(filePath)
+              );
+        Console.WriteLine($"Sanction Entries Retrieved");
+
+        SanctionBKTree.Instance.Configure(ScanSettingsThreshold, caseSensitive: false);
+
+        SanctionBKTree.Instance.Load(sanction_entries);
+
+        Console.WriteLine($"Tree loaded with {SanctionBKTree.Instance.NodeCount} nodes.");
+       
+    }
+    else
+    {
+        Console.WriteLine($"Failed to load ScanSettings: {result.Error}");
+    }
+}
+
+
+
+
+
+
+
+
 
 if (!app.Environment.IsDevelopment())
 {

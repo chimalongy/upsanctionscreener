@@ -10,14 +10,23 @@
         from { opacity: 0; transform: translateY(20px); }
         to   { opacity: 1; transform: translateY(0); }
     }
-    .fade-up {
-        opacity: 0;
-        animation: fadeUp 0.5s ease forwards;
+    .fade-up            { opacity: 0; animation: fadeUp 0.5s ease forwards; }
+    .fade-up-1          { animation-delay: 0.05s; }
+    .fade-up-2          { animation-delay: 0.15s; }
+    .fade-up-3          { animation-delay: 0.25s; }
+    .fade-up-4          { animation-delay: 0.35s; }
+
+    @@keyframes spin {
+        to { transform: rotate(360deg); }
     }
-    .fade-up-1 { animation-delay: 0.05s; }
-    .fade-up-2 { animation-delay: 0.15s; }
-    .fade-up-3 { animation-delay: 0.25s; }
-    .fade-up-4 { animation-delay: 0.35s; }
+    #spinner .spin-ring {
+        width: 18px; height: 18px;
+        border: 2px solid #e5e7eb;
+        border-top-color: #534AB7;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        display: inline-block;
+    }
 </style>
 
 @* ── Hero heading ── *@
@@ -86,11 +95,18 @@
         </button>
     </div>
 
+    @* Error bar *@
+    <div id="errorBar"
+         class="hidden mb-3 px-4 py-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">
+    </div>
+
     @* Actions — Screen Now | Multi-scan *@
     <div class="flex gap-3">
-        <button onclick="runSearch()"
-                class="flex-1 py-2.5 bg-accent-500 hover:bg-accent-600 text-white
-                       font-medium text-sm rounded-xl transition-colors shadow-sm">
+        <button id="screenBtn"
+                onclick="runSearch()"
+                class="flex-1 py-2.5 bg-accent-500 hover:bg-accent-600 disabled:opacity-50
+                       disabled:cursor-not-allowed text-white font-medium text-sm
+                       rounded-xl transition-colors shadow-sm">
             Screen Now
         </button>
         <button onclick="openMultiScan()"
@@ -103,6 +119,14 @@
             </svg>
             Multi-scan
         </button>
+    </div>
+</div>
+
+@* ── Spinner ── *@
+<div id="spinner" class="hidden text-center py-12 fade-up fade-up-3">
+    <div class="flex items-center justify-center gap-2 text-text-muted text-sm">
+        <span class="spin-ring"></span>
+        Screening against sanctions lists…
     </div>
 </div>
 
@@ -143,126 +167,171 @@
 </div>
 
 @section Scripts {
-    <script>
-        const mockData = [
-            { name: "Nikolai Volkov",        address: "12 Kremlin St, Moscow, Russia",      email: "n.volkov@blackmail.ru",    phone: "+7 495 000 0001",  list: "OFAC", country: "Russia",  risk: "high",   id: "SDN-00421" },
-            { name: "Black Sea Trading LLC", address: "45 Harbor Rd, Odessa, Ukraine",       email: "trade@blacksea.ua",        phone: "+380 48 000 0002", list: "EU",   country: "Ukraine", risk: "high",   id: "EU-20934"  },
-            { name: "Ahmed Al-Rashid",       address: "7 Desert Palm Ave, Damascus, Syria",  email: "ahmed.rashid@mail.sy",     phone: "+963 11 000 0003", list: "UK",   country: "Syria",   risk: "medium", id: "UK-01234"  },
-            { name: "Eastern Bridge Corp",   address: "99 Industrial Zone, Minsk, Belarus",  email: "contact@easternbridge.by", phone: "+375 17 000 0004", list: "OFAC", country: "Belarus", risk: "high",   id: "SDN-00988" },
-            { name: "MV Petrov Star",        address: "Port of Bandar Abbas, Iran",          email: "ops@petrovstar.ir",        phone: "+98 76 000 0005",  list: "UN",   country: "Iran",    risk: "high",   id: "UN-00871"  },
-        ];
+<script>
+    const iconPaths = {
+        name:    `<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
+        address: `<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>`,
+        email:   `<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>`,
+        phone:   `<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.84a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>`,
+    };
 
-        const icons = {
-            name:    `<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
-            address: `<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>`,
-            email:   `<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>`,
-            phone:   `<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.84a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>`,
-        };
+    const placeholders = {
+        name: 'Enter full name...', address: 'Enter address...',
+        email: 'Enter email address...', phone: 'Enter phone number...'
+    };
 
-        const placeholders = {
-            name:    "Enter full name...",
-            address: "Enter address...",
-            email:   "Enter email address...",
-            phone:   "Enter phone number...",
-        };
+    const inputTypes = { name: 'text', address: 'text', email: 'email', phone: 'tel' };
 
-        const inputTypes = {
-            name: "text", address: "text", email: "email", phone: "tel"
-        };
+    let activeType = 'name';
 
-        let activeType = 'name';
+    // ── helpers ────────────────────────────────────────────────────────────────
 
-        function setSearchType(btn, type) {
-            activeType = type;
+    function showOnly(id) {
+        ['resultsArea', 'emptyState', 'noResults', 'spinner'].forEach(x => {
+            document.getElementById(x).classList.add('hidden');
+        });
+        document.getElementById(id).classList.remove('hidden');
+    }
 
-            document.querySelectorAll('.search-type-btn').forEach(b => {
-                b.classList.remove('bg-brand-500', 'text-white');
-                b.classList.add('text-text-secondary');
+    function setError(msg) {
+        const bar = document.getElementById('errorBar');
+        if (msg) { bar.textContent = msg; bar.classList.remove('hidden'); }
+        else      { bar.textContent = '';  bar.classList.add('hidden');    }
+    }
+
+    function esc(str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ── search type toggle ─────────────────────────────────────────────────────
+
+    function setSearchType(btn, type) {
+        activeType = type;
+
+        document.querySelectorAll('.search-type-btn').forEach(b => {
+            b.classList.remove('bg-brand-500', 'text-white');
+            b.classList.add('text-text-secondary');
+        });
+        btn.classList.add('bg-brand-500', 'text-white');
+        btn.classList.remove('text-text-secondary');
+
+        const input = document.getElementById('searchInput');
+        input.placeholder = placeholders[type];
+        input.type        = inputTypes[type];
+        input.value       = '';
+        input.focus();
+
+        document.getElementById('inputIcon').innerHTML = iconPaths[type];
+        clearSearch();
+    }
+
+    // ── main search ────────────────────────────────────────────────────────────
+
+    async function runSearch() {
+        const query = document.getElementById('searchInput').value.trim();
+        if (!query) return;
+
+        setError(null);
+        document.getElementById('screenBtn').disabled = true;
+        showOnly('spinner');
+
+        try {
+            const response = await fetch('@Url.Action("SingleScreen", "Dashboard")', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ searchTerm: query, searchField: activeType })
             });
-            btn.classList.add('bg-brand-500', 'text-white');
-            btn.classList.remove('text-text-secondary');
 
-            const input = document.getElementById('searchInput');
-            input.placeholder = placeholders[type];
-            input.type = inputTypes[type];
-            input.value = '';
-            input.focus();
+            const data = await response.json();
 
-            document.getElementById('inputIcon').innerHTML = icons[type];
+            if (!data.success) {
+                setError(data.message || 'An error occurred. Please try again.');
+                showOnly('emptyState');
+                return;
+            }
 
-            clearSearch();
-        }
-
-        function runSearch() {
-            const query = document.getElementById('searchInput').value.trim().toLowerCase();
-            if (!query) return;
-
-            const results = mockData.filter(item =>
-                item[activeType].toLowerCase().includes(query)
-            );
-
-            document.getElementById('emptyState').classList.add('hidden');
-            document.getElementById('noResults').classList.add('hidden');
-            document.getElementById('resultsArea').classList.add('hidden');
+            const results = data.results ?? [];
 
             if (results.length === 0) {
-                document.getElementById('noResults').classList.remove('hidden');
+                showOnly('noResults');
                 return;
             }
 
             document.getElementById('resultCount').textContent = results.length;
             document.getElementById('searchBadge').textContent = `${activeType}: "${query}"`;
-            document.getElementById('resultsList').innerHTML = results.map(item => `
-                <div style="animation: fadeUp 0.3s ease forwards;"
-                     class="bg-surface-card border border-border rounded-xl px-5 py-4
-                            flex items-center justify-between gap-4 shadow-sm
-                            hover:border-brand-200 transition-colors">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
-                                    ${item.risk === 'high' ? 'bg-error-bg' : 'bg-accent-50'}">
-                            <svg class="w-5 h-5 ${item.risk === 'high' ? 'text-error' : 'text-accent-500'}"
-                                 fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                            </svg>
+
+            document.getElementById('resultsList').innerHTML = results.map(item => {
+                const risk = (item.riskLevel ?? 'high').toLowerCase();
+                const isHigh = risk === 'high';
+                return `
+                    <div style="animation: fadeUp 0.3s ease forwards;"
+                         class="bg-surface-card border border-border rounded-xl px-5 py-4
+                                flex items-center justify-between gap-4 shadow-sm
+                                hover:border-brand-200 transition-colors">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
+                                        ${isHigh ? 'bg-error-bg' : 'bg-accent-50'}">
+                                <svg class="w-5 h-5 ${isHigh ? 'text-error' : 'text-accent-500'}"
+                                     fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-text-primary text-sm font-semibold">${esc(item.name)}</p>
+                                <p class="text-text-muted text-xs truncate">${esc(item.address)}</p>
+                                <p class="text-text-muted text-xs mt-0.5">
+                                    ${esc(item.email)}${item.email && item.phone ? ' &middot; ' : ''}${esc(item.phone)}
+                                </p>
+                            </div>
                         </div>
-                        <div class="min-w-0">
-                            <p class="text-text-primary text-sm font-semibold">${item.name}</p>
-                            <p class="text-text-muted text-xs truncate">${item.address}</p>
-                            <p class="text-text-muted text-xs mt-0.5">${item.email} &middot; ${item.phone}</p>
+                        <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
+                            <span class="text-xs font-medium px-2.5 py-0.5 rounded-full border
+                                         ${isHigh
+                                            ? 'bg-error-bg text-error border-error-border'
+                                            : 'bg-accent-50 text-accent-600 border-accent-200'}">
+                                ${esc(item.sanctionList)}
+                            </span>
+                            <span class="text-[10px] text-text-muted">
+                                ${esc(item.referenceId)} &middot; ${esc(item.country)}
+                            </span>
                         </div>
-                    </div>
-                    <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
-                        <span class="text-xs font-medium px-2.5 py-0.5 rounded-full border
-                                     ${item.risk === 'high'
-                                        ? 'bg-error-bg text-error border-error-border'
-                                        : 'bg-accent-50 text-accent-600 border-accent-200'}">
-                            ${item.list}
-                        </span>
-                        <span class="text-[10px] text-text-muted">${item.id} &middot; ${item.country}</span>
-                    </div>
-                </div>
-            `).join('');
+                    </div>`;
+            }).join('');
 
             const area = document.getElementById('resultsArea');
             area.classList.remove('hidden');
             area.style.animation = 'none';
-            area.offsetHeight;
+            area.offsetHeight;                    // force reflow
             area.style.animation = 'fadeUp 0.4s ease forwards';
+
+        } catch (err) {
+            setError('Request failed. Please check your connection and try again.');
+            showOnly('emptyState');
+        } finally {
+            document.getElementById('screenBtn').disabled = false;
         }
+    }
 
-        function clearSearch() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('resultsArea').classList.add('hidden');
-            document.getElementById('noResults').classList.add('hidden');
-            document.getElementById('emptyState').classList.remove('hidden');
-        }
+    // ── clear ──────────────────────────────────────────────────────────────────
 
-       function openMultiScan() {
-    window.location.href = '@Url.Action("MultiScan", "Dashboard")';
-}
+    function clearSearch() {
+        document.getElementById('searchInput').value = '';
+        setError(null);
+        showOnly('emptyState');
+    }
 
-        document.getElementById('searchInput').addEventListener('keydown', e => {
-            if (e.key === 'Enter') runSearch();
-        });
-    </script>
+    // ── multi-scan ─────────────────────────────────────────────────────────────
+
+    function openMultiScan() {
+        window.location.href = '@Url.Action("MultiScan", "Dashboard")';
+    }
+
+    // ── enter key ──────────────────────────────────────────────────────────────
+
+    document.getElementById('searchInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') runSearch();
+    });
+</script>
 }

@@ -3,3 +3,469 @@
     ViewData["ActivePage"] = "SourceSettings";
     Layout = "~/Views/Shared/_DashboardLayout.cshtml";
 }
+
+<style>
+    @@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes spin { to { transform: rotate(360deg); } }
+
+    .fade-up   { opacity: 0; animation: fadeUp 0.45s ease forwards; }
+    .fade-up-1 { animation-delay: 0.05s; }
+    .fade-up-2 { animation-delay: 0.15s; }
+    .fade-up-3 { animation-delay: 0.25s; }
+
+    .spinner { animation: spin 0.7s linear infinite; }
+
+    .field-label {
+        display: block; font-size: 0.7rem; font-weight: 500;
+        color: var(--color-text-secondary, #64748b);
+        margin-bottom: 5px; letter-spacing: 0.02em;
+    }
+    .field-input {
+        width: 100%; padding: 9px 12px;
+        background: var(--color-surface, #f8fafc);
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: 10px; font-size: 0.8rem;
+        color: var(--color-text-primary, #0f172a);
+        transition: border-color 0.15s, box-shadow 0.15s;
+        outline: none;
+    }
+    .field-input:focus {
+        border-color: var(--color-brand-400, #60a5fa);
+        box-shadow: 0 0 0 3px var(--color-brand-100, #dbeafe);
+    }
+    .field-input::placeholder { color: var(--color-text-muted, #94a3b8); }
+
+    #fAdverseMedia {
+        resize: vertical;
+        min-height: 260px;
+        font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
+        font-size: 0.78rem;
+        line-height: 1.7;
+    }
+
+    .section-card {
+        background: var(--color-surface-card, #fff);
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: 16px;
+        padding: 1.5rem;
+    }
+
+    .action-btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 9px 16px; font-size: 0.8rem; font-weight: 500;
+        border-radius: 12px; border: 1px solid var(--color-border, #e2e8f0);
+        background: var(--color-surface-card, #fff);
+        color: var(--color-text-secondary, #475569);
+        cursor: pointer; transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+    .action-btn:hover {
+        border-color: var(--color-brand-300, #93c5fd);
+        color: var(--color-brand-600, #2563eb);
+        background: var(--color-brand-50, #eff6ff);
+    }
+    .action-btn:disabled { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
+    .action-btn.danger:hover {
+        border-color: #fca5a5;
+        color: #dc2626;
+        background: #fef2f2;
+    }
+
+    /* keyword pill preview */
+    .kw-pill {
+        display: inline-flex; align-items: center;
+        font-size: 0.7rem; padding: 3px 10px;
+        border-radius: 9999px;
+        border: 1px solid var(--color-border, #e2e8f0);
+        background: var(--color-surface, #f8fafc);
+        color: var(--color-text-secondary, #475569);
+        white-space: nowrap;
+    }
+
+    #confirmModal { display: none; }
+    #confirmModal.open { display: flex; }
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(24px) scale(0.98); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    #confirmBox { animation: slideUp 0.22s cubic-bezier(0.34,1.4,0.64,1) forwards; }
+</style>
+
+@* ── Page header ── *@
+<div class="flex items-center justify-between mb-6 fade-up fade-up-1">
+    <div>
+        <h1 class="text-text-primary text-2xl font-semibold font-display">Source Settings</h1>
+        <p class="text-text-muted text-sm mt-0.5">Manage sanction data sources and adverse media keywords.</p>
+    </div>
+</div>
+
+@* ── Alert area ── *@
+<div id="alertArea" class="hidden mb-4"></div>
+
+@* ── Database Actions Card ── *@
+<div class="section-card mb-4 fade-up fade-up-1">
+
+    <div class="flex items-center gap-3 mb-5">
+        <div class="w-8 h-8 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>
+            </svg>
+        </div>
+        <div>
+            <p class="text-text-primary font-semibold text-sm">Sanction Database</p>
+            <p class="text-text-muted text-xs">Download a local copy of the current sanction database, or pull the latest data from the upstream source.</p>
+        </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3">
+
+        @* Download button *@
+        <button id="downloadBtn" onclick="downloadDatabase()" class="action-btn">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span id="downloadBtnText">Download Sanction Database</span>
+            <svg id="downloadSpinner" class="hidden w-3.5 h-3.5 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+        </button>
+
+        @* Refetch button *@
+        <button id="refetchBtn" onclick="confirmRefetch()" class="action-btn">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <polyline points="1 4 1 10 7 10"/>
+                <path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+            </svg>
+            <span id="refetchBtnText">Refetch Sanction Database</span>
+            <svg id="refetchSpinner" class="hidden w-3.5 h-3.5 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+        </button>
+
+    </div>
+
+    @* Status strip — shown after an action *@
+    <div id="dbStatusStrip" class="hidden mt-4 pt-4 border-t border-border">
+        <p id="dbStatusText" class="text-xs text-text-muted flex items-center gap-2"></p>
+    </div>
+
+</div>
+
+@* ── Adverse Media Card ── *@
+<div class="section-card fade-up fade-up-2">
+
+    <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-text-primary font-semibold text-sm">Adverse Media Keywords</p>
+                <p class="text-text-muted text-xs">One keyword or phrase per line. Used to flag adverse media during scans.</p>
+            </div>
+        </div>
+
+        <button id="saveAdverseBtn" onclick="saveAdverseMedia()"
+                class="flex items-center gap-2 px-4 py-2.5 bg-accent-500 hover:bg-accent-600
+                       text-white text-sm font-medium rounded-xl transition-colors shadow-sm flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            <span id="saveAdverseBtnText">Save Keywords</span>
+            <svg id="saveAdverseSpinner" class="hidden w-4 h-4 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+        </button>
+    </div>
+
+    @* Loading state *@
+    <div id="adverseLoadingArea" class="flex items-center justify-center py-8">
+        <svg class="w-4 h-4 spinner text-brand-400 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        </svg>
+        <span class="text-xs text-text-muted">Loading keywords…</span>
+    </div>
+
+    @* Editor — hidden until loaded *@
+    <div id="adverseEditor" class="hidden">
+        <label class="field-label">
+            Keywords
+            <span class="ml-1 text-text-muted font-normal normal-case tracking-normal">(one per line)</span>
+        </label>
+        <textarea id="fAdverseMedia"
+                  class="field-input"
+                  placeholder="fraud&#10;corruption&#10;money laundering&#10;sanctions&#10;…"
+                  oninput="updateKeywordPreview()"></textarea>
+
+        @* Live stats + preview ── *@
+        <div class="mt-3 flex items-center justify-between flex-wrap gap-2">
+            <div id="kwStats" class="text-xs text-text-muted"></div>
+            <button type="button" onclick="sortKeywords()"
+                    class="text-xs px-3 py-1.5 rounded-lg border border-border
+                           text-text-secondary hover:border-brand-300 hover:text-brand-600
+                           hover:bg-brand-50 transition-colors flex items-center gap-1.5">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M3 6h18M7 12h10M11 18h2"/>
+                </svg>
+                Sort A–Z
+            </button>
+        </div>
+
+        @* Pill preview (first 12) *@
+        <div id="kwPillPreview" class="mt-3 flex flex-wrap gap-1.5"></div>
+    </div>
+
+</div>
+
+@* ══════════ CONFIRM MODAL ══════════ *@
+<div id="confirmModal"
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-center justify-center px-4">
+    <div id="confirmBox"
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-sm px-6 py-6">
+        <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <polyline points="1 4 1 10 7 10"/>
+                <path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+            </svg>
+        </div>
+        <h3 class="text-text-primary font-semibold text-base text-center mb-1">Refetch Sanction Database</h3>
+        <p class="text-text-muted text-sm text-center mb-5">
+            This will pull the latest data from the upstream source and overwrite the current database.
+            The process may take a few minutes. Continue?
+        </p>
+        <div class="flex gap-3">
+            <button onclick="closeConfirm()"
+                    class="flex-1 py-2 text-sm text-text-secondary border border-border rounded-xl hover:bg-surface transition-colors">
+                Cancel
+            </button>
+            <button onclick="refetchDatabase()"
+                    class="flex-1 py-2 text-sm font-medium text-white bg-accent-500 hover:bg-accent-600 rounded-xl transition-colors">
+                Yes, refetch
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+
+    // ══════════════════════════════════════════════════════════════════
+    // ADVERSE MEDIA
+    // ══════════════════════════════════════════════════════════════════
+
+    async function loadAdverseMedia() {
+        try {
+            const res  = await fetch('/Dashboard/Settings/SourceSettings/GetAdverseMedia');
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message);
+
+            const keywords = data.data ?? [];
+            document.getElementById('fAdverseMedia').value = keywords.join('\n');
+            updateKeywordPreview();
+
+            document.getElementById('adverseLoadingArea').classList.add('hidden');
+            document.getElementById('adverseEditor').classList.remove('hidden');
+        } catch {
+            document.getElementById('adverseLoadingArea').innerHTML =
+                '<p class="text-xs text-text-muted py-4">Failed to load keywords. Please refresh the page.</p>';
+        }
+    }
+
+    function parseKeywords(raw) {
+        return raw.split('\n')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+    }
+
+    function updateKeywordPreview() {
+        const keywords = parseKeywords(document.getElementById('fAdverseMedia').value);
+
+        // Stats
+        const stats = document.getElementById('kwStats');
+        stats.textContent = keywords.length === 0
+            ? 'No keywords entered'
+            : `${keywords.length} keyword${keywords.length !== 1 ? 's' : ''}`;
+
+        // Pill preview — first 15, then "+N more"
+        const preview  = document.getElementById('kwPillPreview');
+        const visible  = keywords.slice(0, 15);
+        const overflow = keywords.length - visible.length;
+
+        preview.innerHTML = visible.map(k =>
+            `<span class="kw-pill">${escHtml(k)}</span>`
+        ).join('') + (overflow > 0
+            ? `<span class="kw-pill text-text-muted">+${overflow} more</span>`
+            : '');
+    }
+
+    function sortKeywords() {
+        const ta  = document.getElementById('fAdverseMedia');
+        const kws = parseKeywords(ta.value).sort((a, b) =>
+            a.toLowerCase().localeCompare(b.toLowerCase()));
+        ta.value = kws.join('\n');
+        updateKeywordPreview();
+    }
+
+    async function saveAdverseMedia() {
+        const keywords = parseKeywords(document.getElementById('fAdverseMedia').value);
+
+        const btn     = document.getElementById('saveAdverseBtn');
+        const spinner = document.getElementById('saveAdverseSpinner');
+        const text    = document.getElementById('saveAdverseBtnText');
+        btn.disabled  = true;
+        spinner.classList.remove('hidden');
+        text.textContent = 'Saving…';
+
+        try {
+            const res  = await fetch('/Dashboard/Settings/SourceSettings/UpdateAdverseMedia', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(keywords)
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || 'Failed to save');
+            showAlert(`Adverse media keywords saved — ${keywords.length} keyword${keywords.length !== 1 ? 's' : ''} stored.`, 'success');
+        } catch (err) {
+            showAlert(err.message || 'Failed to save keywords. Please try again.', 'error');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            text.textContent = 'Save Keywords';
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // DATABASE ACTIONS
+    // ══════════════════════════════════════════════════════════════════
+
+    async function downloadDatabase() {
+        const btn     = document.getElementById('downloadBtn');
+        const spinner = document.getElementById('downloadSpinner');
+        const text    = document.getElementById('downloadBtnText');
+        btn.disabled  = true;
+        spinner.classList.remove('hidden');
+        text.textContent = 'Preparing…';
+
+        try {
+            const res = await fetch('/Dashboard/Settings/SourceSettings/DownloadDatabase');
+            if (!res.ok) throw new Error('Download failed.');
+
+            const disposition = res.headers.get('Content-Disposition') ?? '';
+            const nameMatch   = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            const filename    = nameMatch ? nameMatch[1].replace(/['"]/g, '') : 'sanction-database.csv';
+
+            const blob = await res.blob();
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            setDbStatus('success', 'Download complete.');
+        } catch (err) {
+            setDbStatus('error', err.message || 'Download failed. Please try again.');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            text.textContent = 'Download Sanction Database';
+        }
+    }
+
+    function confirmRefetch() {
+        document.getElementById('confirmModal').classList.add('open');
+    }
+    function closeConfirm() {
+        document.getElementById('confirmModal').classList.remove('open');
+    }
+
+    async function refetchDatabase() {
+        closeConfirm();
+
+        const btn     = document.getElementById('refetchBtn');
+        const spinner = document.getElementById('refetchSpinner');
+        const text    = document.getElementById('refetchBtnText');
+        btn.disabled  = true;
+        spinner.classList.remove('hidden');
+        text.textContent = 'Fetching…';
+
+        try {
+            const res  = await fetch('/Dashboard/Settings/SourceSettings/RefetchDatabase', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || 'Refetch failed.');
+            setDbStatus('success', data.message || 'Sanction database updated successfully.');
+            showAlert('Sanction database refetched and updated.', 'success');
+        } catch (err) {
+            setDbStatus('error', err.message || 'Refetch failed. Please try again.');
+            showAlert(err.message || 'Refetch failed.', 'error');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            text.textContent = 'Refetch Sanction Database';
+        }
+    }
+
+    function setDbStatus(type, message) {
+        const strip = document.getElementById('dbStatusStrip');
+        const text  = document.getElementById('dbStatusText');
+        const ok    = type === 'success';
+        text.innerHTML = `
+            <svg class="w-3.5 h-3.5 flex-shrink-0 ${ok ? 'text-green-500' : 'text-red-500'}"
+                 fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                ${ok
+                    ? '<path d="M20 6 9 17l-5-5"/>'
+                    : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+            </svg>
+            <span class="${ok ? 'text-green-700' : 'text-red-600'}">${escHtml(message)}</span>`;
+        strip.classList.remove('hidden');
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // CONFIRM MODAL — backdrop click
+    // ══════════════════════════════════════════════════════════════════
+    document.getElementById('confirmModal').addEventListener('click', function(e) {
+        if (e.target === this) closeConfirm();
+    });
+
+    // ══════════════════════════════════════════════════════════════════
+    // SHARED HELPERS
+    // ══════════════════════════════════════════════════════════════════
+
+    function showAlert(message, type) {
+        const el = document.getElementById('alertArea');
+        const ok = type === 'success';
+        el.className = `mb-4 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
+            ${ok ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`;
+        el.innerHTML = `
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                ${ok
+                    ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+                    : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+            </svg>${escHtml(message)}`;
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    function escHtml(str) {
+        return String(str ?? '')
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    loadAdverseMedia();
+</script>
+}

@@ -1,10 +1,18 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using DocumentFormat.OpenXml.Spreadsheet;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Upsanctionscreener.Classess;
+using Upsanctionscreener.Classess.Search;
 using Upsanctionscreener.Classess.Utils;
 using Upsanctionscreener.Data;
+using Upsanctionscreener.Models;
 using Upsanctionscreener.Models.ViewModels;
-
-
+using Upsanctionscreener.Services;
+using static Upsanctionscreener.Classess.Search.BKTree;
+using static Upsanctionscreener.Classess.Search.PEPBKTree;
 namespace Upsanctionscreener.Controllers
 {
     [Authorize]
@@ -12,11 +20,15 @@ namespace Upsanctionscreener.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IConfiguration _config;
+        private readonly SanctionBKTree _sanction_tree;
+        private readonly UpSanctionSettingsService _settingsService;
 
-        public DashboardController(AppDbContext db, IConfiguration config)
+        public DashboardController(AppDbContext db, IConfiguration config, SanctionBKTree tree, UpSanctionSettingsService settingsService)
         {
             _db = db;
             _config = config;
+            _sanction_tree = tree;
+            _settingsService = settingsService;
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -69,9 +81,20 @@ namespace Upsanctionscreener.Controllers
         public IActionResult AuditLogs() =>
             View("~/Views/Dashboard/Settings/AuditLogs.cshtml");
 
+        // ══════════════════════════════════════════════════════════════════════
+        // AUDIT LOGS API
+        // ══════════════════════════════════════════════════════════════════════
+
+        [HttpGet]
+        [Route("Dashboard/Settings/AuditLogs/GetAll")]
+        public async Task<IActionResult> AuditLogsGetAll()
+        {
+            var logs = await GlobalFunctions.GetAllAuditLogsAsync(_db);
+            return Json(logs);
+        }
 
         // ══════════════════════════════════════════════════════════════════════
-        // USERS API  ── controller only routes; logic lives in GlobalFunctions
+        // USERS API
         // ══════════════════════════════════════════════════════════════════════
 
         [HttpGet]
@@ -126,8 +149,629 @@ namespace Upsanctionscreener.Controllers
 
             return Json(result);
         }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // TARGET SETTINGS API
+        // ══════════════════════════════════════════════════════════════════════
+
+        [HttpGet]
+        [Route("Dashboard/Settings/TargetSettings/GetAll")]
+        public async Task<IActionResult> TargetSettingsGetAll()
+        {
+            var svc = new UpSanctionSettingsService(_db);
+            var result = await svc.GetTargetSettingsAsync();
+            if (!result.Success)
+                return BadRequest(new { success = false, message = result.Error });
+            return Json(new { success = true, data = result.Data });
+        }
+
+        [HttpPost]
+        [Route("Dashboard/Settings/TargetSettings/Upsert")]
+        public async Task<IActionResult> TargetSettingsUpsert([FromBody] UpsertTargetRequest target)
+        {
+            var svc = new UpSanctionSettingsService(_db);
+            var result = await svc.UpsertTargetAsync(target);
+            if (!result.Success)
+                return BadRequest(new { success = false, message = result.Error });
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        [Route("Dashboard/Settings/TargetSettings/Delete/{id:int}")]
+        public async Task<IActionResult> TargetSettingsDelete(int id)
+        {
+            var svc = new UpSanctionSettingsService(_db);
+            var result = await svc.DeleteTargetAsync(id);
+            if (!result.Success)
+                return BadRequest(new { success = false, message = result.Error });
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        [Route("Dashboard/Settings/TargetSettings/TestConnection")]
+        public async Task<IActionResult> TargetSettingsTestConnection([FromBody] TestConnectionRequest req)
+        {
+            try
+            {
+                string connStr = req.DbType switch
+                {
+                    "PostgreSQL" =>
+                        $"Host={req.Host};Port={req.Port};Database={req.DbName};Username={req.Username};Password={req.Password};Timeout=5;CommandTimeout=5",
+                    "Oracle" =>
+                        $"Data Source={req.Host}:{req.Port}/{req.DbName};User Id={req.Username};Password={req.Password};Connection Timeout=5",
+                    _ => throw new Exception("Unsupported database type.")
+                };
+
+                if (req.DbType == "PostgreSQL")
+                {
+                    await using var conn = new Npgsql.NpgsqlConnection(connStr);
+                    await conn.OpenAsync();
+                }
+                else if (req.DbType == "Oracle")
+                {
+                    await using var conn = new Oracle.ManagedDataAccess.Client.OracleConnection(connStr);
+                    await conn.OpenAsync();
+                }
+
+                return Json(new { success = true, message = "Connection successful." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Connection failed: {ex.Message}" });
+            }
+        }
+
+
+
+        // ── SCAN SETTINGS API ─────────────────────────────────────────────────────
+
+        [HttpGet]
+        [Route("Dashboard/Settings/ScanSettings/Get")]
+        public async Task<IActionResult> ScanSettingsGet()
+        {
+            var svc = new UpSanctionSettingsService(_db);
+            var result = await svc.GetScanSettingsAsync();
+            if (!result.Success)
+                return BadRequest(new { success = false, message = result.Error });
+            return Json(new { success = true, data = result.Data });
+        }
+
+        [HttpPost]
+        [Route("Dashboard/Settings/ScanSettings/Update")]
+        public async Task<IActionResult> ScanSettingsUpdate([FromBody] ScanSettings scan)
+        {
+            var svc = new UpSanctionSettingsService(_db);
+            var result = await svc.UpdateScanSettingsAsync(scan);
+            if (!result.Success)
+                return BadRequest(new { success = false, message = result.Error });
+            return Json(new { success = true });
+        }
+
+
+
+        // ══════════════════════════════════════════════════════════════════════
+        // SOURCE SETTINGS API
+        // ══════════════════════════════════════════════════════════════════════
+
+        [HttpGet]
+        [Route("Dashboard/Settings/SourceSettings/GetAdverseMedia")]
+        public async Task<IActionResult> SourceSettingsGetAdverseMedia()
+        {
+            var svc = new UpSanctionSettingsService(_db);
+            var result = await svc.GetAdverseMediaFilterAsync();
+            if (!result.Success)
+                return BadRequest(new { success = false, message = result.Error });
+            return Json(new { success = true, data = result.Data });
+        }
+
+        [HttpPost]
+        [Route("Dashboard/Settings/SourceSettings/UpdateAdverseMedia")]
+        public async Task<IActionResult> SourceSettingsUpdateAdverseMedia([FromBody] List<string> keywords)
+        {
+            var svc = new UpSanctionSettingsService(_db);
+            var result = await svc.UpdateAdverseMediaFilterAsync(keywords);
+            if (!result.Success)
+                return BadRequest(new { success = false, message = result.Error });
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        [Route("Dashboard/Settings/SourceSettings/RefetchDatabase")]
+        public async Task<IActionResult> SourceSettingsRefetch()
+        {
+            // TODO: plug in your actual refetch logic here
+            // e.g. await _sanctionSyncService.SyncAsync();
+
+            var downloader = new SanctionDownloader();
+            await downloader.DownloadParseAndExportAsync(_settingsService);
+            GlobalVariables.refetching_sanction_database = true;
+            return Json(new { success = true, message = "Sanction database updated successfully." });
+        }
+
+        [HttpGet]
+        [Route("Dashboard/Settings/SourceSettings/DownloadDatabase")]
+        public async Task<IActionResult> SourceSettingsDownload()
+        {
+            var path = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase", $"UPSanctionDB-{DateTime.UtcNow:dd-MM-yyyy}.xlsx");
+
+            if (!System.IO.File.Exists(path))
+                return NotFound(new { message = "Database file not found." });
+
+            var bytes = await System.IO.File.ReadAllBytesAsync(path);
+
+            return File(bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                Path.GetFileName(path));
+        }
+
+
+        // ══════════════════════════════════════════════════════════════════════
+        // NIGERIAN SANCTION LIST API
+        // Add these action methods inside DashboardController.cs
+        // ══════════════════════════════════════════════════════════════════════
+
+        [HttpGet]
+        [Route("Dashboard/List/NigerianSanctionList/GetAll")]
+        public IActionResult NigerianSanctionListGetAll()
+        {
+            try
+            {
+                var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "NIGERIANSANCTIONLIST.json");
+                var entries = NigerianSanctionListReader.LoadFromFile(filePath);
+                return Json(new { success = true, data = entries });
+            }
+            catch (FileNotFoundException)
+            {
+                // Return empty list if file doesn't exist yet
+                return Json(new { success = true, data = new List<SanctionEntry>() });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [Route("Dashboard/List/NigerianSanctionList/Upsert")]
+        public async Task<IActionResult> NigerianSanctionListUpsert([FromBody] SanctionEntryUpsertRequest req)
+        {
+            try
+            {
+                var filePath = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase", "NigerianSanctionList.json");
+
+                // Load existing entries (or start fresh)
+                List<SanctionEntry> entries;
+                try { entries = NigerianSanctionListReader.LoadFromFile(filePath); }
+                catch { entries = new List<SanctionEntry>(); }
+
+                if (req.IsEdit && req.OriginalId is not null)
+                {
+                    // Remove the old entry
+                    entries = entries.Where(e => e.ID != req.OriginalId).ToList();
+                }
+
+                // Auto-generate an ID if none supplied
+                var newId = string.IsNullOrWhiteSpace(req.Id)
+                    ? $"NSL-{Guid.NewGuid().ToString("N")[..8].ToUpper()}"
+                    : req.Id.Trim();
+
+                // Ensure ID uniqueness for new entries
+                if (!req.IsEdit && entries.Any(e => e.ID == newId))
+                    return BadRequest(new { success = false, message = $"An entry with ID '{newId}' already exists." });
+
+                var entry = new SanctionEntry
+                {
+                    ID = newId,
+                    SubjectType = req.SubjectType ?? string.Empty,
+                    Source = req.Source ?? string.Empty,
+                    ReferenceNumber = req.ReferenceNumber ?? string.Empty,
+                    DateDesignated = req.DateDesignated ?? string.Empty,
+                    SanctionImposed = req.SanctionImposed ?? string.Empty,
+                    Comments = req.Comments ?? string.Empty,
+                    Names = req.Names ?? new(),
+                    Addresses = req.Addresses ?? new(),
+                    PhoneNumbers = req.PhoneNumbers ?? new(),
+                    EmailAddresses = req.EmailAddresses ?? new(),
+                    Positions = req.Positions ?? new(),
+                    IdList = req.IdList ?? new(),
+                    CallSign = req.CallSign,
+                    VesselType = req.VesselType,
+                    VesselFlag = req.VesselFlag,
+                    VesselOwner = req.VesselOwner,
+                    GrossRegisteredTonnage = req.GrossRegisteredTonnage
+                };
+
+                entries.Add(entry);
+
+                // Persist back to JSON
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+                var json = System.Text.Json.JsonSerializer.Serialize(entries, new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                });
+                await System.IO.File.WriteAllTextAsync(filePath, json);
+
+                return Json(new { success = true, id = newId });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [Route("Dashboard/List/NigerianSanctionList/Delete/{id}")]
+        public async Task<IActionResult> NigerianSanctionListDelete(string id)
+        {
+            try
+            {
+                var filePath = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase", "NigerianSanctionList.json");
+                var entries = NigerianSanctionListReader.LoadFromFile(filePath);
+                var before = entries.Count;
+                entries = entries.Where(e => e.ID != id).ToList();
+
+                if (entries.Count == before)
+                    return NotFound(new { success = false, message = "Entry not found." });
+
+                var json = System.Text.Json.JsonSerializer.Serialize(entries, new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                });
+                await System.IO.File.WriteAllTextAsync(filePath, json);
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+
+
+        //═══════════════════════════════════════════════════════════════════════════
+        //CONTROLLER METHODS TO ADD TO DashboardController.cs
+        //═══════════════════════════════════════════════════════════════════════════
+
+        // Add these using statements at the top:
+        // using System.Text.Json;
+        // using System.Text.Json.Serialization;
+
+        // Add these action methods inside DashboardController:
+
+        [HttpGet]
+        [Route("Dashboard/List/PEPs/GetAll")]
+        public IActionResult PEPsGetAll()
+        {
+            try
+            {
+                List<PepEntry> entries = GlobalFunctions.FetchAllPeps();
+                return Json(new { success = true, data = entries });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [Route("Dashboard/List/PEPs/Upsert")]
+        public async Task<IActionResult> PEPsUpsert([FromBody] PepUpsertRequest req)
+        {
+            try
+            {
+                var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "peps.json");
+                List<PepEntry> entries;
+
+                if (System.IO.File.Exists(filePath))
+                {
+                    var json = await System.IO.File.ReadAllTextAsync(filePath);
+                    var deserializeOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    entries = JsonSerializer.Deserialize<List<PepEntry>>(json, deserializeOptions) ?? new List<PepEntry>();
+                }
+                else
+                {
+                    entries = new List<PepEntry>();
+                }
+
+                if (req.Id.HasValue && req.Id.Value > 0)
+                {
+                    entries = entries.Where(e => e.Id != req.Id.Value).ToList();
+                }
+
+                int newId = req.Id ?? (entries.Any() ? entries.Max(e => e.Id) + 1 : 1);
+
+                var entry = new PepEntry
+                {
+                    Id = newId,
+                    FullName = req.Fullname ?? string.Empty,
+                    MerchantName = req.MerchantName ?? string.Empty,
+                    DOO = req.DOO,
+                    TransactionMonitoringFrequency = req.TransactionMonitoringFrequency ?? "DAILY",
+                    MonitoringCategory = req.MonitoringCategory ?? "HIGH RISK MERCHANT",
+                    MerchantIds = req.MerchantIds ?? new List<string>(),
+                    MerchantLocation = req.MerchantLocation
+                };
+
+                entries.Add(entry);
+
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+                var serializeOptions = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                };
+                var outputJson = JsonSerializer.Serialize(entries, serializeOptions);
+                await System.IO.File.WriteAllTextAsync(filePath, outputJson);
+
+                return Json(new { success = true, id = newId });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+
+
+        [HttpPost]
+   [Route("Dashboard/List/PEPs/Delete/{id:int}")]
+   public async Task<IActionResult> PEPsDelete(int id)
+   {
+       try
+       {
+           var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "peps.json");
+           if (!System.IO.File.Exists(filePath))
+               return NotFound(new { success = false, message = "File not found." });
+
+           var json = await System.IO.File.ReadAllTextAsync(filePath);
+           var entries = JsonSerializer.Deserialize<List<PepEntry>>(json) ?? new List<PepEntry>();
+           var before = entries.Count;
+           entries = entries.Where(e => e.Id != id).ToList();
+
+           if (entries.Count == before)
+               return NotFound(new { success = false, message = "PEP not found." });
+
+           var options = new JsonSerializerOptions { WriteIndented = true };
+           var outputJson = JsonSerializer.Serialize(entries, options);
+           await System.IO.File.WriteAllTextAsync(filePath, outputJson);
+
+           return Json(new { success = true });
+       }
+       catch (Exception ex)
+       {
+           return BadRequest(new { success = false, message = ex.Message });
+       }
+   }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // UBOS API
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        [HttpGet]
+        [Route("Dashboard/List/UBOs/GetAll")]
+        public IActionResult UBOsGetAll()
+        {
+
+            List<UboEntry> Ubos = GlobalFunctions.FetchAllUBOs();
+
+            return Json(new { success = true, data = Ubos });
+
+          
+        }
+
+        [HttpPost]
+        [Route("Dashboard/List/UBOs/Upsert")]
+        public async Task<IActionResult> UBOsUpsert([FromBody] UboUpsertRequest req)
+        {
+            try
+            {
+                var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "UBOs.json");
+                List<UboEntry> entries;
+
+                if (System.IO.File.Exists(filePath))
+                {
+                    var json = await System.IO.File.ReadAllTextAsync(filePath);
+                    var deserializeOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    entries = JsonSerializer.Deserialize<List<UboEntry>>(json, deserializeOptions) ?? new List<UboEntry>();
+                }
+                else
+                {
+                    entries = new List<UboEntry>();
+                }
+
+                if (req.Id.HasValue && req.Id.Value > 0)
+                {
+                    // Edit mode: remove existing
+                    entries = entries.Where(e => e.Id != req.Id.Value).ToList();
+                }
+
+                // Generate new ID if needed
+                int newId = req.Id ?? (entries.Any() ? entries.Max(e => e.Id) + 1 : 1);
+
+                var entry = new UboEntry
+                {
+                    Id = newId,
+                    FullName = req.FullName ?? string.Empty,
+                    Dob = req.Dob,
+                    Nationality = req.Nationality,
+                    Gender = req.Gender,
+                    Address = req.Address,
+                    PercentageOfOwnership = req.PercentageOfOwnership,
+                    NatureOfControl = req.NatureOfControl,
+                    IdNumber = req.IdNumber,
+                    Remark = req.Remark,
+                    Company = req.Company,
+                    MerchantIds = req.MerchantIds ?? new List<string>()
+                };
+
+                entries.Add(entry);
+
+                Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+                var serializeOptions = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                };
+                var outputJson = JsonSerializer.Serialize(entries, serializeOptions);
+                await System.IO.File.WriteAllTextAsync(filePath, outputJson);
+
+                return Json(new { success = true, id = newId });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [Route("Dashboard/List/UBOs/Delete/{id:int}")]
+        public async Task<IActionResult> UBOsDelete(int id)
+        {
+            try
+            {
+                var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "UBOs.json");
+                if (!System.IO.File.Exists(filePath))
+                    return NotFound(new { success = false, message = "File not found." });
+
+                var json = await System.IO.File.ReadAllTextAsync(filePath);
+                var deserializeOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var entries = JsonSerializer.Deserialize<List<UboEntry>>(json, deserializeOptions) ?? new List<UboEntry>();
+                var before = entries.Count;
+                entries = entries.Where(e => e.Id != id).ToList();
+
+                if (entries.Count == before)
+                    return NotFound(new { success = false, message = "UBO not found." });
+
+                var serializeOptions = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                };
+                var outputJson = JsonSerializer.Serialize(entries, serializeOptions);
+                await System.IO.File.WriteAllTextAsync(filePath, outputJson);
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+
+        // ══════════════════════════════════════════════════════════════════════
+        // SINGLE SCREEN API
+        // ══════════════════════════════════════════════════════════════════════
+
+        [HttpPost]
+        [Route("Dashboard/SingleScreen")]
+        public async Task<IActionResult> SingleScreen([FromBody] SingleScreenRequest req)
+        {
+            if (string.IsNullOrWhiteSpace(req.SearchTerm))
+                return BadRequest(new { success = false, message = "Search term is required." });
+
+            var validFields = new[] { "name", "address", "email", "phone" };
+            if (!validFields.Contains(req.SearchField?.ToLower()))
+                return BadRequest(new { success = false, message = "Invalid search field." });
+
+            Console.WriteLine(req.SearchField);
+            Console.WriteLine(req.SearchTerm);
+
+            var filePath = Path.Combine(
+  GlobalVariables.root_folder,
+  "SanctionDatabase", "basesource",
+  "UPSanctionDB.xlsx"
+);
+
+            List<SanctionEntry> sanctionList = SanctionExcelReader.LoadFromExcel(filePath);
+            List<BKTree.BKSearchResult> sanction_candiates = _sanction_tree.Search(req.SearchTerm);
+
+
+            var complete_sanction_matches = (from result in sanction_candiates
+                                             join sanction in sanctionList
+                                             on result.EntryId equals sanction.ID
+                                             select new SanctionMatchRow
+                                             {
+                                                 EntryId = result.EntryId,
+                                                 MatchedName = result.MatchedName,
+                                                 Similarity = result.Similarity,
+                                                 EditDistance = result.EditDistance,
+
+                                                 ID = sanction.ID,
+                                                 SubjectType = sanction.SubjectType,
+                                                 Source = sanction.Source,
+                                                 ReferenceNumber = sanction.ReferenceNumber,
+                                                 DateDesignated = sanction.DateDesignated,
+                                                 SanctionImposed = sanction.SanctionImposed,
+                                                 Comments = sanction.Comments,
+
+                                                 Names = string.Join("; ", sanction.Names),
+                                                 Addresses = string.Join("; ", sanction.Addresses),
+                                                 PhoneNumbers = string.Join("; ", sanction.PhoneNumbers),
+                                                 EmailAddresses = string.Join("; ", sanction.EmailAddresses),
+                                                 Positions = string.Join("; ", sanction.Positions),
+                                                 IdList = string.Join("; ", sanction.IdList),
+
+                                                 CallSign = sanction.CallSign,
+                                                 VesselType = sanction.VesselType,
+                                                 VesselFlag = sanction.VesselFlag,
+                                                 VesselOwner = sanction.VesselOwner,
+                                                 GrossRegisteredTonnage = sanction.GrossRegisteredTonnage
+                                             }).ToList();
+
+
+
+
+
+
+
+            List < PepEntry > pepentries = GlobalFunctions.FetchAllPeps();
+            var peptree = new PEPBKTree.PEPSanctionBKTree();
+            peptree.Load(pepentries);
+
+            List<PEPSearchResult> pepresult = peptree.Search(req.SearchTerm);
+            List < RssNewsItem > adversemediaresults = await GoogleNewsRssService.SearchAsync(req.SearchTerm);
+
+            // TODO: replace mock with real BKTree / DB lookup
+            // e.g. var results = _sanction_tree.Search(req.SearchTerm, req.SearchField);
+
+            return Json(new { success = true, searchTerm = req.SearchTerm, searchField = req.SearchField });
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
 
 
-   
 }

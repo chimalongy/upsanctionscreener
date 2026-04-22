@@ -1,5 +1,958 @@
 ﻿@{
-    ViewData["Title"] = "NigerianSanctionList";
+    ViewData["Title"] = "Nigerian Sanction List";
     ViewData["ActivePage"] = "NigerianSanctionList";
     Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<style>
+    @@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(32px) scale(0.98); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @@keyframes spin { to { transform: rotate(360deg); } }
+
+    .fade-up { opacity: 0; animation: fadeUp 0.45s ease forwards; }
+    .fade-up-1 { animation-delay: 0.05s; }
+    .fade-up-2 { animation-delay: 0.15s; }
+    .fade-up-3 { animation-delay: 0.25s; }
+
+    .spinner { animation: spin 0.7s linear infinite; }
+
+    #entryModal { display: none; animation: fadeIn 0.2s ease forwards; }
+    #entryModal.open { display: flex; }
+    #entryModalBox { animation: slideUp 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; }
+
+    #viewModal { display: none; animation: fadeIn 0.2s ease forwards; }
+    #viewModal.open { display: flex; }
+    #viewModalBox { animation: slideUp 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; }
+
+    #confirmModal { display: none; animation: fadeIn 0.15s ease forwards; }
+    #confirmModal.open { display: flex; }
+    #confirmBox { animation: slideUp 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; }
+
+    .field-label { display: block; font-size: 0.7rem; font-weight: 500; color: var(--color-text-secondary, #64748b); margin-bottom: 5px; letter-spacing: 0.02em; }
+    .field-input {
+        width: 100%; padding: 9px 12px;
+        background: var(--color-surface, #f8fafc);
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: 10px; font-size: 0.8rem;
+        color: var(--color-text-primary, #0f172a);
+        transition: border-color 0.15s, box-shadow 0.15s;
+        outline: none;
+    }
+    .field-input:focus {
+        border-color: var(--color-brand-400, #60a5fa);
+        box-shadow: 0 0 0 3px var(--color-brand-100, #dbeafe);
+    }
+    .field-input::placeholder { color: var(--color-text-muted, #94a3b8); }
+
+    .entry-row { transition: background-color 0.15s ease; }
+    .entry-row:hover { background: var(--color-surface, #f8fafc); }
+
+    /* Search highlight */
+    .highlight { background: #fef08a; border-radius: 2px; padding: 0 1px; }
+
+    /* Tags (list items like names, addresses) */
+    .tag-pill {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 0.7rem; padding: 2px 8px; border-radius: 9999px;
+        background: var(--color-surface, #f1f5f9);
+        border: 1px solid var(--color-border, #e2e8f0);
+        color: var(--color-text-secondary, #475569);
+    }
+
+    /* Dynamic list input rows */
+    .list-row { animation: fadeUp 0.18s ease forwards; }
+
+    /* Pagination button */
+    .page-btn {
+        min-width: 32px; height: 32px; padding: 0 8px;
+        font-size: 0.75rem; border-radius: 8px;
+        border: 1px solid var(--color-border, #e2e8f0);
+        color: var(--color-text-secondary, #64748b);
+        transition: all 0.15s;
+        background: transparent;
+    }
+    .page-btn:hover:not(:disabled) {
+        border-color: var(--color-brand-300, #93c5fd);
+        color: var(--color-brand-600, #2563eb);
+        background: var(--color-brand-50, #eff6ff);
+    }
+    .page-btn.active {
+        background: var(--color-brand-500, #3b82f6);
+        border-color: var(--color-brand-500, #3b82f6);
+        color: #fff;
+    }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* Subject type badge */
+    .badge-individual { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .badge-entity     { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+    .badge-vessel     { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+    .badge-other      { background: var(--color-surface, #f8fafc); color: var(--color-text-muted, #94a3b8); border-color: var(--color-border, #e2e8f0); }
+</style>
+
+@* ── Page header ── *@
+<div class="flex items-center justify-between mb-6 fade-up fade-up-1">
+    <div>
+        <h1 class="text-text-primary text-2xl font-semibold font-display">Nigerian Sanction List</h1>
+        <p class="text-text-muted text-sm mt-0.5">Browse, manage, and maintain sanctioned individuals and entities.</p>
+    </div>
+    <button onclick="openAddModal()"
+            class="flex items-center gap-2 px-4 py-2.5 bg-accent-500 hover:bg-accent-600
+                   text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Add New Entry
+    </button>
+</div>
+
+@* ── Alert area ── *@
+<div id="alertArea" class="hidden mb-4"></div>
+
+@* ── Search + filter bar ── *@
+<div class="bg-surface-card border border-border rounded-2xl px-4 py-3 mb-4 flex flex-wrap items-center gap-3 fade-up fade-up-2">
+    <div class="relative flex-1 min-w-52">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none"
+             fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input id="searchInput" type="text" placeholder="Search by name, ID, source…"
+               oninput="onSearch()"
+               class="field-input pl-8 py-2" style="border-radius:10px;" />
+    </div>
+
+    <select id="filterType" onchange="applyFilters()"
+            class="field-input" style="width:auto;min-width:140px;">
+        <option value="">All Subject Types</option>
+        <option value="Individual">Individual</option>
+        <option value="Entity">Entity</option>
+        <option value="Vessel">Vessel</option>
+    </select>
+
+    <select id="filterSource" onchange="applyFilters()"
+            class="field-input" style="width:auto;min-width:140px;">
+        <option value="">All Sources</option>
+    </select>
+
+    <div class="flex items-center gap-2 ml-auto">
+        <span id="resultCount" class="text-xs text-text-muted"></span>
+        <button onclick="exportCsv()"
+                class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border
+                       text-text-secondary hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export CSV
+        </button>
+    </div>
+</div>
+
+@* ── Table ── *@
+<div class="bg-surface-card border border-border rounded-2xl overflow-hidden fade-up fade-up-2">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-border bg-surface">
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider w-20">ID</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Primary Name</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider w-28">Type</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Source</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider w-28">Designated</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider w-28">Sanction</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider w-32">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr>
+                    <td colspan="7" class="py-12 text-center">
+                        <svg class="w-5 h-5 mx-auto mb-2 spinner text-brand-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                        </svg>
+                        <span class="text-xs text-text-muted">Loading entries…</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    @* ── Pagination ── *@
+    <div id="paginationBar" class="hidden px-4 py-3 border-t border-border flex items-center justify-between gap-3">
+        <span id="pageInfo" class="text-xs text-text-muted"></span>
+        <div id="pageButtons" class="flex items-center gap-1"></div>
+    </div>
+</div>
+
+@* ── Footer count ── *@
+<div id="tableFooter" class="hidden mt-3 fade-up fade-up-3">
+    <span id="totalCount" class="text-xs text-text-muted"></span>
+</div>
+
+
+@* ══════════════════════════════════════════════════════════════════
+   VIEW ENTRY MODAL (read-only detail)
+══════════════════════════════════════════════════════════════════ *@
+<div id="viewModal"
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-start justify-center px-4 py-6 overflow-y-auto">
+    <div id="viewModalBox"
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-2xl mx-auto my-auto">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+            <h2 id="viewModalTitle" class="text-text-primary font-semibold text-base">Entry Details</h2>
+            <button onclick="closeViewModal()"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface transition-colors">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" class="w-4 h-4"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div id="viewModalBody" class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto"></div>
+        <div class="px-6 py-4 border-t border-border flex justify-end gap-3">
+            <button onclick="closeViewModal()"
+                    class="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border rounded-xl transition-colors">
+                Close
+            </button>
+            <button id="viewEditBtn" onclick=""
+                    class="px-5 py-2 bg-accent-500 hover:bg-accent-600 text-white text-sm font-medium rounded-xl transition-colors">
+                Edit Entry
+            </button>
+        </div>
+    </div>
+</div>
+
+
+@* ══════════════════════════════════════════════════════════════════
+   ADD / EDIT ENTRY MODAL
+══════════════════════════════════════════════════════════════════ *@
+<div id="entryModal"
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-start justify-center px-4 py-6 overflow-y-auto">
+    <div id="entryModalBox"
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-2xl mx-auto my-auto">
+
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+            <h2 id="modalTitle" class="text-text-primary font-semibold text-base">Add New Entry</h2>
+            <button onclick="closeModal()"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface transition-colors">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" class="w-4 h-4"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div class="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+            <div id="modalAlert" class="hidden"></div>
+
+            @* ── Core fields ── *@
+            <div>
+                <p class="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Core Information</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="field-label">Entry ID</label>
+                        <input id="fID" type="text" placeholder="Auto-generated if empty" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">Subject Type <span class="text-red-400">*</span></label>
+                        <select id="fSubjectType" class="field-input">
+                            <option value="">— Select —</option>
+                            <option value="Individual">Individual</option>
+                            <option value="Entity">Entity</option>
+                            <option value="Vessel">Vessel</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="field-label">Source <span class="text-red-400">*</span></label>
+                        <input id="fSource" type="text" placeholder="e.g. ONSA" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">Reference Number</label>
+                        <input id="fReferenceNumber" type="text" placeholder="e.g. REF-001" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">Date Designated</label>
+                        <input id="fDateDesignated" type="text" placeholder="e.g. 2024-01-15" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">Sanction Imposed</label>
+                        <input id="fSanctionImposed" type="text" placeholder="e.g. Asset Freeze" class="field-input" />
+                    </div>
+                    <div class="col-span-2">
+                        <label class="field-label">Comments</label>
+                        <textarea id="fComments" rows="2" placeholder="Additional notes…" class="field-input resize-none"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            @* ── Names ── *@
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-xs font-semibold text-text-muted uppercase tracking-widest">Names <span class="text-red-400">*</span></p>
+                    <button type="button" onclick="addListRow('namesContainer', 'Name')"
+                            class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border text-text-secondary hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        Add Name
+                    </button>
+                </div>
+                <div id="namesContainer" class="space-y-2"></div>
+                <p class="text-xs text-text-muted mt-1">First name listed is the primary display name.</p>
+            </div>
+
+            @* ── Addresses ── *@
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-xs font-semibold text-text-muted uppercase tracking-widest">Addresses</p>
+                    <button type="button" onclick="addListRow('addressesContainer', 'Address')"
+                            class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border text-text-secondary hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        Add Address
+                    </button>
+                </div>
+                <div id="addressesContainer" class="space-y-2"></div>
+            </div>
+
+            @* ── Phone Numbers ── *@
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-xs font-semibold text-text-muted uppercase tracking-widest">Phone Numbers</p>
+                    <button type="button" onclick="addListRow('phonesContainer', 'Phone number')"
+                            class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border text-text-secondary hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        Add Phone
+                    </button>
+                </div>
+                <div id="phonesContainer" class="space-y-2"></div>
+            </div>
+
+            @* ── Email Addresses ── *@
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-xs font-semibold text-text-muted uppercase tracking-widest">Email Addresses</p>
+                    <button type="button" onclick="addListRow('emailsContainer', 'Email address')"
+                            class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border text-text-secondary hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        Add Email
+                    </button>
+                </div>
+                <div id="emailsContainer" class="space-y-2"></div>
+            </div>
+
+            @* ── Positions ── *@
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-xs font-semibold text-text-muted uppercase tracking-widest">Positions</p>
+                    <button type="button" onclick="addListRow('positionsContainer', 'Position / Title')"
+                            class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border text-text-secondary hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        Add Position
+                    </button>
+                </div>
+                <div id="positionsContainer" class="space-y-2"></div>
+            </div>
+
+            @* ── ID List ── *@
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-xs font-semibold text-text-muted uppercase tracking-widest">ID Documents</p>
+                    <button type="button" onclick="addListRow('idListContainer', 'ID document / passport')"
+                            class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border text-text-secondary hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        Add ID
+                    </button>
+                </div>
+                <div id="idListContainer" class="space-y-2"></div>
+            </div>
+
+            @* ── Vessel fields (shown only when type = Vessel) ── *@
+            <div id="vesselSection" class="hidden">
+                <p class="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Vessel Information</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="field-label">Call Sign</label>
+                        <input id="fCallSign" type="text" placeholder="e.g. 5BZK3" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">Vessel Type</label>
+                        <input id="fVesselType" type="text" placeholder="e.g. Cargo" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">Vessel Flag</label>
+                        <input id="fVesselFlag" type="text" placeholder="e.g. Nigeria" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">Vessel Owner</label>
+                        <input id="fVesselOwner" type="text" placeholder="Owner name" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">Gross Registered Tonnage</label>
+                        <input id="fGrossRegisteredTonnage" type="text" placeholder="e.g. 12500" class="field-input" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-border flex justify-end gap-3">
+            <button onclick="closeModal()"
+                    class="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border rounded-xl transition-colors">
+                Cancel
+            </button>
+            <button id="saveEntryBtn" onclick="saveEntry()"
+                    class="px-5 py-2 bg-accent-500 hover:bg-accent-600 text-white text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
+                <span id="saveBtnText">Save Entry</span>
+                <svg id="saveBtnSpinner" class="hidden w-4 h-4 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ══════════════ CONFIRM MODAL ══════════════ *@
+<div id="confirmModal"
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-center justify-center px-4">
+    <div id="confirmBox"
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-sm px-6 py-6">
+        <div id="confirmIcon" class="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4"></div>
+        <h3 id="confirmTitle" class="text-text-primary font-semibold text-base text-center mb-1"></h3>
+        <p id="confirmMessage" class="text-text-muted text-sm text-center mb-5"></p>
+        <div class="flex gap-3">
+            <button onclick="closeConfirm()"
+                    class="flex-1 py-2 text-sm text-text-secondary border border-border rounded-xl hover:bg-surface transition-colors">
+                Cancel
+            </button>
+            <button id="confirmActionBtn"
+                    class="flex-1 py-2 text-sm font-medium text-white rounded-xl transition-colors">
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ── State ──────────────────────────────────────────────────────────────
+    let allEntries    = [];      // full list loaded from server
+    let filtered      = [];      // after search + filter
+    let editingId     = null;    // null = new, string = editing
+    let listRowId     = 0;
+
+    const PAGE_SIZE   = 25;
+    let   currentPage = 1;
+
+    // ── Load ───────────────────────────────────────────────────────────────
+    async function loadEntries() {
+        try {
+            const res  = await fetch('/Dashboard/List/NigerianSanctionList/GetAll');
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            allEntries = data.success ? (data.data ?? []) : [];
+            populateSourceFilter();
+            applyFilters();
+            document.getElementById('tableFooter').classList.remove('hidden');
+        } catch {
+            document.getElementById('tableBody').innerHTML = `
+                <tr><td colspan="7" class="py-10 text-center text-xs text-text-muted">
+                    Failed to load entries. Please refresh.
+                </td></tr>`;
+        }
+    }
+
+    // ── Populate source filter ─────────────────────────────────────────────
+    function populateSourceFilter() {
+        const sources = [...new Set(allEntries.map(e => e.source).filter(Boolean))].sort();
+        const sel = document.getElementById('filterSource');
+        sources.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s; opt.textContent = s;
+            sel.appendChild(opt);
+        });
+    }
+
+    // ── Search & filter ────────────────────────────────────────────────────
+    let searchTimer;
+    function onSearch() {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(applyFilters, 180);
+    }
+
+    function applyFilters() {
+        const q      = document.getElementById('searchInput').value.trim().toLowerCase();
+        const type   = document.getElementById('filterType').value;
+        const source = document.getElementById('filterSource').value;
+
+        filtered = allEntries.filter(e => {
+            const matchType   = !type   || e.subjectType === type;
+            const matchSource = !source || e.source === source;
+            const matchQ      = !q || [
+                e.id, e.source, e.referenceNumber, e.sanctionImposed, e.comments,
+                ...(e.names ?? []), ...(e.addresses ?? [])
+            ].some(v => String(v ?? '').toLowerCase().includes(q));
+            return matchType && matchSource && matchQ;
+        });
+
+        document.getElementById('resultCount').textContent =
+            `${filtered.length} result${filtered.length !== 1 ? 's' : ''}`;
+        document.getElementById('totalCount').textContent =
+            `${allEntries.length} total entr${allEntries.length !== 1 ? 'ies' : 'y'} in the list`;
+
+        currentPage = 1;
+        renderTable();
+        renderPagination();
+    }
+
+    // ── Render table ───────────────────────────────────────────────────────
+    function renderTable() {
+        const tbody = document.getElementById('tableBody');
+        const q     = document.getElementById('searchInput').value.trim();
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center">
+                <div class="w-8 h-8 rounded-full bg-surface flex items-center justify-center mx-auto mb-2">
+                    <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                </div>
+                <p class="text-xs text-text-muted">No entries found.</p>
+            </td></tr>`;
+            return;
+        }
+
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const page  = filtered.slice(start, start + PAGE_SIZE);
+
+        tbody.innerHTML = page.map(e => {
+            const primary = (e.names ?? [])[0] ?? '—';
+            const badge   = subjectBadge(e.subjectType);
+
+            return `<tr class="entry-row border-b border-border last:border-b-0 cursor-pointer" onclick="viewEntry('${escHtml(e.id)}')">
+                <td class="px-4 py-3 text-xs text-text-muted font-mono">${hl(escHtml(e.id), q)}</td>
+                <td class="px-4 py-3">
+                    <span class="text-xs font-medium text-text-primary">${hl(escHtml(primary), q)}</span>
+                    ${e.names && e.names.length > 1
+                        ? `<span class="text-xs text-text-muted ml-1">+${e.names.length - 1} alias</span>`
+                        : ''}
+                </td>
+                <td class="px-4 py-3">
+                    <span class="text-xs px-2 py-0.5 rounded-full border font-medium ${badge}">${escHtml(e.subjectType || '—')}</span>
+                </td>
+                <td class="px-4 py-3 text-xs text-text-secondary">${hl(escHtml(e.source || '—'), q)}</td>
+                <td class="px-4 py-3 text-xs text-text-muted">${escHtml(e.dateDesignated || '—')}</td>
+                <td class="px-4 py-3 text-xs text-text-secondary max-w-32 truncate" title="${escHtml(e.sanctionImposed || '')}">${escHtml(e.sanctionImposed || '—')}</td>
+                <td class="px-4 py-3 text-right" onclick="event.stopPropagation()">
+                    <div class="flex items-center justify-end gap-1.5">
+                        <button onclick="viewEntry('${escHtml(e.id)}')"
+                                class="text-xs px-2.5 py-1 rounded-lg border border-border text-text-secondary
+                                       hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                            View
+                        </button>
+                        <button onclick="openEditModal('${escHtml(e.id)}')"
+                                class="text-xs px-2.5 py-1 rounded-lg border border-border text-text-secondary
+                                       hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                            Edit
+                        </button>
+                        <button onclick="confirmDelete('${escHtml(e.id)}', '${escHtml(primary)}')"
+                                class="text-xs px-2.5 py-1 rounded-lg border border-border text-text-secondary
+                                       hover:border-red-300 hover:text-red-600 hover:bg-red-50 transition-colors">
+                            Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function subjectBadge(type) {
+        switch ((type || '').toLowerCase()) {
+            case 'individual': return 'badge-individual';
+            case 'entity':     return 'badge-entity';
+            case 'vessel':     return 'badge-vessel';
+            default:           return 'badge-other';
+        }
+    }
+
+    // Search highlight helper
+    function hl(text, q) {
+        if (!q) return text;
+        const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return text.replace(new RegExp(`(${safe})`, 'gi'),
+            '<span class="highlight">$1</span>');
+    }
+
+    // ── Pagination ─────────────────────────────────────────────────────────
+    function renderPagination() {
+        const bar     = document.getElementById('paginationBar');
+        const info    = document.getElementById('pageInfo');
+        const btns    = document.getElementById('pageButtons');
+        const total   = filtered.length;
+        const pages   = Math.ceil(total / PAGE_SIZE);
+        const start   = Math.min((currentPage - 1) * PAGE_SIZE + 1, total);
+        const end     = Math.min(currentPage * PAGE_SIZE, total);
+
+        if (pages <= 1) { bar.classList.add('hidden'); return; }
+        bar.classList.remove('hidden');
+
+        info.textContent = `Showing ${start}–${end} of ${total}`;
+
+        // Build page buttons (show at most 7 pages with ellipsis)
+        let html = `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+        const range = pageRange(currentPage, pages);
+        let prev = null;
+        range.forEach(p => {
+            if (prev !== null && p - prev > 1) html += `<button class="page-btn" disabled>…</button>`;
+            html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+            prev = p;
+        });
+        html += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage === pages ? 'disabled' : ''}>›</button>`;
+        btns.innerHTML = html;
+    }
+
+    function pageRange(current, total) {
+        if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+        const pages = new Set([1, total, current, current - 1, current + 1].filter(p => p >= 1 && p <= total));
+        return [...pages].sort((a, b) => a - b);
+    }
+
+    function goPage(p) {
+        const pages = Math.ceil(filtered.length / PAGE_SIZE);
+        if (p < 1 || p > pages) return;
+        currentPage = p;
+        renderTable();
+        renderPagination();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ── View entry (detail modal) ──────────────────────────────────────────
+    function viewEntry(id) {
+        const e = allEntries.find(x => x.id === id);
+        if (!e) return;
+
+        document.getElementById('viewModalTitle').textContent = e.names?.[0] ?? 'Entry Details';
+
+        const section = (title, items) => {
+            if (!items || items.length === 0) return '';
+            return `<div>
+                <p class="text-xs font-semibold text-text-muted uppercase tracking-widest mb-2">${title}</p>
+                <div class="flex flex-wrap gap-1.5">
+                    ${items.map(v => `<span class="tag-pill">${escHtml(v)}</span>`).join('')}
+                </div>
+            </div>`;
+        };
+
+        const field = (label, val) => !val ? '' : `
+            <div>
+                <p class="text-xs text-text-muted mb-0.5">${label}</p>
+                <p class="text-sm text-text-primary font-medium">${escHtml(val)}</p>
+            </div>`;
+
+        const badge = subjectBadge(e.subjectType);
+
+        document.getElementById('viewModalBody').innerHTML = `
+            <div class="flex items-center gap-3 pb-3 border-b border-border">
+                <div class="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-text-primary font-semibold text-sm">${escHtml(e.names?.[0] ?? '—')}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full border font-medium ${badge}">${escHtml(e.subjectType || '—')}</span>
+                    </div>
+                    <p class="text-xs text-text-muted mt-0.5">ID: ${escHtml(e.id || '—')} · ${escHtml(e.source || '—')}</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                ${field('Reference Number', e.referenceNumber)}
+                ${field('Date Designated', e.dateDesignated)}
+                ${field('Sanction Imposed', e.sanctionImposed)}
+                ${field('Comments', e.comments)}
+                ${field('Call Sign', e.callSign)}
+                ${field('Vessel Type', e.vesselType)}
+                ${field('Vessel Flag', e.vesselFlag)}
+                ${field('Vessel Owner', e.vesselOwner)}
+                ${field('Gross Registered Tonnage', e.grossRegisteredTonnage)}
+            </div>
+
+            ${section('All Names / Aliases', e.names)}
+            ${section('Addresses', e.addresses)}
+            ${section('Phone Numbers', e.phoneNumbers)}
+            ${section('Email Addresses', e.emailAddresses)}
+            ${section('Positions', e.positions)}
+            ${section('ID Documents', e.idList)}
+        `;
+
+        // Wire edit button
+        document.getElementById('viewEditBtn').onclick = () => {
+            closeViewModal();
+            openEditModal(id);
+        };
+
+        document.getElementById('viewModal').classList.add('open');
+    }
+
+    function closeViewModal() {
+        document.getElementById('viewModal').classList.remove('open');
+    }
+
+    // ── Open modal (add) ───────────────────────────────────────────────────
+    function openAddModal() {
+        editingId = null;
+        document.getElementById('modalTitle').textContent = 'Add New Entry';
+        resetForm();
+        document.getElementById('entryModal').classList.add('open');
+        document.getElementById('fID').focus();
+    }
+
+    // ── Open modal (edit) ──────────────────────────────────────────────────
+    function openEditModal(id) {
+        const e = allEntries.find(x => x.id === id);
+        if (!e) return;
+
+        editingId = id;
+        document.getElementById('modalTitle').textContent = 'Edit Entry';
+        resetForm();
+
+        document.getElementById('fID').value               = e.id                    ?? '';
+        document.getElementById('fSubjectType').value      = e.subjectType           ?? '';
+        document.getElementById('fSource').value           = e.source                ?? '';
+        document.getElementById('fReferenceNumber').value  = e.referenceNumber       ?? '';
+        document.getElementById('fDateDesignated').value   = e.dateDesignated        ?? '';
+        document.getElementById('fSanctionImposed').value  = e.sanctionImposed       ?? '';
+        document.getElementById('fComments').value         = e.comments              ?? '';
+        document.getElementById('fCallSign').value         = e.callSign              ?? '';
+        document.getElementById('fVesselType').value       = e.vesselType            ?? '';
+        document.getElementById('fVesselFlag').value       = e.vesselFlag            ?? '';
+        document.getElementById('fVesselOwner').value      = e.vesselOwner           ?? '';
+        document.getElementById('fGrossRegisteredTonnage').value = e.grossRegisteredTonnage ?? '';
+
+        (e.names          ?? []).forEach(v => addListRow('namesContainer',     'Name',              v));
+        (e.addresses      ?? []).forEach(v => addListRow('addressesContainer', 'Address',           v));
+        (e.phoneNumbers   ?? []).forEach(v => addListRow('phonesContainer',    'Phone number',      v));
+        (e.emailAddresses ?? []).forEach(v => addListRow('emailsContainer',    'Email address',     v));
+        (e.positions      ?? []).forEach(v => addListRow('positionsContainer', 'Position / Title',  v));
+        (e.idList         ?? []).forEach(v => addListRow('idListContainer',    'ID document',       v));
+
+        toggleVesselSection();
+        document.getElementById('entryModal').classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('entryModal').classList.remove('open');
+    }
+
+    // ── Reset form ─────────────────────────────────────────────────────────
+    function resetForm() {
+        ['fID','fSubjectType','fSource','fReferenceNumber','fDateDesignated',
+         'fSanctionImposed','fComments','fCallSign','fVesselType','fVesselFlag',
+         'fVesselOwner','fGrossRegisteredTonnage'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        ['namesContainer','addressesContainer','phonesContainer',
+         'emailsContainer','positionsContainer','idListContainer'].forEach(id => {
+            document.getElementById(id).innerHTML = '';
+        });
+        document.getElementById('vesselSection').classList.add('hidden');
+        document.getElementById('modalAlert').classList.add('hidden');
+        listRowId = 0;
+    }
+
+    // ── Vessel section toggle ──────────────────────────────────────────────
+    document.getElementById('fSubjectType').addEventListener('change', toggleVesselSection);
+    function toggleVesselSection() {
+        const isVessel = document.getElementById('fSubjectType').value === 'Vessel';
+        document.getElementById('vesselSection').classList.toggle('hidden', !isVessel);
+    }
+
+    // ── Dynamic list rows ──────────────────────────────────────────────────
+    function addListRow(containerId, placeholder, value = '') {
+        const id  = ++listRowId;
+        const row = document.createElement('div');
+        row.id        = `listRow-${id}`;
+        row.className = 'list-row flex items-center gap-2';
+        row.innerHTML = `
+            <input type="text" value="${escHtml(value)}" placeholder="${escHtml(placeholder)}"
+                   class="field-input flex-1" />
+            <button type="button" onclick="document.getElementById('listRow-${id}').remove()"
+                    class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg
+                           text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </button>`;
+        document.getElementById(containerId).appendChild(row);
+    }
+
+    function collectList(containerId) {
+        return [...document.getElementById(containerId).querySelectorAll('input')]
+            .map(i => i.value.trim()).filter(Boolean);
+    }
+
+    // ── Save entry ─────────────────────────────────────────────────────────
+    async function saveEntry() {
+        const names = collectList('namesContainer');
+        if (names.length === 0) {
+            showModalAlert('At least one name is required.', 'error'); return;
+        }
+        if (!document.getElementById('fSubjectType').value) {
+            showModalAlert('Subject type is required.', 'error'); return;
+        }
+        if (!document.getElementById('fSource').value.trim()) {
+            showModalAlert('Source is required.', 'error'); return;
+        }
+
+        const subjectType = document.getElementById('fSubjectType').value;
+        const isVessel    = subjectType === 'Vessel';
+
+        const payload = {
+            id:                   document.getElementById('fID').value.trim() || null,
+            subjectType,
+            source:               document.getElementById('fSource').value.trim(),
+            referenceNumber:      document.getElementById('fReferenceNumber').value.trim(),
+            dateDesignated:       document.getElementById('fDateDesignated').value.trim(),
+            sanctionImposed:      document.getElementById('fSanctionImposed').value.trim(),
+            comments:             document.getElementById('fComments').value.trim(),
+            names,
+            addresses:            collectList('addressesContainer'),
+            phoneNumbers:         collectList('phonesContainer'),
+            emailAddresses:       collectList('emailsContainer'),
+            positions:            collectList('positionsContainer'),
+            idList:               collectList('idListContainer'),
+            callSign:             isVessel ? document.getElementById('fCallSign').value.trim() || null : null,
+            vesselType:           isVessel ? document.getElementById('fVesselType').value.trim() || null : null,
+            vesselFlag:           isVessel ? document.getElementById('fVesselFlag').value.trim() || null : null,
+            vesselOwner:          isVessel ? document.getElementById('fVesselOwner').value.trim() || null : null,
+            grossRegisteredTonnage: isVessel ? document.getElementById('fGrossRegisteredTonnage').value.trim() || null : null,
+            isEdit:               editingId !== null,
+            originalId:           editingId
+        };
+
+        const btn     = document.getElementById('saveEntryBtn');
+        const spinner = document.getElementById('saveBtnSpinner');
+        const text    = document.getElementById('saveBtnText');
+        btn.disabled  = true;
+        spinner.classList.remove('hidden');
+        text.textContent = 'Saving…';
+
+        try {
+            const res  = await fetch('/Dashboard/List/NigerianSanctionList/Upsert', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || 'Failed to save entry');
+            await loadEntries();
+            closeModal();
+            showAlert(`Entry "${names[0]}" saved successfully.`, 'success');
+        } catch (err) {
+            showModalAlert(err.message || 'Failed to save. Please try again.', 'error');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            text.textContent = 'Save Entry';
+        }
+    }
+
+    // ── Delete ─────────────────────────────────────────────────────────────
+    function confirmDelete(id, name) {
+        openConfirm({
+            icon: `<svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                       <polyline points="3 6 5 6 21 6"/>
+                       <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                       <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                   </svg>`,
+            iconBg:   'bg-red-50',
+            title:    'Delete Entry',
+            message:  `Are you sure you want to delete "${name}"? This cannot be undone.`,
+            btnColor: 'bg-red-500 hover:bg-red-600',
+            action:   () => deleteEntry(id, name)
+        });
+    }
+
+    async function deleteEntry(id, name) {
+        closeConfirm();
+        try {
+            const res  = await fetch(`/Dashboard/List/NigerianSanctionList/Delete/${encodeURIComponent(id)}`, { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || 'Failed to delete');
+            allEntries = allEntries.filter(e => e.id !== id);
+            applyFilters();
+            showAlert(`Entry "${name}" deleted.`, 'success');
+        } catch (err) {
+            showAlert(err.message || 'Failed to delete entry.', 'error');
+        }
+    }
+
+    // ── Export CSV ─────────────────────────────────────────────────────────
+    function exportCsv() {
+        const headers = ['ID','PrimaryName','SubjectType','Source','ReferenceNumber','DateDesignated','SanctionImposed','Comments'];
+        const rows    = filtered.map(e => [
+            e.id, e.names?.[0] ?? '', e.subjectType, e.source,
+            e.referenceNumber, e.dateDesignated, e.sanctionImposed, e.comments
+        ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
+        const csv = [headers.join(','), ...rows].join('\n');
+        const a   = Object.assign(document.createElement('a'), {
+            href:     'data:text/csv;charset=utf-8,' + encodeURIComponent(csv),
+            download: `NigerianSanctionList-${new Date().toISOString().slice(0,10)}.csv`
+        });
+        a.click();
+    }
+
+    // ── Confirm modal ──────────────────────────────────────────────────────
+    function openConfirm({ icon, iconBg, title, message, btnColor, action }) {
+        document.getElementById('confirmIcon').className =
+            `w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4 ${iconBg}`;
+        document.getElementById('confirmIcon').innerHTML      = icon;
+        document.getElementById('confirmTitle').textContent   = title;
+        document.getElementById('confirmMessage').textContent = message;
+        const btn = document.getElementById('confirmActionBtn');
+        btn.className = `flex-1 py-2 text-sm font-medium text-white rounded-xl transition-colors ${btnColor}`;
+        btn.onclick   = () => action();
+        document.getElementById('confirmModal').classList.add('open');
+    }
+    function closeConfirm() {
+        document.getElementById('confirmModal').classList.remove('open');
+    }
+
+    // ── Alert helpers ──────────────────────────────────────────────────────
+    function showAlert(message, type) {
+        const el = document.getElementById('alertArea');
+        const ok = type === 'success';
+        el.className = `mb-4 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
+            ${ok ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`;
+        el.innerHTML = `
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                ${ok ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+                     : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+            </svg>${escHtml(message)}`;
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    function showModalAlert(message, type) {
+        const el = document.getElementById('modalAlert');
+        el.className = `mb-1 px-3 py-2 rounded-xl text-xs border
+            ${type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`;
+        el.textContent = message;
+        el.classList.remove('hidden');
+    }
+
+    function escHtml(str) {
+        return String(str ?? '')
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Backdrop close
+    document.getElementById('entryModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+    document.getElementById('viewModal').addEventListener('click', function(e)  { if (e.target === this) closeViewModal(); });
+    document.getElementById('confirmModal').addEventListener('click', function(e){ if (e.target === this) closeConfirm(); });
+
+    loadEntries();
+</script>
 }

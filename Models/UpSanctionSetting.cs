@@ -8,10 +8,10 @@ namespace Upsanctionscreener.Models
     {
         [Key]
         [Column("settingid")]
-        public int SettingId { get; set; }
+        public string SettingId { get; set; }
 
         [Column("adverse_media_filter")]
-        public bool AdverseMediaFilter { get; set; } = false;
+        public string AdverseMediaFilter { get; set; }
 
         [Column("target_settings")]
         public string TargetSettings { get; set; }

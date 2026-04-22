@@ -3,3 +3,825 @@
     ViewData["ActivePage"] = "PEPs";
     Layout = "~/Views/Shared/_DashboardLayout.cshtml";
 }
+
+<style>
+    @@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(32px) scale(0.98); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @@keyframes spin { to { transform: rotate(360deg); } }
+
+    .fade-up { opacity: 0; animation: fadeUp 0.45s ease forwards; }
+    .fade-up-1 { animation-delay: 0.05s; }
+    .fade-up-2 { animation-delay: 0.15s; }
+    .fade-up-3 { animation-delay: 0.25s; }
+
+    .spinner { animation: spin 0.7s linear infinite; }
+
+    #entryModal { display: none; animation: fadeIn 0.2s ease forwards; }
+    #entryModal.open { display: flex; }
+    #entryModalBox { animation: slideUp 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; }
+
+    #viewModal { display: none; animation: fadeIn 0.2s ease forwards; }
+    #viewModal.open { display: flex; }
+    #viewModalBox { animation: slideUp 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; }
+
+    #confirmModal { display: none; animation: fadeIn 0.15s ease forwards; }
+    #confirmModal.open { display: flex; }
+    #confirmBox { animation: slideUp 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; }
+
+    .field-label { display: block; font-size: 0.7rem; font-weight: 500; color: var(--color-text-secondary, #64748b); margin-bottom: 5px; letter-spacing: 0.02em; }
+    .field-input {
+        width: 100%; padding: 9px 12px;
+        background: var(--color-surface, #f8fafc);
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: 10px; font-size: 0.8rem;
+        color: var(--color-text-primary, #0f172a);
+        transition: border-color 0.15s, box-shadow 0.15s;
+        outline: none;
+    }
+    .field-input:focus {
+        border-color: var(--color-brand-400, #60a5fa);
+        box-shadow: 0 0 0 3px var(--color-brand-100, #dbeafe);
+    }
+    .field-input::placeholder { color: var(--color-text-muted, #94a3b8); }
+
+    .entry-row { transition: background-color 0.15s ease; }
+    .entry-row:hover { background: var(--color-surface, #f8fafc); }
+
+    /* Search highlight */
+    .highlight { background: #fef08a; border-radius: 2px; padding: 0 1px; }
+
+    /* Tags (merchant_ids) */
+    .tag-pill {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 0.7rem; padding: 2px 8px; border-radius: 9999px;
+        background: var(--color-surface, #f1f5f9);
+        border: 1px solid var(--color-border, #e2e8f0);
+        color: var(--color-text-secondary, #475569);
+    }
+
+    /* Dynamic list input rows */
+    .list-row { animation: fadeUp 0.18s ease forwards; }
+
+    /* Pagination button */
+    .page-btn {
+        min-width: 32px; height: 32px; padding: 0 8px;
+        font-size: 0.75rem; border-radius: 8px;
+        border: 1px solid var(--color-border, #e2e8f0);
+        color: var(--color-text-secondary, #64748b);
+        transition: all 0.15s;
+        background: transparent;
+    }
+    .page-btn:hover:not(:disabled) {
+        border-color: var(--color-brand-300, #93c5fd);
+        color: var(--color-brand-600, #2563eb);
+        background: var(--color-brand-50, #eff6ff);
+    }
+    .page-btn.active {
+        background: var(--color-brand-500, #3b82f6);
+        border-color: var(--color-brand-500, #3b82f6);
+        color: #fff;
+    }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* Risk badge */
+    .badge-high { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+    .badge-medium { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+    .badge-low { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+
+    /* Frequency badge */
+    .badge-daily { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .badge-weekly { background: #f3e8ff; color: #6b21a5; border-color: #e9d5ff; }
+    .badge-monthly { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+</style>
+
+@* ── Page header ── *@
+<div class="flex items-center justify-between mb-6 fade-up fade-up-1">
+    <div>
+        <h1 class="text-text-primary text-2xl font-semibold font-display">PEPs (Politically Exposed Persons)</h1>
+        <p class="text-text-muted text-sm mt-0.5">Manage high-risk merchants and politically exposed persons.</p>
+    </div>
+    <button onclick="openAddModal()"
+            class="flex items-center gap-2 px-4 py-2.5 bg-accent-500 hover:bg-accent-600
+                   text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Add New PEP
+    </button>
+</div>
+
+@* ── Alert area ── *@
+<div id="alertArea" class="hidden mb-4"></div>
+
+@* ── Search + filter bar ── *@
+<div class="bg-surface-card border border-border rounded-2xl px-4 py-3 mb-4 flex flex-wrap items-center gap-3 fade-up fade-up-2">
+    <div class="relative flex-1 min-w-52">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none"
+             fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input id="searchInput" type="text" placeholder="Search by name, merchant, location…"
+               oninput="onSearch()"
+               class="field-input pl-8 py-2" style="border-radius:10px;" />
+    </div>
+
+    <select id="filterCategory" onchange="applyFilters()"
+            class="field-input" style="width:auto;min-width:160px;">
+        <option value="">All Categories</option>
+        <option value="HIGH RISK MERCHANT">High Risk Merchant</option>
+        <option value="MEDIUM RISK MERCHANT">Medium Risk Merchant</option>
+        <option value="LOW RISK MERCHANT">Low Risk Merchant</option>
+    </select>
+
+    <select id="filterFrequency" onchange="applyFilters()"
+            class="field-input" style="width:auto;min-width:140px;">
+        <option value="">All Frequencies</option>
+        <option value="DAILY">Daily</option>
+        <option value="WEEKLY">Weekly</option>
+        <option value="MONTHLY">Monthly</option>
+    </select>
+
+    <div class="flex items-center gap-2 ml-auto">
+        <span id="resultCount" class="text-xs text-text-muted"></span>
+        <button onclick="exportCsv()"
+                class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border
+                       text-text-secondary hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export CSV
+        </button>
+    </div>
+</div>
+
+@* ── Table ── *@
+<div class="bg-surface-card border border-border rounded-2xl overflow-hidden fade-up fade-up-2">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-border bg-surface">
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider w-12">ID</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Full Name</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Merchant Name</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider w-28">DOO</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider w-28">Frequency</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider w-32">Category</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Location</th>
+                    <th class="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wider w-32">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr>
+                    <td colspan="8" class="py-12 text-center">
+                        <svg class="w-5 h-5 mx-auto mb-2 spinner text-brand-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                        </svg>
+                        <span class="text-xs text-text-muted">Loading PEPs…</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    @* ── Pagination ── *@
+    <div id="paginationBar" class="hidden px-4 py-3 border-t border-border flex items-center justify-between gap-3">
+        <span id="pageInfo" class="text-xs text-text-muted"></span>
+        <div id="pageButtons" class="flex items-center gap-1"></div>
+    </div>
+</div>
+
+@* ── Footer count ── *@
+<div id="tableFooter" class="hidden mt-3 fade-up fade-up-3">
+    <span id="totalCount" class="text-xs text-text-muted"></span>
+</div>
+
+
+@* ══════════════════════════════════════════════════════════════════
+   VIEW ENTRY MODAL (read-only detail)
+══════════════════════════════════════════════════════════════════ *@
+<div id="viewModal"
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-start justify-center px-4 py-6 overflow-y-auto">
+    <div id="viewModalBox"
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-2xl mx-auto my-auto">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+            <h2 id="viewModalTitle" class="text-text-primary font-semibold text-base">PEP Details</h2>
+            <button onclick="closeViewModal()"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface transition-colors">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" class="w-4 h-4"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div id="viewModalBody" class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto"></div>
+        <div class="px-6 py-4 border-t border-border flex justify-end gap-3">
+            <button onclick="closeViewModal()"
+                    class="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border rounded-xl transition-colors">
+                Close
+            </button>
+            <button id="viewEditBtn" onclick=""
+                    class="px-5 py-2 bg-accent-500 hover:bg-accent-600 text-white text-sm font-medium rounded-xl transition-colors">
+                Edit Entry
+            </button>
+        </div>
+    </div>
+</div>
+
+
+@* ══════════════════════════════════════════════════════════════════
+   ADD / EDIT ENTRY MODAL
+══════════════════════════════════════════════════════════════════ *@
+<div id="entryModal"
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-start justify-center px-4 py-6 overflow-y-auto">
+    <div id="entryModalBox"
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-2xl mx-auto my-auto">
+
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+            <h2 id="modalTitle" class="text-text-primary font-semibold text-base">Add New PEP</h2>
+            <button onclick="closeModal()"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary hover:bg-surface transition-colors">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" class="w-4 h-4"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div class="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+            <div id="modalAlert" class="hidden"></div>
+
+            @* ── Core fields ── *@
+            <div>
+                <p class="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Core Information</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="field-label">Full Name <span class="text-red-400">*</span></label>
+                        <input id="fFullName" type="text" placeholder="e.g. JOHN DOE" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">Merchant Name <span class="text-red-400">*</span></label>
+                        <input id="fMerchantName" type="text" placeholder="e.g. KUNOCH HOTEL LTD" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">Date of Designation (DOO)</label>
+                        <input id="fDOO" type="date" placeholder="YYYY-MM-DD" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">Transaction Monitoring Frequency</label>
+                        <select id="fFrequency" class="field-input">
+                            <option value="DAILY">Daily</option>
+                            <option value="WEEKLY">Weekly</option>
+                            <option value="MONTHLY">Monthly</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="field-label">Monitoring Category</label>
+                        <select id="fCategory" class="field-input">
+                            <option value="HIGH RISK MERCHANT">High Risk Merchant</option>
+                            <option value="MEDIUM RISK MERCHANT">Medium Risk Merchant</option>
+                            <option value="LOW RISK MERCHANT">Low Risk Merchant</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="field-label">Merchant Location</label>
+                        <input id="fLocation" type="text" placeholder="e.g. LAGOS" class="field-input" />
+                    </div>
+                </div>
+            </div>
+
+            @* ── Merchant IDs (dynamic list) ── *@
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-xs font-semibold text-text-muted uppercase tracking-widest">Merchant IDs</p>
+                    <button type="button" onclick="addMerchantIdRow()"
+                            class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border text-text-secondary hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        Add Merchant ID
+                    </button>
+                </div>
+                <div id="merchantIdsContainer" class="space-y-2"></div>
+                <p class="text-xs text-text-muted mt-1">One or more merchant identifiers associated with this PEP.</p>
+            </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-border flex justify-end gap-3">
+            <button onclick="closeModal()"
+                    class="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border rounded-xl transition-colors">
+                Cancel
+            </button>
+            <button id="saveEntryBtn" onclick="saveEntry()"
+                    class="px-5 py-2 bg-accent-500 hover:bg-accent-600 text-white text-sm font-medium rounded-xl transition-colors flex items-center gap-2">
+                <span id="saveBtnText">Save Entry</span>
+                <svg id="saveBtnSpinner" class="hidden w-4 h-4 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ══════════════ CONFIRM MODAL ══════════════ *@
+<div id="confirmModal"
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-center justify-center px-4">
+    <div id="confirmBox"
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-sm px-6 py-6">
+        <div id="confirmIcon" class="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4"></div>
+        <h3 id="confirmTitle" class="text-text-primary font-semibold text-base text-center mb-1"></h3>
+        <p id="confirmMessage" class="text-text-muted text-sm text-center mb-5"></p>
+        <div class="flex gap-3">
+            <button onclick="closeConfirm()"
+                    class="flex-1 py-2 text-sm text-text-secondary border border-border rounded-xl hover:bg-surface transition-colors">
+                Cancel
+            </button>
+            <button id="confirmActionBtn"
+                    class="flex-1 py-2 text-sm font-medium text-white rounded-xl transition-colors">
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ── State ──────────────────────────────────────────────────────────────
+    let allPeps       = [];      // full list loaded from server
+    let filtered      = [];      // after search + filter
+    let editingId     = null;    // null = new, number = editing
+    let merchantIdRowId = 0;
+
+    const PAGE_SIZE   = 25;
+    let   currentPage = 1;
+
+    // ── Load ───────────────────────────────────────────────────────────────
+    async function loadPeps() {
+        try {
+            const res  = await fetch('/Dashboard/List/PEPs/GetAll');
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            allPeps = data.success ? (data.data ?? []) : [];
+            applyFilters();
+            document.getElementById('tableFooter').classList.remove('hidden');
+        } catch {
+            document.getElementById('tableBody').innerHTML = `
+                <tr><td colspan="8" class="py-10 text-center text-xs text-text-muted">
+                    Failed to load PEPs. Please refresh.
+                </td></tr>`;
+        }
+    }
+
+    // ── Search & filter ────────────────────────────────────────────────────
+    let searchTimer;
+    function onSearch() {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(applyFilters, 180);
+    }
+
+    function applyFilters() {
+        const q        = document.getElementById('searchInput').value.trim().toLowerCase();
+        const category = document.getElementById('filterCategory').value;
+        const frequency = document.getElementById('filterFrequency').value;
+
+        filtered = allPeps.filter(p => {
+            const matchCategory = !category || p.monitoring_category === category;
+            const matchFrequency = !frequency || p.transaction_monitoring_frequency === frequency;
+            const matchQ = !q || [
+                p.fullname, p.merchant_name, p.merchant_location,
+                ...(p.merchant_ids ?? [])
+            ].some(v => String(v ?? '').toLowerCase().includes(q));
+            return matchCategory && matchFrequency && matchQ;
+        });
+
+        document.getElementById('resultCount').textContent =
+            `${filtered.length} result${filtered.length !== 1 ? 's' : ''}`;
+        document.getElementById('totalCount').textContent =
+            `${allPeps.length} total PEP${allPeps.length !== 1 ? 's' : ''} in the list`;
+
+        currentPage = 1;
+        renderTable();
+        renderPagination();
+    }
+
+    // ── Render table ───────────────────────────────────────────────────────
+    function renderTable() {
+        const tbody = document.getElementById('tableBody');
+        const q     = document.getElementById('searchInput').value.trim();
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="py-12 text-center">
+                <div class="w-8 h-8 rounded-full bg-surface flex items-center justify-center mx-auto mb-2">
+                    <svg class="w-4 h-4 text-text-muted" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                </div>
+                <p class="text-xs text-text-muted">No PEPs found.</p>
+            </td></tr>`;
+            return;
+        }
+
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const page  = filtered.slice(start, start + PAGE_SIZE);
+
+        tbody.innerHTML = page.map(p => {
+            const freqBadge = getFrequencyBadge(p.transaction_monitoring_frequency);
+            const catBadge = getCategoryBadge(p.monitoring_category);
+            
+            return `<tr class="entry-row border-b border-border last:border-b-0 cursor-pointer" onclick="viewPep(${p.id})">
+                <td class="px-4 py-3 text-xs text-text-muted font-mono">${hl(escHtml(String(p.id)), q)}</td>
+                <td class="px-4 py-3">
+                    <span class="text-xs font-medium text-text-primary">${hl(escHtml(p.fullname), q)}</span>
+                </td>
+                <td class="px-4 py-3 text-xs text-text-secondary">${hl(escHtml(p.merchant_name), q)}</td>
+                <td class="px-4 py-3 text-xs text-text-muted">${escHtml(p.DOO || '—')}</td>
+                <td class="px-4 py-3">
+                    <span class="text-xs px-2 py-0.5 rounded-full border font-medium ${freqBadge}">${escHtml(p.transaction_monitoring_frequency || '—')}</span>
+                </td>
+                <td class="px-4 py-3">
+                    <span class="text-xs px-2 py-0.5 rounded-full border font-medium ${catBadge}">${escHtml(p.monitoring_category || '—')}</span>
+                </td>
+                <td class="px-4 py-3 text-xs text-text-secondary">${hl(escHtml(p.merchant_location || '—'), q)}</td>
+                <td class="px-4 py-3 text-right" onclick="event.stopPropagation()">
+                    <div class="flex items-center justify-end gap-1.5">
+                        <button onclick="viewPep(${p.id})"
+                                class="text-xs px-2.5 py-1 rounded-lg border border-border text-text-secondary
+                                       hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                            View
+                        </button>
+                        <button onclick="openEditModal(${p.id})"
+                                class="text-xs px-2.5 py-1 rounded-lg border border-border text-text-secondary
+                                       hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                            Edit
+                        </button>
+                        <button onclick="confirmDelete(${p.id}, '${escHtml(p.fullname)}')"
+                                class="text-xs px-2.5 py-1 rounded-lg border border-border text-text-secondary
+                                       hover:border-red-300 hover:text-red-600 hover:bg-red-50 transition-colors">
+                            Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    function getFrequencyBadge(freq) {
+        switch ((freq || '').toUpperCase()) {
+            case 'DAILY': return 'badge-daily';
+            case 'WEEKLY': return 'badge-weekly';
+            case 'MONTHLY': return 'badge-monthly';
+            default: return 'badge-other';
+        }
+    }
+
+    function getCategoryBadge(cat) {
+        switch ((cat || '').toUpperCase()) {
+            case 'HIGH RISK MERCHANT': return 'badge-high';
+            case 'MEDIUM RISK MERCHANT': return 'badge-medium';
+            case 'LOW RISK MERCHANT': return 'badge-low';
+            default: return 'badge-other';
+        }
+    }
+
+    // Search highlight helper
+    function hl(text, q) {
+        if (!q) return text;
+        const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return text.replace(new RegExp(`(${safe})`, 'gi'),
+            '<span class="highlight">$1</span>');
+    }
+
+    // ── Pagination ─────────────────────────────────────────────────────────
+    function renderPagination() {
+        const bar     = document.getElementById('paginationBar');
+        const info    = document.getElementById('pageInfo');
+        const btns    = document.getElementById('pageButtons');
+        const total   = filtered.length;
+        const pages   = Math.ceil(total / PAGE_SIZE);
+        const start   = Math.min((currentPage - 1) * PAGE_SIZE + 1, total);
+        const end     = Math.min(currentPage * PAGE_SIZE, total);
+
+        if (pages <= 1) { bar.classList.add('hidden'); return; }
+        bar.classList.remove('hidden');
+
+        info.textContent = `Showing ${start}–${end} of ${total}`;
+
+        let html = `<button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+        const range = pageRange(currentPage, pages);
+        let prev = null;
+        range.forEach(p => {
+            if (prev !== null && p - prev > 1) html += `<button class="page-btn" disabled>…</button>`;
+            html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`;
+            prev = p;
+        });
+        html += `<button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage === pages ? 'disabled' : ''}>›</button>`;
+        btns.innerHTML = html;
+    }
+
+    function pageRange(current, total) {
+        if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+        const pages = new Set([1, total, current, current - 1, current + 1].filter(p => p >= 1 && p <= total));
+        return [...pages].sort((a, b) => a - b);
+    }
+
+    function goPage(p) {
+        const pages = Math.ceil(filtered.length / PAGE_SIZE);
+        if (p < 1 || p > pages) return;
+        currentPage = p;
+        renderTable();
+        renderPagination();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ── View PEP (detail modal) ──────────────────────────────────────────
+    function viewPep(id) {
+        const p = allPeps.find(x => x.id === id);
+        if (!p) return;
+
+        document.getElementById('viewModalTitle').textContent = p.fullname;
+
+        const merchantIdsHtml = p.merchant_ids && p.merchant_ids.length > 0
+            ? `<div class="flex flex-wrap gap-1.5">${p.merchant_ids.map(v => `<span class="tag-pill">${escHtml(v)}</span>`).join('')}</div>`
+            : '<p class="text-xs text-text-muted">No merchant IDs</p>';
+
+        const freqBadge = getFrequencyBadge(p.transaction_monitoring_frequency);
+        const catBadge = getCategoryBadge(p.monitoring_category);
+
+        document.getElementById('viewModalBody').innerHTML = `
+            <div class="flex items-center gap-3 pb-3 border-b border-border">
+                <div class="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-text-primary font-semibold text-sm">${escHtml(p.fullname)}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full border font-medium ${catBadge}">${escHtml(p.monitoring_category || '—')}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full border font-medium ${freqBadge}">${escHtml(p.transaction_monitoring_frequency || '—')}</span>
+                    </div>
+                    <p class="text-xs text-text-muted mt-0.5">ID: ${p.id}</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <p class="text-xs text-text-muted mb-0.5">Merchant Name</p>
+                    <p class="text-sm text-text-primary font-medium">${escHtml(p.merchant_name)}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-text-muted mb-0.5">Date of Designation (DOO)</p>
+                    <p class="text-sm text-text-primary font-medium">${escHtml(p.DOO || '—')}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-text-muted mb-0.5">Merchant Location</p>
+                    <p class="text-sm text-text-primary font-medium">${escHtml(p.merchant_location || '—')}</p>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-xs font-semibold text-text-muted uppercase tracking-widest mb-2">Merchant IDs</p>
+                ${merchantIdsHtml}
+            </div>
+        `;
+
+        document.getElementById('viewEditBtn').onclick = () => {
+            closeViewModal();
+            openEditModal(id);
+        };
+
+        document.getElementById('viewModal').classList.add('open');
+    }
+
+    function closeViewModal() {
+        document.getElementById('viewModal').classList.remove('open');
+    }
+
+    // ── Open modal (add) ───────────────────────────────────────────────────
+    function openAddModal() {
+        editingId = null;
+        document.getElementById('modalTitle').textContent = 'Add New PEP';
+        resetForm();
+        document.getElementById('entryModal').classList.add('open');
+        document.getElementById('fFullName').focus();
+    }
+
+    // ── Open modal (edit) ──────────────────────────────────────────────────
+    function openEditModal(id) {
+        const p = allPeps.find(x => x.id === id);
+        if (!p) return;
+
+        editingId = id;
+        document.getElementById('modalTitle').textContent = 'Edit PEP';
+        resetForm();
+
+        document.getElementById('fFullName').value = p.fullname || '';
+        document.getElementById('fMerchantName').value = p.merchant_name || '';
+        document.getElementById('fDOO').value = p.DOO || '';
+        document.getElementById('fFrequency').value = p.transaction_monitoring_frequency || 'DAILY';
+        document.getElementById('fCategory').value = p.monitoring_category || 'HIGH RISK MERCHANT';
+        document.getElementById('fLocation').value = p.merchant_location || '';
+
+        // Add merchant IDs
+        (p.merchant_ids ?? []).forEach(v => addMerchantIdRow(v));
+
+        document.getElementById('entryModal').classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('entryModal').classList.remove('open');
+    }
+
+    // ── Reset form ─────────────────────────────────────────────────────────
+    function resetForm() {
+        ['fFullName', 'fMerchantName', 'fDOO', 'fFrequency', 'fCategory', 'fLocation'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (id === 'fFrequency') el.value = 'DAILY';
+                else if (id === 'fCategory') el.value = 'HIGH RISK MERCHANT';
+                else el.value = '';
+            }
+        });
+        document.getElementById('merchantIdsContainer').innerHTML = '';
+        document.getElementById('modalAlert').classList.add('hidden');
+        merchantIdRowId = 0;
+    }
+
+    // ── Dynamic merchant ID rows ──────────────────────────────────────────
+    function addMerchantIdRow(value = '') {
+        const id  = ++merchantIdRowId;
+        const row = document.createElement('div');
+        row.id        = `merchantIdRow-${id}`;
+        row.className = 'list-row flex items-center gap-2';
+        row.innerHTML = `
+            <input type="text" value="${escHtml(value)}" placeholder="e.g. 2063IM00A015311"
+                   class="field-input flex-1" />
+            <button type="button" onclick="document.getElementById('merchantIdRow-${id}').remove()"
+                    class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg
+                           text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </button>`;
+        document.getElementById('merchantIdsContainer').appendChild(row);
+    }
+
+    function collectMerchantIds() {
+        return [...document.getElementById('merchantIdsContainer').querySelectorAll('input')]
+            .map(i => i.value.trim()).filter(Boolean);
+    }
+
+    // ── Save entry ─────────────────────────────────────────────────────────
+    async function saveEntry() {
+        const fullname = document.getElementById('fFullName').value.trim();
+        const merchantName = document.getElementById('fMerchantName').value.trim();
+        
+        if (!fullname) {
+            showModalAlert('Full name is required.', 'error'); return;
+        }
+        if (!merchantName) {
+            showModalAlert('Merchant name is required.', 'error'); return;
+        }
+
+        const merchantIds = collectMerchantIds();
+
+        const payload = {
+            id: editingId,
+            fullname: fullname,
+            merchant_name: merchantName,
+            DOO: document.getElementById('fDOO').value.trim() || null,
+            transaction_monitoring_frequency: document.getElementById('fFrequency').value,
+            monitoring_category: document.getElementById('fCategory').value,
+            merchant_ids: merchantIds,
+            merchant_location: document.getElementById('fLocation').value.trim() || null
+        };
+
+        const btn     = document.getElementById('saveEntryBtn');
+        const spinner = document.getElementById('saveBtnSpinner');
+        const text    = document.getElementById('saveBtnText');
+        btn.disabled  = true;
+        spinner.classList.remove('hidden');
+        text.textContent = 'Saving…';
+
+        try {
+            const res  = await fetch('/Dashboard/List/PEPs/Upsert', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || 'Failed to save PEP');
+            await loadPeps();
+            closeModal();
+            showAlert(`PEP "${fullname}" saved successfully.`, 'success');
+        } catch (err) {
+            showModalAlert(err.message || 'Failed to save. Please try again.', 'error');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            text.textContent = 'Save Entry';
+        }
+    }
+
+    // ── Delete ─────────────────────────────────────────────────────────────
+    function confirmDelete(id, name) {
+        openConfirm({
+            icon: `<svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                       <polyline points="3 6 5 6 21 6"/>
+                       <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                       <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                   </svg>`,
+            iconBg:   'bg-red-50',
+            title:    'Delete PEP',
+            message:  `Are you sure you want to delete "${name}"? This cannot be undone.`,
+            btnColor: 'bg-red-500 hover:bg-red-600',
+            action:   () => deletePep(id, name)
+        });
+    }
+
+    async function deletePep(id, name) {
+        closeConfirm();
+        try {
+            const res  = await fetch(`/Dashboard/List/PEPs/Delete/${id}`, { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || 'Failed to delete');
+            allPeps = allPeps.filter(p => p.id !== id);
+            applyFilters();
+            showAlert(`PEP "${name}" deleted.`, 'success');
+        } catch (err) {
+            showAlert(err.message || 'Failed to delete PEP.', 'error');
+        }
+    }
+
+    // ── Export CSV ─────────────────────────────────────────────────────────
+    function exportCsv() {
+        const headers = ['ID', 'FullName', 'MerchantName', 'DOO', 'Frequency', 'Category', 'Location', 'MerchantIDs'];
+        const rows = filtered.map(p => [
+            p.id, p.fullname, p.merchant_name, p.DOO,
+            p.transaction_monitoring_frequency, p.monitoring_category, p.merchant_location,
+            (p.merchant_ids || []).join(';')
+        ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
+        const csv = [headers.join(','), ...rows].join('\n');
+        const a = Object.assign(document.createElement('a'), {
+            href: 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv),
+            download: `PEPs-${new Date().toISOString().slice(0, 10)}.csv`
+        });
+        a.click();
+    }
+
+    // ── Confirm modal ──────────────────────────────────────────────────────
+    function openConfirm({ icon, iconBg, title, message, btnColor, action }) {
+        document.getElementById('confirmIcon').className =
+            `w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4 ${iconBg}`;
+        document.getElementById('confirmIcon').innerHTML      = icon;
+        document.getElementById('confirmTitle').textContent   = title;
+        document.getElementById('confirmMessage').textContent = message;
+        const btn = document.getElementById('confirmActionBtn');
+        btn.className = `flex-1 py-2 text-sm font-medium text-white rounded-xl transition-colors ${btnColor}`;
+        btn.onclick   = () => action();
+        document.getElementById('confirmModal').classList.add('open');
+    }
+    
+    function closeConfirm() {
+        document.getElementById('confirmModal').classList.remove('open');
+    }
+
+    // ── Alert helpers ──────────────────────────────────────────────────────
+    function showAlert(message, type) {
+        const el = document.getElementById('alertArea');
+        const ok = type === 'success';
+        el.className = `mb-4 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
+            ${ok ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`;
+        el.innerHTML = `
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                ${ok ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+                     : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+            </svg>${escHtml(message)}`;
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    function showModalAlert(message, type) {
+        const el = document.getElementById('modalAlert');
+        el.className = `mb-1 px-3 py-2 rounded-xl text-xs border
+            ${type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`;
+        el.textContent = message;
+        el.classList.remove('hidden');
+    }
+
+    function escHtml(str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Backdrop close
+    document.getElementById('entryModal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+    document.getElementById('viewModal').addEventListener('click', function(e)  { if (e.target === this) closeViewModal(); });
+    document.getElementById('confirmModal').addEventListener('click', function(e){ if (e.target === this) closeConfirm(); });
+
+    // Initialize
+    loadPeps();
+</script>
+}

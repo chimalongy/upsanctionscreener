@@ -44,29 +44,70 @@
 </head>
 <body class="bg-surface min-h-screen font-body pb-10">
 
-  @{
-    var hideHeader = (bool)(ViewData["HideHeader"] ?? false);
-}
+    @{
+        var hideHeader = (bool)(ViewData["HideHeader"] ?? false);
+
+        // ── Logged-in user claims ─────────────────────────────────────────────
+        var firstName  = User.FindFirst("firstName")?.Value ?? "";
+        var lastName   = User.FindFirst("lastName")?.Value ?? "";
+        var fullName   = $"{firstName} {lastName}".Trim();
+        var userEmail  = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "";
+        var userRole   = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+        var initials   = $"{(firstName.Length > 0 ? firstName[0] : '?')}{(lastName.Length > 0 ? lastName[0] : '?')}".ToUpper();
+    }
 
     @* ── Full header — hidden on Dashboard/Index ── *@
     @if (!hideHeader)
     {
         <header class="bg-surface-card border-b border-border px-6 py-3 flex items-center justify-between shadow-sm sticky top-0 z-40">
-            <div class="flex items-center gap-1">
+
+            @* Left — logo + app name *@
+            <div class="flex items-center gap-2">
                 <div class="w-7 h-7 rounded-md overflow-hidden">
                     <img src="~/images/logo.png" alt="Logo" class="w-full h-full object-contain" />
                 </div>
                 <span class="text-text-primary text-sm font-semibold tracking-wide">Sanction Screen</span>
             </div>
-            <div class="flex items-center gap-3">
-                @{
-    var fullName   = User.FindFirst("firstName")?.Value + " " + User.FindFirst("lastName")?.Value;
-    var userEmail  = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-    var userRole   = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
-    var department = User.FindFirst("department")?.Value;
-}
+
+            @* Right — user info + sign out + waffle *@
+            <div class="flex items-center gap-4">
+
+                @* Avatar + name + email *@
+                <div class="flex items-center gap-3">
+
+                    @* Initials avatar *@
+                    <div class="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center flex-shrink-0">
+                        <span class="text-white text-xs font-semibold">@initials</span>
+                    </div>
+
+                    @* Name & email — hidden on very small screens *@
+                    <div class="hidden sm:flex flex-col leading-tight">
+                        <span class="text-text-primary text-xs font-semibold">@fullName</span>
+                        <span class="text-text-muted text-xs">@userEmail</span>
+                    </div>
+
+                    @* Role badge — only on medium+ screens *@
+                    @if (!string.IsNullOrEmpty(userRole))
+                    {
+                        <span class="hidden md:inline-flex items-center px-2 py-0.5 rounded-full
+                                     text-xs font-medium bg-brand-100 text-brand-600">
+                            @userRole
+                        </span>
+                    }
+                </div>
+
+                @* Divider *@
+                <div class="w-px h-5 bg-border hidden sm:block"></div>
+
+                @* Sign out *@
+                <a asp-controller="Auth" asp-action="Logout"
+                   class="text-xs text-accent-600 hover:text-accent-700 font-medium transition-colors whitespace-nowrap">
+                    Sign out
+                </a>
+
                 @await Html.PartialAsync("_WaffleMenu")
             </div>
+
         </header>
     }
 

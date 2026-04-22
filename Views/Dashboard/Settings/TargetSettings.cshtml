@@ -1,5 +1,1082 @@
 ﻿@{
-    ViewData["Title"] = "TargetSettings";
+    ViewData["Title"] = "Target Settings";
     ViewData["ActivePage"] = "TargetSettings";
     Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<style>
+    @@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(32px) scale(0.98); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @@keyframes spin { to { transform: rotate(360deg); } }
+
+    .fade-up { opacity: 0; animation: fadeUp 0.45s ease forwards; }
+    .fade-up-1 { animation-delay: 0.05s; }
+    .fade-up-2 { animation-delay: 0.15s; }
+    .fade-up-3 { animation-delay: 0.25s; }
+
+    .spinner { animation: spin 0.7s linear infinite; }
+
+    #targetModal { display: none; animation: fadeIn 0.2s ease forwards; }
+    #targetModal.open { display: flex; }
+    #targetModalBox { animation: slideUp 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; }
+
+    #confirmModal { display: none; animation: fadeIn 0.15s ease forwards; }
+    #confirmModal.open { display: flex; }
+    #confirmBox { animation: slideUp 0.22s cubic-bezier(0.34, 1.4, 0.64, 1) forwards; }
+
+    .target-card { transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+    .target-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+
+    .field-label { display: block; font-size: 0.7rem; font-weight: 500; color: var(--color-text-secondary, #64748b); margin-bottom: 5px; letter-spacing: 0.02em; }
+    .field-input {
+        width: 100%; padding: 9px 12px;
+        background: var(--color-surface, #f8fafc);
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: 10px; font-size: 0.8rem;
+        color: var(--color-text-primary, #0f172a);
+        transition: border-color 0.15s, box-shadow 0.15s;
+        outline: none;
+    }
+    .field-input:focus {
+        border-color: var(--color-brand-400, #60a5fa);
+        box-shadow: 0 0 0 3px var(--color-brand-100, #dbeafe);
+    }
+    .field-input:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .field-input::placeholder { color: var(--color-text-muted, #94a3b8); }
+
+    .tab-btn { transition: all 0.15s ease; }
+    .tab-btn.active {
+        background: var(--color-brand-500, #3b82f6);
+        color: #fff;
+        border-color: var(--color-brand-500, #3b82f6);
+    }
+
+    #connTestResult { transition: all 0.2s ease; }
+
+    .db-locked { pointer-events: none; opacity: 0.55; user-select: none; }
+
+    /* Field mapping rows */
+    .field-mapping-row { animation: fadeUp 0.2s ease forwards; }
+</style>
+
+@* ── Page header ── *@
+<div class="flex items-center justify-between mb-6 fade-up fade-up-1">
+    <div>
+        <h1 class="text-text-primary text-2xl font-semibold font-display">Target Settings</h1>
+        <p class="text-text-muted text-sm mt-0.5">Configure database targets for sanction scanning.</p>
+    </div>
+    <button onclick="openAddModal()"
+            class="flex items-center gap-2 px-4 py-2.5 bg-accent-500 hover:bg-accent-600
+                   text-white text-sm font-medium rounded-xl transition-colors shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Add New Target
+    </button>
+</div>
+
+@* ── Alert area ── *@
+<div id="alertArea" class="hidden mb-4"></div>
+
+@* ── Target cards grid ── *@
+<div id="targetsGrid" class="grid grid-cols-1 gap-4 fade-up fade-up-2">
+    <div class="bg-surface-card border border-border rounded-2xl p-8 text-center">
+        <svg class="w-5 h-5 mx-auto mb-2 spinner text-brand-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+        </svg>
+        <span class="text-xs text-text-muted">Loading targets…</span>
+    </div>
+</div>
+
+@* ── Target count footer ── *@
+<div id="targetFooter" class="mt-3 hidden fade-up fade-up-3">
+    <span id="targetCount" class="text-xs text-text-muted"></span>
+</div>
+
+
+@* ══════════════════════════════════════════════════════════════════
+   ADD / EDIT TARGET MODAL
+══════════════════════════════════════════════════════════════════ *@
+<div id="targetModal"
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-start justify-center px-4 py-6 overflow-y-auto">
+    <div id="targetModalBox"
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-xl mx-auto my-auto">
+
+        @* Modal header *@
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+            <h2 id="modalTitle" class="text-text-primary font-semibold text-base">Add New Target</h2>
+            <button onclick="closeModal()"
+                    class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted
+                           hover:text-text-primary hover:bg-surface transition-colors">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" class="w-4 h-4">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        @* Modal body *@
+        <div class="px-6 py-5 space-y-5">
+            <div id="modalAlert" class="hidden"></div>
+
+            @* ── Section: Identity ── *@
+            <div>
+                <p class="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Target Identity</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="field-label">Target Name <span class="text-red-400">*</span></label>
+                        <input id="fTargetName" type="text" placeholder="e.g. MerchantScan" class="field-input" />
+                    </div>
+                    <div class="col-span-2">
+                        <label class="field-label">Database Type <span class="text-red-400">*</span></label>
+                        <select id="fDbType" class="field-input">
+                            <option value="">— Select —</option>
+                            <option value="PostgreSQL">PostgreSQL</option>
+                            <option value="Oracle">Oracle</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            @* ── Section: Database Connection ── *@
+            <div>
+                @* Section header with optional unlock button *@
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-semibold text-text-muted uppercase tracking-widest">Database Connection</p>
+                    @* Shown only in edit mode *@
+                    <button id="editDbToggleBtn" type="button" onclick="toggleDbEdit()"
+                            class="hidden flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                                   border-border text-text-secondary hover:border-brand-300
+                                   hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        <svg id="editDbIcon" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <span id="editDbBtnText">Edit DB Settings</span>
+                    </button>
+                </div>
+
+                @* DB fields — locked in edit mode until user unlocks *@
+                <div id="dbFieldsWrapper" class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2 sm:col-span-1">
+                        <label class="field-label">Host <span class="text-red-400">*</span></label>
+                        <input id="fHost" type="text" placeholder="192.168.1.1" class="field-input" oninput="resetConnectionTest()" />
+                    </div>
+                    <div>
+                        <label class="field-label">Port <span class="text-red-400">*</span></label>
+                        <input id="fPort" type="number" placeholder="5432" class="field-input" oninput="resetConnectionTest()" />
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                        <label class="field-label">Database Name <span class="text-red-400">*</span></label>
+                        <input id="fDbName" type="text" placeholder="merchant_db" class="field-input" oninput="resetConnectionTest()" />
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                        <label class="field-label">Username <span class="text-red-400">*</span></label>
+                        <input id="fUsername" type="text" placeholder="db_user" class="field-input" oninput="resetConnectionTest()" />
+                    </div>
+
+                    @* Password — visible for new targets always; for edit only when DB unlocked *@
+                    <div class="col-span-2 sm:col-span-1" id="passwordRow">
+                        <label class="field-label">Password <span class="text-red-400">*</span></label>
+                        <div class="relative">
+                            <input id="fPassword" type="password" placeholder="••••••••" class="field-input pr-9" oninput="resetConnectionTest()" />
+                            <button type="button" onclick="togglePwd()" tabindex="-1"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors">
+                                <svg id="pwdEye" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                                <svg id="pwdEyeOff" class="w-3.5 h-3.5 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                                    <line x1="1" y1="1" x2="23" y2="23"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                @* Test connection row — hidden when DB fields are locked *@
+                <div id="testConnRow" class="mt-3 flex items-center gap-3">
+                    <button id="testConnBtn" onclick="testConnection()"
+                            class="flex items-center gap-2 px-4 py-2 text-xs font-medium border border-border
+                                   rounded-lg text-text-secondary hover:border-brand-300 hover:text-brand-600
+                                   hover:bg-brand-50 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+                            <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+                            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+                            <circle cx="12" cy="20" r="1" fill="currentColor"/>
+                        </svg>
+                        <span id="testConnText">Test Connection</span>
+                        <svg id="testConnSpinner" class="hidden w-3.5 h-3.5 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                        </svg>
+                    </button>
+                    <div id="connTestResult" class="hidden text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg border"></div>
+                </div>
+            </div>
+
+            @* ── Section: Data Settings ── *@
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-semibold text-text-muted uppercase tracking-widest">Data Settings</p>
+                    <button type="button" onclick="addFieldMapping()"
+                            class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                                   border-border text-text-secondary hover:border-brand-300
+                                   hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                        Add Field
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="field-label">Table Name <span class="text-red-400">*</span></label>
+                        <input id="fTableName" type="text" placeholder="e.g. merchants" class="field-input" />
+                    </div>
+                    <div>
+                        <label class="field-label">ID Column <span class="text-red-400">*</span></label>
+                        <input id="fIdColumn" type="text" placeholder="e.g. merchant_id" class="field-input" />
+                    </div>
+                </div>
+
+                @* Column header labels *@
+                <div id="fieldMappingsHeader" class="hidden grid grid-cols-2 gap-2 mb-1 px-1">
+                    <span class="text-xs text-text-muted">Column Name</span>
+                    <span class="text-xs text-text-muted">Match As</span>
+                </div>
+
+                <div id="fieldMappingsContainer" class="space-y-2">
+                    @* Field mapping rows injected by JS *@
+                </div>
+
+                <p class="text-xs text-text-muted mt-2">
+                    Map database columns to scan fields
+                    (<code class="bg-surface px-1 py-0.5 rounded text-brand-600">name</code>,
+                     <code class="bg-surface px-1 py-0.5 rounded text-brand-600">email</code>,etc
+                    ).
+                </p>
+            </div>
+
+            @* ── Section: Automation ── *@
+            <div>
+                <p class="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Automation Settings</p>
+
+                <div class="flex items-center gap-3 mb-4">
+                    <button type="button" id="automateToggle" onclick="toggleAutomate()"
+                            class="relative w-10 h-5 rounded-full transition-colors duration-200 bg-border focus:outline-none">
+                        <span id="automateThumb"
+                              class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"></span>
+                    </button>
+                    <span id="automateLabel" class="text-sm text-text-secondary">Run manually only</span>
+                </div>
+
+                <div id="automationOptions" class="hidden space-y-3">
+                    <div>
+                        <label class="field-label">Frequency</label>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="setFrequency('daily')"   id="freq-daily"   class="tab-btn flex-1 py-2 text-xs border border-border rounded-lg text-text-secondary">Daily</button>
+                            <button type="button" onclick="setFrequency('weekly')"  id="freq-weekly"  class="tab-btn flex-1 py-2 text-xs border border-border rounded-lg text-text-secondary">Weekly</button>
+                            <button type="button" onclick="setFrequency('monthly')" id="freq-monthly" class="tab-btn flex-1 py-2 text-xs border border-border rounded-lg text-text-secondary">Monthly</button>
+                        </div>
+                    </div>
+
+                    <div id="opts-daily" class="hidden grid grid-cols-2 gap-3">
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="field-label">Scan Time</label>
+                            <input id="fDailyTime" type="time" value="02:00" class="field-input" />
+                        </div>
+                    </div>
+
+                    <div id="opts-weekly" class="hidden grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="field-label">Day of Week</label>
+                            <select id="fWeekday" class="field-input">
+                                <option value="1">Monday</option>
+                                <option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option>
+                                <option value="4">Thursday</option>
+                                <option value="5">Friday</option>
+                                <option value="6">Saturday</option>
+                                <option value="0">Sunday</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="field-label">Scan Time</label>
+                            <input id="fWeeklyTime" type="time" value="02:00" class="field-input" />
+                        </div>
+                    </div>
+
+                    <div id="opts-monthly" class="hidden grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="field-label">Day of Month</label>
+                            <input id="fDayOfMonth" type="number" min="1" max="28" placeholder="15" class="field-input" />
+                            <p class="text-xs text-text-muted mt-1">Use 1–28 to avoid month-end issues.</p>
+                        </div>
+                        <div>
+                            <label class="field-label">Scan Time</label>
+                            <input id="fMonthlyTime" type="time" value="02:00" class="field-input" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Modal footer *@
+        <div class="px-6 py-4 border-t border-border flex justify-end gap-3">
+            <button onclick="closeModal()"
+                    class="px-4 py-2 text-sm text-text-secondary hover:text-text-primary
+                           border border-border rounded-xl transition-colors">
+                Cancel
+            </button>
+            <button id="saveTargetBtn" onclick="saveTarget()"
+                    class="px-5 py-2 bg-accent-500 hover:bg-accent-600 text-white text-sm
+                           font-medium rounded-xl transition-colors flex items-center gap-2">
+                <span id="saveBtnText">Save Target</span>
+                <svg id="saveBtnSpinner" class="hidden w-4 h-4 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ══════════════ CONFIRM MODAL ══════════════ *@
+<div id="confirmModal"
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-center justify-center px-4">
+    <div id="confirmBox"
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-sm px-6 py-6">
+        <div id="confirmIcon" class="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4"></div>
+        <h3 id="confirmTitle" class="text-text-primary font-semibold text-base text-center mb-1"></h3>
+        <p id="confirmMessage" class="text-text-muted text-sm text-center mb-5"></p>
+        <div class="flex gap-3">
+            <button onclick="closeConfirm()"
+                    class="flex-1 py-2 text-sm text-text-secondary border border-border rounded-xl hover:bg-surface transition-colors">
+                Cancel
+            </button>
+            <button id="confirmActionBtn"
+                    class="flex-1 py-2 text-sm font-medium text-white rounded-xl transition-colors">
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ── State ──────────────────────────────────────────────────────────────
+    let allTargets       = [];
+    let editingId        = null;    // null = new target, number = editing existing
+    let connectionTested = false;
+    let dbEditUnlocked   = false;   // edit mode: false = DB fields locked, true = unlocked
+    let automate         = false;
+    let frequency        = 'daily';
+    let fieldRowId       = 0;       // counter for unique field mapping row IDs
+
+    // ── Load ───────────────────────────────────────────────────────────────
+    async function loadTargets() {
+        try {
+            const res = await fetch('/Dashboard/Settings/TargetSettings/GetAll');
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            allTargets = data.success ? (data.data ?? []) : [];
+            renderCards();
+        } catch {
+            document.getElementById('targetsGrid').innerHTML = `
+                <div class="bg-surface-card border border-border rounded-2xl p-8 text-center text-xs text-text-muted">
+                    Failed to load targets. Please refresh the page.
+                </div>`;
+        }
+    }
+
+    // ── Render cards ───────────────────────────────────────────────────────
+    function renderCards() {
+        const grid    = document.getElementById('targetsGrid');
+        const footer  = document.getElementById('targetFooter');
+        const countEl = document.getElementById('targetCount');
+
+        countEl.textContent = `${allTargets.length} target${allTargets.length !== 1 ? 's' : ''} configured`;
+        footer.classList.remove('hidden');
+
+        if (allTargets.length === 0) {
+            grid.innerHTML = `
+                <div class="bg-surface-card border border-dashed border-border rounded-2xl p-10 text-center">
+                    <div class="w-10 h-10 rounded-full bg-surface flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-5 h-5 text-text-muted" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                            <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>
+                        </svg>
+                    </div>
+                    <p class="text-text-muted text-sm">No targets configured yet.</p>
+                    <p class="text-text-muted text-xs mt-1">Click <strong>Add New Target</strong> to get started.</p>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = allTargets.map(t => {
+            const db   = t.database_settings   ?? {};
+            const auto = t.automation_settings ?? {};
+            const ds   = db.data_settings      ?? {};
+
+            const dbTypeBadge = db.database_type === 'PostgreSQL'
+                ? 'bg-blue-50 text-blue-700 border-blue-100'
+                : 'bg-orange-50 text-orange-700 border-orange-100';
+
+            let scheduleText = 'Manual only';
+            if (auto.automate) {
+                if (auto.frequency === 'daily')
+                    scheduleText = `Daily at ${auto.start_time}`;
+                else if (auto.frequency === 'weekly')
+                    scheduleText = `Weekly — ${weekdayName(auto.weekday)} at ${auto.start_time}`;
+                else if (auto.frequency === 'monthly')
+                    scheduleText = `Monthly — day ${auto.day_of_month} at ${auto.start_time}`;
+            }
+
+            // Build a compact badge list of mapped fields (up to 3, then +N more)
+            const fields        = ds.other_fields ?? [];
+            const fieldBadges   = fields.slice(0, 3).map(f =>
+                `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-surface border border-border text-text-secondary">
+                    <span class="text-text-muted">${escHtml(f.column_name)}</span>
+                    <svg class="w-2.5 h-2.5 text-text-muted flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    <span class="font-medium text-brand-600">${escHtml(f.match_as)}</span>
+                </span>`
+            ).join('');
+            const extraFields   = fields.length > 3
+                ? `<span class="text-xs text-text-muted">+${fields.length - 3} more</span>`
+                : '';
+
+            return `
+            <div class="target-card bg-surface-card border border-border rounded-2xl p-5">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                                <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-text-primary font-semibold text-sm">${escHtml(t.target_name)}</span>
+                                <span class="text-xs px-2 py-0.5 rounded-full border font-medium ${dbTypeBadge}">
+                                    ${escHtml(db.database_type || '—')}
+                                </span>
+                                <span class="text-xs px-2 py-0.5 rounded-full border
+                                    ${auto.automate
+                                        ? 'bg-green-50 text-green-700 border-green-100'
+                                        : 'bg-surface text-text-muted border-border'}">
+                                    ${auto.automate ? '⏱ Automated' : 'Manual'}
+                                </span>
+                            </div>
+                            <p class="text-text-muted text-xs mt-0.5 truncate">
+                                ${escHtml(db.host || '—')}:${db.port || '—'} / ${escHtml(db.database_name || '—')}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <button onclick="openEditModal(${t.id})"
+                                class="text-xs px-3 py-1.5 rounded-lg border border-border text-text-secondary
+                                       hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                            Edit
+                        </button>
+                        <button onclick="confirmDelete(${t.id}, '${escHtml(t.target_name)}')"
+                                class="text-xs px-3 py-1.5 rounded-lg border border-border text-text-secondary
+                                       hover:border-red-300 hover:text-red-600 hover:bg-red-50 transition-colors">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+
+                @* ── Card stats row ── *@
+                <div class="mt-4 pt-4 border-t border-border grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                        <p class="text-xs text-text-muted mb-0.5">User</p>
+                        <p class="text-xs text-text-secondary font-medium">${escHtml(db.user_name || '—')}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-text-muted mb-0.5">Schedule</p>
+                        <p class="text-xs text-text-secondary font-medium">${escHtml(scheduleText)}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-text-muted mb-0.5">Table</p>
+                        <p class="text-xs text-text-secondary font-medium">
+                            ${escHtml(ds.table_name || '—')}
+                            ${ds.id_column
+                                ? `<span class="text-text-muted font-normal">/ ${escHtml(ds.id_column)}</span>`
+                                : ''}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-text-muted mb-0.5">Fields</p>
+                        <p class="text-xs text-text-secondary font-medium">${fields.length} mapped</p>
+                    </div>
+                </div>
+
+                @* ── Field mapping badges (only when fields exist) ── *@
+                ${fields.length > 0 ? `
+                <div class="mt-3 flex flex-wrap gap-1.5">
+                    ${fieldBadges}
+                    ${extraFields}
+                </div>` : ''}
+            </div>`;
+        }).join('');
+    }
+
+    function weekdayName(n) {
+        return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n] ?? '—';
+    }
+
+    // ── Open modal (add new target) ────────────────────────────────────────
+    function openAddModal() {
+        editingId      = null;
+        dbEditUnlocked = true; // new target — DB fields always open
+        document.getElementById('modalTitle').textContent = 'Add New Target';
+        resetForm();
+
+        // No unlock button needed for new targets
+        document.getElementById('editDbToggleBtn').classList.add('hidden');
+
+        // Unlock DB fields + show password + show test row
+        setDbFieldsLocked(false);
+
+        document.getElementById('targetModal').classList.add('open');
+        document.getElementById('fTargetName').focus();
+    }
+
+    // ── Open modal (edit existing target) ─────────────────────────────────
+    function openEditModal(id) {
+        const t = allTargets.find(x => x.id === id);
+        if (!t) return;
+
+        editingId      = id;
+        dbEditUnlocked = false; // DB fields locked by default
+        document.getElementById('modalTitle').textContent = 'Edit Target';
+        resetForm();
+
+        const db   = t.database_settings   ?? {};
+        const auto = t.automation_settings ?? {};
+        const ds   = db.data_settings      ?? {};
+
+        // Populate identity + connection display fields
+        document.getElementById('fTargetName').value = t.target_name    ?? '';
+        document.getElementById('fDbType').value     = db.database_type ?? '';
+        document.getElementById('fHost').value       = db.host          ?? '';
+        document.getElementById('fPort').value       = db.port          ?? '';
+        document.getElementById('fDbName').value     = db.database_name ?? '';
+        document.getElementById('fUsername').value   = db.user_name     ?? '';
+        // Password is NEVER pre-filled
+
+        // Populate data settings
+        document.getElementById('fTableName').value = ds.table_name ?? '';
+        document.getElementById('fIdColumn').value  = ds.id_column  ?? '';
+        (ds.other_fields ?? []).forEach(f => addFieldMapping(f.column_name, f.match_as));
+
+        // Show the unlock button
+        document.getElementById('editDbToggleBtn').classList.remove('hidden');
+        document.getElementById('editDbBtnText').textContent = 'Edit DB Settings';
+        document.getElementById('editDbIcon').innerHTML =
+            '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>';
+
+        // Lock the DB fields — user must explicitly unlock
+        setDbFieldsLocked(true);
+
+        // Automation
+        if (auto.automate) {
+            automate = true;
+            syncAutomateToggle();
+            document.getElementById('automationOptions').classList.remove('hidden');
+            setFrequency(auto.frequency || 'daily');
+            document.getElementById('fDailyTime').value   = auto.start_time   ?? '02:00';
+            document.getElementById('fWeeklyTime').value  = auto.start_time   ?? '02:00';
+            document.getElementById('fMonthlyTime').value = auto.start_time   ?? '02:00';
+            document.getElementById('fWeekday').value     = auto.weekday      ?? 1;
+            document.getElementById('fDayOfMonth').value  = auto.day_of_month ?? 15;
+        }
+
+        document.getElementById('targetModal').classList.add('open');
+    }
+
+    // ── Lock / unlock DB fields ────────────────────────────────────────────
+    function setDbFieldsLocked(locked) {
+        const wrapper     = document.getElementById('dbFieldsWrapper');
+        const testRow     = document.getElementById('testConnRow');
+        const passwordRow = document.getElementById('passwordRow');
+
+        if (locked) {
+            wrapper.classList.add('db-locked');
+            testRow.classList.add('hidden');
+            passwordRow.classList.add('hidden');
+            wrapper.querySelectorAll('input, select').forEach(el => el.disabled = true);
+        } else {
+            wrapper.classList.remove('db-locked');
+            testRow.classList.remove('hidden');
+            passwordRow.classList.remove('hidden');
+            wrapper.querySelectorAll('input, select').forEach(el => el.disabled = false);
+        }
+    }
+
+    // ── Toggle DB edit unlock (edit mode only) ─────────────────────────────
+    function toggleDbEdit() {
+        dbEditUnlocked = !dbEditUnlocked;
+
+        const btn     = document.getElementById('editDbToggleBtn');
+        const btnText = document.getElementById('editDbBtnText');
+        const btnIcon = document.getElementById('editDbIcon');
+
+        if (dbEditUnlocked) {
+            setDbFieldsLocked(false);
+            // Clear password — user must re-enter
+            document.getElementById('fPassword').value = '';
+            resetConnectionTest();
+            btnText.textContent   = 'Lock DB Settings';
+            btnIcon.innerHTML     = '<path d="M17 11V7A5 5 0 0 0 7 7"/><rect x="3" y="11" width="18" height="11" rx="2"/>';
+            btn.classList.replace('hover:border-brand-300', 'hover:border-red-300');
+            btn.classList.replace('hover:text-brand-600',   'hover:text-red-600');
+            btn.classList.replace('hover:bg-brand-50',      'hover:bg-red-50');
+        } else {
+            setDbFieldsLocked(true);
+            resetConnectionTest();
+            btnText.textContent   = 'Edit DB Settings';
+            btnIcon.innerHTML     = '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>';
+            btn.classList.replace('hover:border-red-300', 'hover:border-brand-300');
+            btn.classList.replace('hover:text-red-600',   'hover:text-brand-600');
+            btn.classList.replace('hover:bg-red-50',      'hover:bg-brand-50');
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('targetModal').classList.remove('open');
+    }
+
+    // ── Reset form ─────────────────────────────────────────────────────────
+    function resetForm() {
+        ['fTargetName','fHost','fPort','fDbName','fUsername','fPassword',
+         'fDailyTime','fWeeklyTime','fMonthlyTime','fDayOfMonth'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = id.includes('Time') ? '02:00' : '';
+        });
+        document.getElementById('fDbType').value   = '';
+        document.getElementById('fWeekday').value  = '1';
+        document.getElementById('fTableName').value = '';
+        document.getElementById('fIdColumn').value  = '';
+        document.getElementById('modalAlert').classList.add('hidden');
+
+        // Reset password eye
+        document.getElementById('fPassword').type = 'password';
+        document.getElementById('pwdEye').classList.remove('hidden');
+        document.getElementById('pwdEyeOff').classList.add('hidden');
+
+        // Reset connection test
+        connectionTested = false;
+        document.getElementById('connTestResult').classList.add('hidden');
+        document.getElementById('connTestResult').innerHTML = '';
+
+        // Reset field mappings
+        document.getElementById('fieldMappingsContainer').innerHTML = '';
+        document.getElementById('fieldMappingsHeader').classList.add('hidden');
+        fieldRowId = 0;
+
+        // Reset automate
+        automate = false;
+        syncAutomateToggle();
+        document.getElementById('automationOptions').classList.add('hidden');
+
+        // Reset frequency tabs
+        frequency = 'daily';
+        ['daily','weekly','monthly'].forEach(f => {
+            document.getElementById(`freq-${f}`).classList.remove('active');
+            document.getElementById(`opts-${f}`).classList.add('hidden');
+        });
+    }
+
+    // ── Password eye toggle ────────────────────────────────────────────────
+    function togglePwd() {
+        const inp      = document.getElementById('fPassword');
+        const isHidden = inp.type === 'password';
+        inp.type = isHidden ? 'text' : 'password';
+        document.getElementById('pwdEye').classList.toggle('hidden', isHidden);
+        document.getElementById('pwdEyeOff').classList.toggle('hidden', !isHidden);
+    }
+
+    // ── Automate toggle ────────────────────────────────────────────────────
+    function toggleAutomate() {
+        automate = !automate;
+        syncAutomateToggle();
+        const opts = document.getElementById('automationOptions');
+        if (automate) {
+            opts.classList.remove('hidden');
+            setFrequency('daily');
+        } else {
+            opts.classList.add('hidden');
+        }
+    }
+
+    function syncAutomateToggle() {
+        const btn   = document.getElementById('automateToggle');
+        const thumb = document.getElementById('automateThumb');
+        const label = document.getElementById('automateLabel');
+        if (automate) {
+            btn.classList.replace('bg-border', 'bg-brand-500');
+            thumb.style.transform = 'translateX(20px)';
+            label.textContent = 'Automate scanning';
+            label.classList.replace('text-text-secondary', 'text-brand-600');
+        } else {
+            btn.classList.replace('bg-brand-500', 'bg-border');
+            thumb.style.transform = 'translateX(0)';
+            label.textContent = 'Run manually only';
+            label.classList.replace('text-brand-600', 'text-text-secondary');
+        }
+    }
+
+    // ── Frequency tabs ─────────────────────────────────────────────────────
+    function setFrequency(f) {
+        frequency = f;
+        ['daily','weekly','monthly'].forEach(x => {
+            document.getElementById(`freq-${x}`).classList.toggle('active', x === f);
+            document.getElementById(`opts-${x}`).classList.toggle('hidden', x !== f);
+        });
+    }
+
+    // ── Connection test ────────────────────────────────────────────────────
+    function resetConnectionTest() {
+        connectionTested = false;
+        document.getElementById('connTestResult').classList.add('hidden');
+    }
+
+    async function testConnection() {
+        const dbType   = document.getElementById('fDbType').value;
+        const host     = document.getElementById('fHost').value.trim();
+        const port     = document.getElementById('fPort').value.trim();
+        const dbName   = document.getElementById('fDbName').value.trim();
+        const username = document.getElementById('fUsername').value.trim();
+        const password = document.getElementById('fPassword').value;
+
+        if (!dbType || !host || !port || !dbName || !username || !password) {
+            showModalAlert('Please fill in all connection fields before testing.', 'error');
+            return;
+        }
+
+        const btn     = document.getElementById('testConnBtn');
+        const spinner = document.getElementById('testConnSpinner');
+        const text    = document.getElementById('testConnText');
+        btn.disabled  = true;
+        spinner.classList.remove('hidden');
+        text.textContent = 'Testing…';
+        document.getElementById('connTestResult').classList.add('hidden');
+
+        try {
+            const res = await fetch('/Dashboard/Settings/TargetSettings/TestConnection', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ dbType, host, port: parseInt(port), dbName, username, password })
+            });
+            const data       = await res.json();
+            connectionTested = res.ok && data.success;
+            showConnResult(connectionTested, data.message || (connectionTested ? 'Connection successful' : 'Connection failed'));
+        } catch {
+            connectionTested = false;
+            showConnResult(false, 'Could not reach the server. Please try again.');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            text.textContent = 'Test Connection';
+        }
+    }
+
+    function showConnResult(success, message) {
+        const el = document.getElementById('connTestResult');
+        el.className = `text-xs font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg border
+            ${success
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : 'bg-red-50 text-red-700 border-red-200'}`;
+        el.innerHTML = `
+            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                ${success
+                    ? '<path d="M20 6 9 17l-5-5"/>'
+                    : '<path d="M18 6 6 18M6 6l12 12"/>'}
+            </svg>
+            ${escHtml(message)}`;
+        el.classList.remove('hidden');
+    }
+
+    // ── Field mappings ─────────────────────────────────────────────────────
+
+    function addFieldMapping(columnName = '', matchAs = '') {
+        const id  = ++fieldRowId;
+        const row = document.createElement('div');
+        row.id        = `fieldRow-${id}`;
+        row.className = 'field-mapping-row flex items-center gap-2';
+        row.innerHTML = `
+            <input type="text"
+                   value="${escHtml(columnName)}"
+                   placeholder="column_name"
+                   class="field-input flex-1"
+                   data-field="column_name" />
+            <input type="text"
+                   value="${escHtml(matchAs)}"
+                   placeholder="name / email / phone / address…"
+                   class="field-input flex-1"
+                   data-field="match_as" />
+            <button type="button"
+                    onclick="removeFieldRow(${id})"
+                    title="Remove"
+                    class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg
+                           text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </button>`;
+        document.getElementById('fieldMappingsContainer').appendChild(row);
+
+        // Show column header labels once at least one row exists
+        const header = document.getElementById('fieldMappingsHeader');
+        if (document.getElementById('fieldMappingsContainer').children.length === 1) {
+            header.classList.remove('hidden');
+        }
+    }
+
+    function removeFieldRow(id) {
+        document.getElementById(`fieldRow-${id}`)?.remove();
+        // Hide header when no rows remain
+        if (document.getElementById('fieldMappingsContainer').children.length === 0) {
+            document.getElementById('fieldMappingsHeader').classList.add('hidden');
+        }
+    }
+
+    function collectFieldMappings() {
+        return [...document.getElementById('fieldMappingsContainer').children].map(row => ({
+            column_name: row.querySelector('[data-field="column_name"]').value.trim(),
+            match_as:    row.querySelector('[data-field="match_as"]').value.trim()
+        })).filter(f => f.column_name); // skip blank rows
+    }
+
+    // ── Save target ────────────────────────────────────────────────────────
+    async function saveTarget() {
+        const targetName = document.getElementById('fTargetName').value.trim();
+        const tableName  = document.getElementById('fTableName').value.trim();
+        const idColumn   = document.getElementById('fIdColumn').value.trim();
+
+        // ── Validate identity ─────────────────────────────────────────────
+        if (!targetName) { showModalAlert('Target name is required.', 'error'); return; }
+
+        // ── Duplicate name check ──────────────────────────────────────────
+        const duplicate = allTargets.find(t =>
+            t.target_name.toLowerCase() === targetName.toLowerCase() && t.id !== editingId);
+        if (duplicate) {
+            showModalAlert('A target with this name already exists. Names must be unique.', 'error');
+            return;
+        }
+
+        // ── Validate DB fields only if they are unlocked ──────────────────
+        if (dbEditUnlocked) {
+            const dbType   = document.getElementById('fDbType').value;
+            const host     = document.getElementById('fHost').value.trim();
+            const port     = parseInt(document.getElementById('fPort').value);
+            const dbName   = document.getElementById('fDbName').value.trim();
+            const username = document.getElementById('fUsername').value.trim();
+            const password = document.getElementById('fPassword').value;
+
+            if (!dbType)  { showModalAlert('Please select a database type.', 'error'); return; }
+            if (!host || !port || !dbName || !username) {
+                showModalAlert('Please fill in all connection fields.', 'error'); return;
+            }
+            if (!password) {
+                showModalAlert('Password is required to test the connection.', 'error'); return;
+            }
+            if (!connectionTested) {
+                showModalAlert('You must successfully test the database connection before saving.', 'error');
+                return;
+            }
+        }
+
+        // ── Validate data settings ────────────────────────────────────────
+        if (!tableName) { showModalAlert('Table name is required.', 'error'); return; }
+        if (!idColumn)  { showModalAlert('ID column is required.', 'error');  return; }
+
+        // ── Build automation settings ─────────────────────────────────────
+        let startTime  = '02:00';
+        let weekday    = 1;
+        let dayOfMonth = 15;
+
+        if (automate) {
+            if (frequency === 'daily')
+                startTime = document.getElementById('fDailyTime').value;
+            else if (frequency === 'weekly') {
+                startTime = document.getElementById('fWeeklyTime').value;
+                weekday   = parseInt(document.getElementById('fWeekday').value);
+            } else if (frequency === 'monthly') {
+                startTime  = document.getElementById('fMonthlyTime').value;
+                dayOfMonth = parseInt(document.getElementById('fDayOfMonth').value);
+            }
+            if (!startTime) { showModalAlert('Please set a scan time.', 'error'); return; }
+            if (frequency === 'monthly' && (dayOfMonth < 1 || dayOfMonth > 28)) {
+                showModalAlert('Day of month must be between 1 and 28.', 'error'); return;
+            }
+        }
+
+        // ── Build data_settings object (always sent) ──────────────────────
+        const dataSettings = {
+            table_name:   tableName,
+            id_column:    idColumn,
+            other_fields: collectFieldMappings()
+        };
+
+        // ── Build payload ─────────────────────────────────────────────────
+        // db_settings_changed = true  → server builds + encrypts new connection string
+        // db_settings_changed = false → server keeps existing encrypted connection string;
+        //                               data_settings is still sent so the server can update it
+        const payload = {
+            id:                  editingId ?? 0,
+            target_name:         targetName,
+            target_type:         'database',
+            db_settings_changed: dbEditUnlocked,
+            database_settings:   dbEditUnlocked ? {
+                database_type: document.getElementById('fDbType').value,
+                host:          document.getElementById('fHost').value.trim(),
+                port:          parseInt(document.getElementById('fPort').value),
+                database_name: document.getElementById('fDbName').value.trim(),
+                user_name:     document.getElementById('fUsername').value.trim(),
+                password:      document.getElementById('fPassword').value,
+                data_settings: dataSettings
+            } : {
+                // No credentials when DB is locked — only data_settings
+                data_settings: dataSettings
+            },
+            automation_settings: {
+                automate,
+                frequency:    automate ? frequency : 'daily',
+                start_time:   startTime,
+                weekday,
+                day_of_month: dayOfMonth
+            }
+        };
+
+        const btn     = document.getElementById('saveTargetBtn');
+        const spinner = document.getElementById('saveBtnSpinner');
+        const text    = document.getElementById('saveBtnText');
+        btn.disabled  = true;
+        spinner.classList.remove('hidden');
+        text.textContent = 'Saving…';
+
+        try {
+            const res = await fetch('/Dashboard/Settings/TargetSettings/Upsert', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || 'Failed to save target');
+
+            await loadTargets();
+            closeModal();
+            showAlert(`Target "${targetName}" saved successfully.`, 'success');
+        } catch (err) {
+            showModalAlert(err.message || 'Failed to save. Please try again.', 'error');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            text.textContent = 'Save Target';
+        }
+    }
+
+    // ── Delete ─────────────────────────────────────────────────────────────
+    function confirmDelete(id, name) {
+        openConfirm({
+            icon: `<svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                       <polyline points="3 6 5 6 21 6"/>
+                       <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                       <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                   </svg>`,
+            iconBg:   'bg-red-50',
+            title:    'Delete Target',
+            message:  `Are you sure you want to delete "${name}"? This cannot be undone.`,
+            btnColor: 'bg-red-500 hover:bg-red-600',
+            action:   () => deleteTarget(id, name)
+        });
+    }
+
+    async function deleteTarget(id, name) {
+        closeConfirm();
+        try {
+            const res = await fetch(`/Dashboard/Settings/TargetSettings/Delete/${id}`, { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || 'Failed to delete');
+            allTargets = allTargets.filter(t => t.id !== id);
+            renderCards();
+            showAlert(`Target "${name}" deleted.`, 'success');
+        } catch (err) {
+            showAlert(err.message || 'Failed to delete target.', 'error');
+        }
+    }
+
+    // ── Confirm modal ──────────────────────────────────────────────────────
+    function openConfirm({ icon, iconBg, title, message, btnColor, action }) {
+        document.getElementById('confirmIcon').className =
+            `w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-4 ${iconBg}`;
+        document.getElementById('confirmIcon').innerHTML      = icon;
+        document.getElementById('confirmTitle').textContent   = title;
+        document.getElementById('confirmMessage').textContent = message;
+        const btn = document.getElementById('confirmActionBtn');
+        btn.className = `flex-1 py-2 text-sm font-medium text-white rounded-xl transition-colors ${btnColor}`;
+        btn.onclick = () => action();
+        document.getElementById('confirmModal').classList.add('open');
+    }
+    function closeConfirm() {
+        document.getElementById('confirmModal').classList.remove('open');
+    }
+
+    // ── Alert helpers ──────────────────────────────────────────────────────
+    function showAlert(message, type) {
+        const el = document.getElementById('alertArea');
+        const ok = type === 'success';
+        el.className = `mb-4 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
+            ${ok ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`;
+        el.innerHTML = `
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                ${ok ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+                     : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+            </svg>${escHtml(message)}`;
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    function showModalAlert(message, type) {
+        const el = document.getElementById('modalAlert');
+        el.className = `mb-1 px-3 py-2 rounded-xl text-xs border
+            ${type === 'error' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`;
+        el.textContent = message;
+        el.classList.remove('hidden');
+    }
+
+    function escHtml(str) {
+        return String(str ?? '')
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Close on backdrop click
+    document.getElementById('targetModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+    document.getElementById('confirmModal').addEventListener('click', function(e) {
+        if (e.target === this) closeConfirm();
+    });
+
+    loadTargets();
+</script>
 }
