@@ -1,0 +1,1456 @@
+[
+  {
+    "id": 1,
+    "fullname": "PASCAL GABRIEL DOIZE",
+    "merchant_name": "KUNOCH HOTEL LTD",
+    "DOO": "2017-09-13",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2063IM00A015311"
+    ],
+    "merchant_location": "OWERRI"
+  },
+  {
+    "id": 2,
+    "fullname": "CALISTUS NWABUEZE OBI",
+    "merchant_name": "LADIVA HOTELS AND EVENTS LTD",
+    "DOO": "2017-10-17",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2057DE999999680"
+    ],
+    "merchant_location": "ASABA"
+  },
+  {
+    "id": 3,
+    "fullname": "ROTIMI OYEKANMI",
+    "merchant_name": "RENMONEY",
+    "DOO": "2017-11-08",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "3UP1LA000000007"
+    ],
+    "merchant_location": "LAGOS"
+  },
+  {
+    "id": 4,
+    "fullname": "PETER MBAH",
+    "merchant_name": "PINNACLE OIL AND GAS LTD",
+    "DOO": "2017-11-21",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2033LAG00000390"
+    ],
+    "merchant_location": "LAGOS"
+  },
+  {
+    "id": 5,
+    "fullname": "STEVE AZAIKI",
+    "merchant_name": "GARDEN CITY MARRIOTT HOTELS LTD",
+    "DOO": "2018-01-03",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214RI968165015"
+    ],
+    "merchant_location": "PORT HARCOURT"
+  },
+  {
+    "id": 6,
+    "fullname": "IBRAHIM MOHAMMED",
+    "merchant_name": "BRISTOL PLACE HOTEL LIMITED",
+    "DOO": "2018-01-22",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214KN598867019"
+    ],
+    "merchant_location": "KANO"
+  },
+  {
+    "id": 7,
+    "fullname": "ADEWALE ARIBISALA",
+    "merchant_name": "PRINCELY COURT LIMITED",
+    "DOO": "2018-01-29",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2039LA002243010"
+    ],
+    "merchant_location": "LAGOS"
+  },
+  {
+    "id": 8,
+    "fullname": "PAUL E. OKAFOR",
+    "merchant_name": "REIZ CONTINENTAL HOTEL",
+    "DOO": "2018-01-29",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "3063FC000000073"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 9,
+    "fullname": "SAIDU SAMAILA SAMBAWA",
+    "merchant_name": "SIGMA APARTMENT",
+    "DOO": "2018-01-29",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2063FC00A001587"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 10,
+    "fullname": "MUMMUNI ABUDU",
+    "merchant_name": "OAKWOOD PARK",
+    "DOO": "2018-01-29",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2058LA000P00013"
+    ],
+    "merchant_location": "LAGOS"
+  },
+  {
+    "id": 11,
+    "fullname": "PROF. BEN AYADE",
+    "merchant_name": "MEGA HILTON COMMERCIAL PLAZ",
+    "DOO": "2006-05-12",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2044LA00V000202"
+    ],
+    "merchant_location": "DELTA"
+  },
+  {
+    "id": 12,
+    "fullname": "IBRAHIM MOHAMMED IDA",
+    "merchant_name": "CONTINENTAL RESTAURANTS AND GUEST HOUSE",
+    "DOO": "2018-07-12",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "07613800000AZ43"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 13,
+    "fullname": "ABATCHA BULAMA",
+    "merchant_name": "SHERATON ABUJA HOTEL",
+    "DOO": "2018-12-18",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 14,
+    "fullname": "NGOZI OLEJEME",
+    "merchant_name": "SHERATON ABUJA HOTEL",
+    "DOO": "2018-12-18",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 15,
+    "fullname": "PIUS OLUWOLE AKINYELURE",
+    "merchant_name": "IKOYI HOTELS LIMITED",
+    "DOO": "2018-12-19",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2057LA100001989",
+      "2057LA200008466",
+      "2057LA100001947",
+      "2UP1LA000000035",
+      "2UP1LA000001968",
+      "2UP1LA000004869",
+      "2UP1LA000004872",
+      "2UP1LA000004870"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 16,
+    "fullname": "OLASUPO SHASORE",
+    "merchant_name": "EKO HOTEL",
+    "DOO": "2019-01-11",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "SBP2023665EH000",
+      "2044LA000013898",
+      "2UP1LA000003563",
+      "2044LA000013028",
+      "2044LA000012335",
+      "2044LA000015237",
+      "2044LA000014520",
+      "2UP1LA000003565",
+      "2214LA00P000008",
+      "2214LA00P000046",
+      "2044LA000004473",
+      "GTB013676400018",
+      "2044LA000011346",
+      "2033LAGP0002250",
+      "2UP1LA000002698",
+      "2214LA129505081"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 17,
+    "fullname": "TAJUDEEN O. OLUSI",
+    "merchant_name": "EKO HOTEL",
+    "DOO": "2019-01-11",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "SBP2023665EH000",
+      "2044LA000013898",
+      "2UP1LA000003563",
+      "2044LA000013028",
+      "2044LA000012335",
+      "2044LA000015237",
+      "2044LA000014520",
+      "2UP1LA000003565",
+      "2214LA00P000008",
+      "2214LA00P000046",
+      "2044LA000004473",
+      "GTB013676400018",
+      "2044LA000011346",
+      "2033LAGP0002250",
+      "2UP1LA000002698",
+      "2214LA129505081"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 18,
+    "fullname": "GLORIA ELOHO JOEL-ONOWAKPO",
+    "merchant_name": "ELOMAZ HOTEL LTD",
+    "DOO": "2019-03-07",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 19,
+    "fullname": "THOMAS EWOMAZINO JOEL-ONOWAKPO",
+    "merchant_name": "ELOMAZ HOTEL LTD",
+    "DOO": "2019-03-07",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 20,
+    "fullname": "UDOBIA ELDER BENJAMIN",
+    "merchant_name": "EDEN HOTELS",
+    "DOO": "2019-03-29",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214AK14139801C"
+    ],
+    "merchant_location": "AKWA IBOM"
+  },
+  {
+    "id": 21,
+    "fullname": "UDOBIA GRACE BENJAMIN",
+    "merchant_name": "EDEN HOTELS",
+    "DOO": "2019-03-29",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214AK14139801C"
+    ],
+    "merchant_location": "AKWA IBOM"
+  },
+  {
+    "id": 22,
+    "fullname": "UDOBIA JOHN BENJAMIN",
+    "merchant_name": "EDEN HOTELS",
+    "DOO": "2019-03-29",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214AK14139801C"
+    ],
+    "merchant_location": "AKWA IBOM"
+  },
+  {
+    "id": 23,
+    "fullname": "UDOBIA EDUER BENJAMIN JOHNSON",
+    "merchant_name": "EDEN HOTELS",
+    "DOO": "2019-03-29",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214AK14139801C"
+    ],
+    "merchant_location": "AKWA IBOM"
+  },
+  {
+    "id": 24,
+    "fullname": "UDOBIA FRED BENJAMIN",
+    "merchant_name": "EDEN HOTELS",
+    "DOO": "2019-03-29",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214AK14139801C"
+    ],
+    "merchant_location": "AKWA IBOM"
+  },
+  {
+    "id": 25,
+    "fullname": "UDOBIA AKANIMO BENJAMIN",
+    "merchant_name": "EDEN HOTELS",
+    "DOO": "2019-03-29",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214AK14139801C"
+    ],
+    "merchant_location": "AKWA IBOM"
+  },
+  {
+    "id": 26,
+    "fullname": "UDOBIA UWAKMFON BENJAMIN",
+    "merchant_name": "EDEN HOTELS",
+    "DOO": "2019-03-29",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214AK14139801C"
+    ],
+    "merchant_location": "AKWA IBOM"
+  },
+  {
+    "id": 27,
+    "fullname": "PETER ELUMELU",
+    "merchant_name": "TRANSCORP HILTON HOTEL",
+    "DOO": "2019-04-02",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2057FC000000827"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 28,
+    "fullname": "SARATU ALTINE UMAR",
+    "merchant_name": "TRANSCORP HILTON HOTEL",
+    "DOO": "2019-04-02",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2057FC000000827"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 29,
+    "fullname": "ALEXANDER AYOOLA OKOH",
+    "merchant_name": "TRANSCORP HILTON HOTEL",
+    "DOO": "2019-04-02",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2057FC000000827"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 30,
+    "fullname": "BAKARI WADINGA",
+    "merchant_name": "TRANSCORP HILTON HOTEL",
+    "DOO": "2019-04-02",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2057FC000000827"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 31,
+    "fullname": "AKHIMIEN DAVIDSON ISIBOR",
+    "merchant_name": "EDEN HOTELS AND RESORTS OTTA LIMITED",
+    "DOO": "2019-04-25",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "07630000000BZ67"
+    ],
+    "merchant_location": "OGUN STATE"
+  },
+  {
+    "id": 32,
+    "fullname": "AKHIMIEN GERTRUDE NGUNAN",
+    "merchant_name": "EDEN HOTELS AND RESORTS OTTA LIMITED",
+    "DOO": "2019-04-25",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "07630000000BZ67"
+    ],
+    "merchant_location": "OGUN STATE"
+  },
+  {
+    "id": 33,
+    "fullname": "SHINA ABIOLA PELLER",
+    "merchant_name": "QUILOX RESTAURANT AND BAR LTD",
+    "DOO": "2019-08-19",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2035LA202011513",
+      "2035LA202011516",
+      "2035LA202011514",
+      "2035LA202011515",
+      "2063LA00A013475"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 34,
+    "fullname": "AKINLABI ALLI",
+    "merchant_name": "QUILOX RESTAURANT AND BAR LTD",
+    "DOO": "2019-08-19",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2035LA202011513",
+      "2035LA202011516",
+      "2035LA202011514",
+      "2035LA202011515",
+      "2063LA00A013475"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 35,
+    "fullname": "NAOMI ABIOLA PELLER",
+    "merchant_name": "QUILOX RESTAURANT AND BAR LTD",
+    "DOO": "2019-08-19",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2035LA202011513",
+      "2035LA202011516",
+      "2035LA202011514",
+      "2035LA202011515",
+      "2063LA00A013475"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 36,
+    "fullname": "SULTAN ABIOLA PELLER",
+    "merchant_name": "QUILOX RESTAURANT AND BAR LTD",
+    "DOO": "2019-08-19",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2035LA202011513",
+      "2035LA202011516",
+      "2035LA202011514",
+      "2035LA202011515",
+      "2063LA00A013475"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 37,
+    "fullname": "MALIK ABIOLA PELLER",
+    "merchant_name": "QUILOX RESTAURANT AND BAR LTD",
+    "DOO": "2019-08-19",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2035LA202011513",
+      "2035LA202011516",
+      "2035LA202011514",
+      "2035LA202011515",
+      "2063LA00A013475"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 38,
+    "fullname": "ADEBAYO ADEKOLA ADELABU",
+    "merchant_name": "BEST WESTERN PLUS HOTEL IBADAN",
+    "DOO": "2019-12-12",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011OY074133336"
+    ],
+    "merchant_location": "OYO STATE"
+  },
+  {
+    "id": 39,
+    "fullname": "OLUSEYI OMOLARA ADELABU",
+    "merchant_name": "BEST WESTERN PLUS HOTEL IBADAN",
+    "DOO": "2019-12-12",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011OY074133336"
+    ],
+    "merchant_location": "OYO STATE"
+  },
+  {
+    "id": 40,
+    "fullname": "BABATUNDE DAVID ADELABU",
+    "merchant_name": "BEST WESTERN PLUS HOTEL IBADAN",
+    "DOO": "2019-12-12",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011OY074133336"
+    ],
+    "merchant_location": "OYO STATE"
+  },
+  {
+    "id": 41,
+    "fullname": "DARAMOLA ABIMBOLA",
+    "merchant_name": "THE BRIDGE CONCEPTS NIGERIA LIMITED",
+    "DOO": "2019-12-12",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2033UPDUMMY0002"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 42,
+    "fullname": "DARAMOLA OPEYEMI",
+    "merchant_name": "THE BRIDGE CONCEPTS NIGERIA LIMITED",
+    "DOO": "2019-12-12",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2033UPDUMMY0002"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 43,
+    "fullname": "DARAMOLA FRANCIS ADEBAYO",
+    "merchant_name": "THE BRIDGE CONCEPTS NIGERIA LIMITED",
+    "DOO": "2019-12-12",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2033UPDUMMY0002"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 44,
+    "fullname": "DANJUMA THEOPHILUS YAKUBU",
+    "merchant_name": "DESIGN TRADE AND COMPANY LIMITED",
+    "DOO": "2020-03-23",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA034422113"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 45,
+    "fullname": "LONGE BERNARD",
+    "merchant_name": "DESIGN TRADE AND COMPANY LIMITED",
+    "DOO": "2020-03-23",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA034422113"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 46,
+    "fullname": "DAN-HABA BULUS BUNKEN",
+    "merchant_name": "DESIGN TRADE AND COMPANY LIMITED",
+    "DOO": "2020-03-23",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA034422113"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 47,
+    "fullname": "DANJUMA ISHAYA",
+    "merchant_name": "DESIGN TRADE AND COMPANY LIMITED",
+    "DOO": "2020-03-23",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA034422113"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 48,
+    "fullname": "OGUNBAJO (EMERUWA) MOSUNMOLA",
+    "merchant_name": "DESIGN TRADE AND COMPANY LIMITED",
+    "DOO": "2020-03-23",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA034422113"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 49,
+    "fullname": "ZORTO MANASSEH",
+    "merchant_name": "DESIGN TRADE AND COMPANY LIMITED",
+    "DOO": "2020-03-23",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA034422113"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 50,
+    "fullname": "IDA MOHAMMED IBRAHIM",
+    "merchant_name": "RIKEYS INN LTD",
+    "DOO": "2021-05-07",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "07613800000PM81"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 51,
+    "fullname": "IDA MOHAMMED HADIZA",
+    "merchant_name": "RIKEYS INN LTD",
+    "DOO": "2021-05-07",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "07613800000PM81"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 52,
+    "fullname": "EL-SOUKI ISSAM ZOUHEIR",
+    "merchant_name": "RIKEYS INN LTD",
+    "DOO": "2021-05-07",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "07613800000PM81"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 53,
+    "fullname": "OKUNDAYE OSARUYI REUBEN",
+    "merchant_name": "NIKE ART GALLARY",
+    "DOO": "2021-05-07",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [],
+    "merchant_location": null
+  },
+  {
+    "id": 54,
+    "fullname": "OKUNDAYE MONICA OYENIKE",
+    "merchant_name": "NIKE ART GALLARY",
+    "DOO": "2021-05-07",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [],
+    "merchant_location": null
+  },
+  {
+    "id": 55,
+    "fullname": "RABIRU KABIRU ISYAHU",
+    "merchant_name": "E-SETTLEMENT LIMITED",
+    "DOO": "2021-06-18",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2063LADBNFD3714",
+      "2044AB000000968",
+      "2044OY000003376",
+      "2044OG000002848",
+      "2044OS000001168"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 56,
+    "fullname": "AKINSETE MARYAM OLOLADE",
+    "merchant_name": "E-SETTLEMENT LIMITED",
+    "DOO": "2021-06-18",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2063LADBNFD3714",
+      "2044AB000000968",
+      "2044OY000003376",
+      "2044OG000002848",
+      "2044OS000001168"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 57,
+    "fullname": "AKINYEMIJU OLUBUNMI AKINBANJO",
+    "merchant_name": "E-SETTLEMENT LIMITED",
+    "DOO": "2021-06-18",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2063LADBNFD3714",
+      "2044AB000000968",
+      "2044OY000003376",
+      "2044OG000002848",
+      "2044OS000001168"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 58,
+    "fullname": "DOZIE KELECHI IKECHUKWU",
+    "merchant_name": "E-SETTLEMENT LIMITED",
+    "DOO": "2021-06-18",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2063LADBNFD3714",
+      "2044AB000000968",
+      "2044OY000003376",
+      "2044OG000002848",
+      "2044OS000001168"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 59,
+    "fullname": "AWOJOODU OLAOLUWA ORIYOMI",
+    "merchant_name": "E-SETTLEMENT LIMITED",
+    "DOO": "2021-06-18",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2063LADBNFD3714",
+      "2044AB000000968",
+      "2044OY000003376",
+      "2044OG000002848",
+      "2044OS000001168"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 60,
+    "fullname": "ADEBUTU KESINGTON ADEBUKUNOLA",
+    "merchant_name": "A A ENTERTAINMENT & TOURISM LIMITED (PARK INN BY RADISSON)",
+    "DOO": "2021-07-06",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011OG051824807",
+      "ZIB020010006779",
+      "2214LA00000B37K",
+      "2214LA00000B37L"
+    ],
+    "merchant_location": "OGUN STATE"
+  },
+  {
+    "id": 61,
+    "fullname": "ADEBUTU ADEBISI ABIDEMI",
+    "merchant_name": "A A ENTERTAINMENT & TOURISM LIMITED (PARK INN BY RADISSON)",
+    "DOO": "2021-07-06",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011OG051824807",
+      "ZIB020010006779",
+      "2214LA00000B37K",
+      "2214LA00000B37L"
+    ],
+    "merchant_location": "OGUN STATE"
+  },
+  {
+    "id": 62,
+    "fullname": "ADEBUTU OLUSEGUN OLADIRAN",
+    "merchant_name": "A A ENTERTAINMENT & TOURISM LIMITED (PARK INN BY RADISSON)",
+    "DOO": "2021-07-06",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011OG051824807",
+      "ZIB020010006779",
+      "2214LA00000B37K",
+      "2214LA00000B37L"
+    ],
+    "merchant_location": "OGUN STATE"
+  },
+  {
+    "id": 63,
+    "fullname": "ADEBUTU OLANPEKUN OREKOYA",
+    "merchant_name": "A A ENTERTAINMENT & TOURISM LIMITED (PARK INN BY RADISSON)",
+    "DOO": "2021-07-06",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011OG051824807",
+      "ZIB020010006779",
+      "2214LA00000B37K",
+      "2214LA00000B37L"
+    ],
+    "merchant_location": "OGUN STATE"
+  },
+  {
+    "id": 64,
+    "fullname": "ADEBUTU AJIBOLA BANKOLE",
+    "merchant_name": "A A ENTERTAINMENT & TOURISM LIMITED (PARK INN BY RADISSON)",
+    "DOO": "2021-07-06",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011OG051824807",
+      "ZIB020010006779",
+      "2214LA00000B37K",
+      "2214LA00000B37L"
+    ],
+    "merchant_location": "OGUN STATE"
+  },
+  {
+    "id": 65,
+    "fullname": "ADEBUTU ADETOKUNBO AYODELE",
+    "merchant_name": "A A ENTERTAINMENT & TOURISM LIMITED (PARK INN BY RADISSON)",
+    "DOO": "2021-07-06",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011OG051824807",
+      "ZIB020010006779",
+      "2214LA00000B37K",
+      "2214LA00000B37L"
+    ],
+    "merchant_location": "OGUN STATE"
+  },
+  {
+    "id": 66,
+    "fullname": "IGBINEDION LUCKY NOSAKHARE",
+    "merchant_name": "OTI BOUTIQUE",
+    "DOO": "20/9/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1ED000000349",
+      "2101LA00000DP57"
+    ],
+    "merchant_location": "EDO STATE"
+  },
+  {
+    "id": 67,
+    "fullname": "IGBINEDION EKIMWONNA",
+    "merchant_name": "OTI BOUTIQUE",
+    "DOO": "20/9/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1ED000000349",
+      "2101LA00000DP57"
+    ],
+    "merchant_location": "EDO STATE"
+  },
+  {
+    "id": 68,
+    "fullname": "ENAHOLO NOSAZENA",
+    "merchant_name": "OTI BOUTIQUE",
+    "DOO": "20/9/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1ED000000349",
+      "2101LA00000DP57"
+    ],
+    "merchant_location": "EDO STATE"
+  },
+  {
+    "id": 69,
+    "fullname": "ONI EHI EKI",
+    "merchant_name": "OTI BOUTIQUE",
+    "DOO": "20/9/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1ED000000349",
+      "2101LA00000DP57"
+    ],
+    "merchant_location": "EDO STATE"
+  },
+  {
+    "id": 70,
+    "fullname": "NWANGWU AIZEYOSAOBO",
+    "merchant_name": "OTI BOUTIQUE",
+    "DOO": "20/9/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1ED000000349",
+      "2101LA00000DP57"
+    ],
+    "merchant_location": "EDO STATE"
+  },
+  {
+    "id": 71,
+    "fullname": "IGBINEDION OSASUMWEN",
+    "merchant_name": "OTI BOUTIQUE",
+    "DOO": "20/9/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1ED000000349",
+      "2101LA00000DP57"
+    ],
+    "merchant_location": "EDO STATE"
+  },
+  {
+    "id": 72,
+    "fullname": "OGUNWUSI Adeyeye Enitan",
+    "merchant_name": "OJAJA PAN AFRICA LIMITED",
+    "DOO": "16/10/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2033OSUP0001324",
+      "2UP1OS000000278",
+      "2UP1LA000005843"
+    ],
+    "merchant_location": "OSUN STATE"
+  },
+  {
+    "id": 73,
+    "fullname": "OGUNWUSI Naomi silekunola",
+    "merchant_name": "OJAJA PAN AFRICA LIMITED",
+    "DOO": "16/10/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2033OSUP0001324",
+      "2UP1OS000000278",
+      "2UP1LA000005843"
+    ],
+    "merchant_location": "OSUN STATE"
+  },
+  {
+    "id": 74,
+    "fullname": "OGUNWUSI Anuoluwapo Adeola",
+    "merchant_name": "OJAJA PAN AFRICA LIMITED",
+    "DOO": "16/10/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2033OSUP0001324",
+      "2UP1OS000000278",
+      "2UP1LA000005843"
+    ],
+    "merchant_location": "OSUN STATE"
+  },
+  {
+    "id": 75,
+    "fullname": "Salami Idowu Ismail",
+    "merchant_name": "OJAJA PAN AFRICA LIMITED",
+    "DOO": "16/10/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2033OSUP0001324",
+      "2UP1OS000000278",
+      "2UP1LA000005843"
+    ],
+    "merchant_location": "OSUN STATE"
+  },
+  {
+    "id": 76,
+    "fullname": "Enelamah Okechukwu",
+    "merchant_name": "OLIVE RESTAURANT LIMITED",
+    "DOO": "15/11/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1LA000005831",
+      "2UP1LA000005832"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 77,
+    "fullname": "Bob-iwe Ken Bryne Nwawuto",
+    "merchant_name": "OLIVE RESTAURANT LIMITED",
+    "DOO": "15/11/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1LA000005831",
+      "2UP1LA000005832"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 78,
+    "fullname": "FREDLIZ ESTATE LIMITED",
+    "merchant_name": "OLIVE RESTAURANT LIMITED",
+    "DOO": "15/11/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1LA000005831",
+      "2UP1LA000005832"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 79,
+    "fullname": "Enelamah Okechukwu",
+    "merchant_name": "LEKKI RESTAURANTS LIMITED",
+    "DOO": "15/11/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1LA000005835",
+      "2UP1LA000005836"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 80,
+    "fullname": "Bob-iwe Ken Bryne Nwawuto",
+    "merchant_name": "LEKKI RESTAURANTS LIMITED",
+    "DOO": "15/11/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1LA000005835",
+      "2UP1LA000005836"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 81,
+    "fullname": "onwuanibo paul ikechukwu",
+    "merchant_name": "LEKKI RESTAURANTS LIMITED",
+    "DOO": "15/11/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1LA000005835",
+      "2UP1LA000005836"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 82,
+    "fullname": "oluwafunmilola Enelamah",
+    "merchant_name": "LEKKI RESTAURANTS LIMITED",
+    "DOO": "15/11/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1LA000005835",
+      "2UP1LA000005836"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 83,
+    "fullname": "Franklin Okeke",
+    "merchant_name": "LEKKI RESTAURANTS LIMITED",
+    "DOO": "15/11/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1LA000005835",
+      "2UP1LA000005836"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 84,
+    "fullname": "Afolabi Elebiju",
+    "merchant_name": "LEKKI RESTAURANTS LIMITED",
+    "DOO": "15/11/2023",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1LA000005835",
+      "2UP1LA000005836"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 85,
+    "fullname": "Tinubu Adewale Jubril",
+    "merchant_name": "SEATTLE PIER HOUSE LIMITED",
+    "DOO": "25/03/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214LA558460018",
+      "2UP1LA000005936",
+      "2UP1LA000005937"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 86,
+    "fullname": "Tinubu omobola",
+    "merchant_name": "SEATTLE PIER HOUSE LIMITED",
+    "DOO": "25/03/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214LA558460018",
+      "2UP1LA000005936",
+      "2UP1LA000005937"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 87,
+    "fullname": "OMOOBA DEBOLA",
+    "merchant_name": "VAUX PROPERTIES",
+    "DOO": "24/09/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2101LA00000CX13",
+      "2UP1LA000006094"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 88,
+    "fullname": "OMOOBA JOY IFUNMI",
+    "merchant_name": "VAUX PROPERTIES",
+    "DOO": "24/09/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2101LA00000CX13",
+      "2UP1LA000006094"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 89,
+    "fullname": "OGUNWUSI Adeyeye Enitan",
+    "merchant_name": "PAYSURE",
+    "DOO": "30/09/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1FC000000965",
+      "SB16047446LA000",
+      "2057FC999985792",
+      "2ISW12345FC6602",
+      "2UP1FC000000992",
+      "2033ABU00003965"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 90,
+    "fullname": "Bamisaye Babajide Celestine",
+    "merchant_name": "PAYSURE",
+    "DOO": "30/09/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1FC000000965",
+      "SB16047446LA000",
+      "2057FC999985792",
+      "2ISW12345FC6602",
+      "2UP1FC000000992",
+      "2033ABU00003965"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 91,
+    "fullname": "Oladipupo Sunday Iyapo",
+    "merchant_name": "PAYSURE",
+    "DOO": "30/09/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1FC000000965",
+      "SB16047446LA000",
+      "2057FC999985792",
+      "2ISW12345FC6602",
+      "2UP1FC000000992",
+      "2033ABU00003965"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 92,
+    "fullname": "Lawani Akinyemi Adekunle",
+    "merchant_name": "PAYSURE",
+    "DOO": "30/09/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1FC000000965",
+      "SB16047446LA000",
+      "2057FC999985792",
+      "2ISW12345FC6602",
+      "2UP1FC000000992",
+      "2033ABU00003965"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 93,
+    "fullname": "Banjo Oluwaseun",
+    "merchant_name": "PAYSURE",
+    "DOO": "30/09/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2UP1FC000000965",
+      "SB16047446LA000",
+      "2057FC999985792",
+      "2ISW12345FC6602",
+      "2UP1FC000000992",
+      "2033ABU00003965"
+    ],
+    "merchant_location": "ABUJA"
+  },
+  {
+    "id": 94,
+    "fullname": "aliyu Ibrahim",
+    "merchant_name": "HOTELINN",
+    "DOO": "29/10/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA051498206",
+      "2101LA00000DE44"
+    ],
+    "merchant_location": "LAGOS"
+  },
+  {
+    "id": 95,
+    "fullname": "aliyu  Aisha Fiddausi",
+    "merchant_name": "HOTELINN",
+    "DOO": "29/10/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA051498206",
+      "2101LA00000DE44"
+    ],
+    "merchant_location": "LAGOS"
+  },
+  {
+    "id": 96,
+    "fullname": "aliyu muktar ibrahim",
+    "merchant_name": "HOTELINN",
+    "DOO": "29/10/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA051498206",
+      "2101LA00000DE44"
+    ],
+    "merchant_location": "LAGOS"
+  },
+  {
+    "id": 97,
+    "fullname": "aliyu bamalli mohammed umar",
+    "merchant_name": "HOTELINN",
+    "DOO": "29/10/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA051498206",
+      "2101LA00000DE44"
+    ],
+    "merchant_location": "LAGOS"
+  },
+  {
+    "id": 98,
+    "fullname": "aliyu faruk ibrahim",
+    "merchant_name": "HOTELINN",
+    "DOO": "29/10/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA051498206",
+      "2101LA00000DE44"
+    ],
+    "merchant_location": "LAGOS"
+  },
+  {
+    "id": 99,
+    "fullname": "EWA DAVID OSANG",
+    "merchant_name": "SEE BY JEFF LIMITED",
+    "DOO": "29/10/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2103LA010002341"
+    ],
+    "merchant_location": null
+  },
+  {
+    "id": 100,
+    "fullname": "EWA BARTHOLOMEW OBI",
+    "merchant_name": "SEE BY JEFF LIMITED",
+    "DOO": "29/10/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2103LA010002341"
+    ],
+    "merchant_location": null
+  },
+  {
+    "id": 101,
+    "fullname": "AJISEBUTU ABIMBOLA ODEFUNKE",
+    "merchant_name": "APARTMENT ROYALE LIMITED",
+    "DOO": "29/10/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "SB14480320LA000",
+      "2058LA015773000",
+      "SB14480320AB000",
+      "2033LAGPOOO8052",
+      "2058LA021518000",
+      "20761430000CUH6"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 102,
+    "fullname": "AJISEBUTU TAOFIK OLAYINKA",
+    "merchant_name": "APARTMENT ROYALE LIMITED",
+    "DOO": "29/10/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "SB14480320LA000",
+      "2058LA015773000",
+      "SB14480320AB000",
+      "2033LAGPOOO8052",
+      "2058LA021518000",
+      "20761430000CUH6"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 103,
+    "fullname": "ODIETE MARK",
+    "merchant_name": "TRAX APPAREL GLOBAL LIMITED",
+    "DOO": "31/10/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2044LA000165729",
+      "2044LA131220339",
+      "2044LA310924115",
+      "2101LA200002803"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 104,
+    "fullname": "OLUWANIYI SEGUN DAMILOLA",
+    "merchant_name": "TRAX APPAREL GLOBAL LIMITED",
+    "DOO": "31/10/2024",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2044LA000165729",
+      "2044LA131220339",
+      "2044LA310924115",
+      "2101LA200002803"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 105,
+    "fullname": "DEMUREN HAROLD OLUSEGUN",
+    "merchant_name": "EAN AVIATION LIMITED",
+    "DOO": "2025-05-23",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2068LA000000264"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 106,
+    "fullname": "PRINCE (DR) SAMUEL ADEDOYIN",
+    "merchant_name": "BENI APARTMENT LIMITED",
+    "DOO": "18/07/2025",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2011LA023118255"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 107,
+    "fullname": "Frederick Osawuyi Igbinedion",
+    "merchant_name": "ITEX INTEGRATED SERVICES LIMITED",
+    "DOO": "2025-10-13",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2214LA622014013"
+    ],
+    "merchant_location": "LAGOS STATE"
+  },
+  {
+    "id": 108,
+    "fullname": "Tein Teinbo Seleyefubara Jack-Rich",
+    "merchant_name": "BELEMA FINANCIAL TECHNOLOGY LIMITED",
+    "DOO": "2025-12-05",
+    "transaction_monitoring_frequency": "DAILY",
+    "monitoring_category": "HIGH RISK MERCHANT",
+    "merchant_ids": [
+      "2057RI999985798"
+    ],
+    "merchant_location": "LAGOS STATE"
+  }
+]

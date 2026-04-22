@@ -1,6 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Upsanctionscreener.Data;
 using Upsanctionscreener.Models;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Upsanctionscreener.Classess.Utils
 {
@@ -115,5 +118,111 @@ namespace Upsanctionscreener.Classess.Utils
 
             return (new { user.Id, user.ProfileStatus }, null);
         }
+
+        // ── GET all audit logs ────────────────────────────────────────────────
+        public static async Task<IEnumerable<object>> GetAllAuditLogsAsync(AppDbContext db)
+        {
+            return await db.AuditLogs
+                .OrderByDescending(l => l.EventDate)
+                .Select(l => new
+                {
+                    l.Id,
+                    l.UserId,
+                    l.IpAddress,
+                    l.Event,
+                    l.EventDate,
+                    l.PageUrl
+                })
+                .ToListAsync();
+        }
+
+
+
+        // ── GET main settings ─────────────────────────────────────────────────────
+        public static async Task<UpSanctionSetting?> GetMainSettingsAsync(AppDbContext db)
+        {
+            return await db.UpSanctionSettings
+                .FirstOrDefaultAsync(s => s.SettingId == "mainsettings");
+        }
+
+
+
+
+
+
+
+
+
+
+        ///////// READ UBOs
+
+        public static List<UboEntry> FetchAllUBOs()
+        {
+            try
+            {
+                var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "UBOs.json");
+
+                if (!System.IO.File.Exists(filePath))
+                    return new List<UboEntry>();
+
+                var json = System.IO.File.ReadAllText(filePath);
+
+                var serializerOptions = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                };
+
+                List<UboEntry> entries =
+                    JsonSerializer.Deserialize<List<UboEntry>>(json, serializerOptions)
+                    ?? new List<UboEntry>();
+
+                return entries;
+            }
+            catch
+            {
+                return new List<UboEntry>();
+            }
+        }
+
+
+        public static List<PepEntry> FetchAllPeps()
+        {
+            try
+            {
+                var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "PEPs.json");
+
+                if (!System.IO.File.Exists(filePath))
+                    return new List<PepEntry>();
+
+                var json = System.IO.File.ReadAllText(filePath);
+
+                var serializerOptions = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                };
+
+                var entries =
+                    JsonSerializer.Deserialize<List<PepEntry>>(json, serializerOptions)
+                    ?? new List<PepEntry>();
+
+                return entries;
+            }
+            catch
+            {
+                return new List<PepEntry>();
+            }
+        }
+
+
+
+
+
+
+
+
+
+
     }
 }

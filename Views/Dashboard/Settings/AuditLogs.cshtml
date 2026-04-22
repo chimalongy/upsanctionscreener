@@ -1,5 +1,422 @@
 ﻿@{
-    ViewData["Title"] = "AuditLogs";
+    ViewData["Title"] = "Audit Logs";
     ViewData["ActivePage"] = "AuditLogs";
     Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<style>
+    @@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    .fade-up { opacity: 0; animation: fadeUp 0.45s ease forwards; }
+    .fade-up-1 { animation-delay: 0.05s; }
+    .fade-up-2 { animation-delay: 0.15s; }
+    .fade-up-3 { animation-delay: 0.25s; }
+
+    .log-row { transition: background 0.15s ease; }
+    .log-row:hover { background: var(--color-surface, #f8fafc); }
+
+    @@keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.7s linear infinite; }
+
+    .page-btn {
+        min-width: 32px; height: 32px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 8px; font-size: 0.75rem; font-weight: 500;
+        border: 1px solid var(--color-border);
+        color: var(--color-text-secondary);
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .page-btn:hover:not(:disabled) {
+        background: var(--color-surface);
+        color: var(--color-text-primary);
+    }
+    .page-btn.active {
+        background: var(--color-brand-500, #3b82f6);
+        color: #fff;
+        border-color: var(--color-brand-500, #3b82f6);
+    }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+</style>
+
+@* ── Page header ── *@
+<div class="flex items-center justify-between mb-6 fade-up fade-up-1">
+    <div>
+        <h1 class="text-text-primary text-2xl font-semibold font-display">Audit Logs</h1>
+        <p class="text-text-muted text-sm mt-0.5">A full record of system events and user activity.</p>
+    </div>
+    <button onclick="exportCsv()"
+            class="flex items-center gap-2 px-4 py-2.5 border border-border hover:border-brand-300
+                   text-text-secondary hover:text-brand-600 text-sm font-medium rounded-xl
+                   transition-colors bg-surface-card">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export CSV
+    </button>
+</div>
+
+@* ── Filters row ── *@
+<div class="bg-surface-card border border-border rounded-2xl px-5 py-4 mb-4 fade-up fade-up-2">
+    <div class="flex flex-wrap gap-3 items-end">
+
+        @* Search *@
+        <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs font-medium text-text-muted mb-1.5">Search</label>
+            <div class="relative">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none"
+                     fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input id="searchInput" type="text" placeholder="Search event, user, IP, URL…"
+                       oninput="applyFilters()"
+                       class="w-full pl-8 pr-4 py-2 bg-surface border border-border rounded-xl text-sm
+                              text-text-primary placeholder-text-muted focus:outline-none
+                              focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition-colors" />
+            </div>
+        </div>
+
+        @* Event filter *@
+        <div class="min-w-[160px]">
+            <label class="block text-xs font-medium text-text-muted mb-1.5">Event</label>
+            <select id="eventFilter" onchange="applyFilters()"
+                    class="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm
+                           text-text-primary focus:outline-none focus:border-brand-400
+                           focus:ring-2 focus:ring-brand-100 transition-colors">
+                <option value="">All Events</option>
+            </select>
+        </div>
+
+        @* Date from *@
+        <div class="min-w-[150px]">
+            <label class="block text-xs font-medium text-text-muted mb-1.5">Date From</label>
+            <input id="dateFrom" type="date" onchange="applyFilters()"
+                   class="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm
+                          text-text-primary focus:outline-none focus:border-brand-400
+                          focus:ring-2 focus:ring-brand-100 transition-colors" />
+        </div>
+
+        @* Date to *@
+        <div class="min-w-[150px]">
+            <label class="block text-xs font-medium text-text-muted mb-1.5">Date To</label>
+            <input id="dateTo" type="date" onchange="applyFilters()"
+                   class="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm
+                          text-text-primary focus:outline-none focus:border-brand-400
+                          focus:ring-2 focus:ring-brand-100 transition-colors" />
+        </div>
+
+        @* Clear *@
+        <div>
+            <button onclick="clearFilters()"
+                    class="px-4 py-2 text-sm text-text-secondary border border-border rounded-xl
+                           hover:bg-surface hover:text-text-primary transition-colors">
+                Clear
+            </button>
+        </div>
+
+    </div>
+</div>
+
+@* ── Table card ── *@
+<div class="bg-surface-card border border-border rounded-2xl shadow-sm overflow-hidden fade-up fade-up-3">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-border bg-surface">
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">#</th>
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">Event</th>
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden sm:table-cell">User ID</th>
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden md:table-cell">IP Address</th>
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden lg:table-cell">Page / URL</th>
+                    <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">Date &amp; Time</th>
+                </tr>
+            </thead>
+            <tbody id="logsTableBody">
+                <tr>
+                    <td colspan="6" class="text-center py-12 text-text-muted">
+                        <svg class="w-5 h-5 mx-auto mb-2 spinner text-brand-400"
+                             fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                        </svg>
+                        <span class="text-xs">Loading audit logs…</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    @* ── Footer: count + pagination ── *@
+    <div class="px-5 py-3 border-t border-border bg-surface flex flex-wrap items-center justify-between gap-3">
+        <span id="logCount" class="text-xs text-text-muted">—</span>
+        <div id="pagination" class="flex items-center gap-1"></div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ── State ────────────────────────────────────────────────────────────────
+    let allLogs      = [];
+    let filteredLogs = [];
+    const PAGE_SIZE  = 25;
+    let currentPage  = 1;
+
+    // ── Boot ─────────────────────────────────────────────────────────────────
+    async function loadLogs() {
+        try {
+            const res = await fetch('/Dashboard/Settings/AuditLogs/GetAll');
+            if (!res.ok) throw new Error();
+            allLogs = await res.json();
+            populateEventFilter(allLogs);
+            applyFilters();
+        } catch {
+            document.getElementById('logsTableBody').innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-12 text-text-muted text-xs">
+                        Failed to load audit logs. Please refresh the page.
+                    </td>
+                </tr>`;
+        }
+    }
+
+    // ── Populate event dropdown with unique event types ───────────────────
+    function populateEventFilter(logs) {
+        const events = [...new Set(logs.map(l => l.event).filter(Boolean))].sort();
+        const sel = document.getElementById('eventFilter');
+        events.forEach(ev => {
+            const opt = document.createElement('option');
+            opt.value = ev;
+            opt.textContent = ev;
+            sel.appendChild(opt);
+        });
+    }
+
+    // ── Filter + search ───────────────────────────────────────────────────
+    function applyFilters() {
+        const search    = document.getElementById('searchInput').value.trim().toLowerCase();
+        const eventVal  = document.getElementById('eventFilter').value.toLowerCase();
+        const dateFrom  = document.getElementById('dateFrom').value;   // 'YYYY-MM-DD' or ''
+        const dateTo    = document.getElementById('dateTo').value;
+
+        filteredLogs = allLogs.filter(l => {
+            // Search across event, userId, ipAddress, pageUrl
+            if (search) {
+                const hay = [
+                    l.event, l.userId, l.ipAddress, l.pageUrl
+                ].map(v => String(v ?? '').toLowerCase()).join(' ');
+                if (!hay.includes(search)) return false;
+            }
+
+            // Event dropdown
+            if (eventVal && (l.event ?? '').toLowerCase() !== eventVal) return false;
+
+            // Date range
+            if (dateFrom || dateTo) {
+                const logDate = new Date(l.eventDate);
+                if (dateFrom && logDate < new Date(dateFrom)) return false;
+                if (dateTo) {
+                    // include the full "to" day
+                    const end = new Date(dateTo);
+                    end.setHours(23, 59, 59, 999);
+                    if (logDate > end) return false;
+                }
+            }
+
+            return true;
+        });
+
+        currentPage = 1;
+        renderTable();
+    }
+
+    function clearFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('eventFilter').value = '';
+        document.getElementById('dateFrom').value = '';
+        document.getElementById('dateTo').value = '';
+        applyFilters();
+    }
+
+    // ── Render table for current page ─────────────────────────────────────
+    function renderTable() {
+        const tbody    = document.getElementById('logsTableBody');
+        const countEl  = document.getElementById('logCount');
+        const total    = filteredLogs.length;
+        const totalPgs = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        if (currentPage > totalPgs) currentPage = totalPgs;
+
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const page  = filteredLogs.slice(start, start + PAGE_SIZE);
+
+        countEl.textContent = total === allLogs.length
+            ? `${total} record${total !== 1 ? 's' : ''} total`
+            : `${total} of ${allLogs.length} record${allLogs.length !== 1 ? 's' : ''} (filtered)`;
+
+        if (page.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-12 text-text-muted text-xs">
+                        No audit logs match your filters.
+                    </td>
+                </tr>`;
+            renderPagination(0, 1);
+            return;
+        }
+
+        tbody.innerHTML = page.map((l, idx) => {
+            const rowNum   = start + idx + 1;
+            const dateStr  = l.eventDate
+                ? new Date(l.eventDate).toLocaleString('en-GB', {
+                      day: '2-digit', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit', second: '2-digit'
+                  })
+                : '—';
+
+            const eventBadge = getEventBadge(l.event);
+
+            return `
+            <tr class="log-row border-b border-border last:border-0">
+                <td class="px-5 py-3 text-text-muted text-xs font-mono">${rowNum}</td>
+                <td class="px-5 py-3">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border
+                                 ${eventBadge.classes}">
+                        ${escHtml(l.event || '—')}
+                    </span>
+                </td>
+                <td class="px-5 py-3 text-text-secondary text-xs hidden sm:table-cell">
+                    ${l.userId != null
+                        ? `<span class="font-mono bg-surface border border-border px-1.5 py-0.5 rounded text-text-muted">#${l.userId}</span>`
+                        : '<span class="text-text-muted">System</span>'}
+                </td>
+                <td class="px-5 py-3 text-text-muted text-xs font-mono hidden md:table-cell">
+                    ${escHtml(l.ipAddress || '—')}
+                </td>
+                <td class="px-5 py-3 hidden lg:table-cell">
+                    <span class="text-xs text-text-muted truncate max-w-[260px] block" title="${escHtml(l.pageUrl || '')}">
+                        ${escHtml(l.pageUrl || '—')}
+                    </span>
+                </td>
+                <td class="px-5 py-3 text-text-secondary text-xs whitespace-nowrap">${dateStr}</td>
+            </tr>`;
+        }).join('');
+
+        renderPagination(total, totalPgs);
+    }
+
+    // ── Event badge colour by keyword ─────────────────────────────────────
+    function getEventBadge(event) {
+        const ev = (event || '').toLowerCase();
+        if (ev.includes('login') || ev.includes('sign in') || ev.includes('auth'))
+            return { classes: 'bg-green-50 text-green-700 border-green-200' };
+        if (ev.includes('logout') || ev.includes('sign out'))
+            return { classes: 'bg-slate-50 text-slate-600 border-slate-200' };
+        if (ev.includes('delete') || ev.includes('remove') || ev.includes('error') || ev.includes('fail'))
+            return { classes: 'bg-red-50 text-red-700 border-red-200' };
+        if (ev.includes('create') || ev.includes('add') || ev.includes('register'))
+            return { classes: 'bg-blue-50 text-blue-700 border-blue-200' };
+        if (ev.includes('update') || ev.includes('edit') || ev.includes('change') || ev.includes('password'))
+            return { classes: 'bg-amber-50 text-amber-700 border-amber-200' };
+        if (ev.includes('scan') || ev.includes('search') || ev.includes('check'))
+            return { classes: 'bg-purple-50 text-purple-700 border-purple-200' };
+        return { classes: 'bg-surface text-text-muted border-border' };
+    }
+
+    // ── Pagination ────────────────────────────────────────────────────────
+    function renderPagination(total, totalPages) {
+        const el = document.getElementById('pagination');
+        if (totalPages <= 1) { el.innerHTML = ''; return; }
+
+        const MAX_VISIBLE = 5;
+        let pages = [];
+
+        if (totalPages <= MAX_VISIBLE + 2) {
+            pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+        } else {
+            pages = [1];
+            let start = Math.max(2, currentPage - 1);
+            let end   = Math.min(totalPages - 1, currentPage + 1);
+
+            if (currentPage <= 3)       end   = Math.min(totalPages - 1, 4);
+            if (currentPage >= totalPages - 2) start = Math.max(2, totalPages - 3);
+
+            if (start > 2)            pages.push('…');
+            for (let i = start; i <= end; i++) pages.push(i);
+            if (end < totalPages - 1) pages.push('…');
+            pages.push(totalPages);
+        }
+
+        el.innerHTML = `
+            <button class="page-btn" onclick="goPage(${currentPage - 1})"
+                    ${currentPage === 1 ? 'disabled' : ''}>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </button>
+            ${pages.map(p => p === '…'
+                ? `<span class="page-btn cursor-default border-0 text-text-muted">…</span>`
+                : `<button class="page-btn ${p === currentPage ? 'active' : ''}"
+                           onclick="goPage(${p})">${p}</button>`
+            ).join('')}
+            <button class="page-btn" onclick="goPage(${currentPage + 1})"
+                    ${currentPage === totalPages ? 'disabled' : ''}>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </button>`;
+    }
+
+    function goPage(p) {
+        const totalPages = Math.ceil(filteredLogs.length / PAGE_SIZE);
+        if (p < 1 || p > totalPages) return;
+        currentPage = p;
+        renderTable();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ── CSV Export ────────────────────────────────────────────────────────
+    function exportCsv() {
+        if (filteredLogs.length === 0) return;
+        const headers = ['ID','Event','User ID','IP Address','Page URL','Event Date'];
+        const rows = filteredLogs.map(l => [
+            l.id,
+            csvEsc(l.event),
+            l.userId ?? '',
+            csvEsc(l.ipAddress),
+            csvEsc(l.pageUrl),
+            l.eventDate ? new Date(l.eventDate).toISOString() : ''
+        ]);
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `audit-logs-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function csvEsc(val) {
+        const s = String(val ?? '');
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+            ? `"${s.replace(/"/g, '""')}"`
+            : s;
+    }
+
+    // ── HTML escape ───────────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    loadLogs();
+</script>
 }

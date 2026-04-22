@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Upsanctionscreener.Classess
+namespace Upsanctionscreener.Classess.Utils
 {
     public static class Cryptor
     {
