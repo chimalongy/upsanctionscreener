@@ -680,72 +680,59 @@ namespace Upsanctionscreener.Controllers
             if (!validFields.Contains(req.SearchField?.ToLower()))
                 return BadRequest(new { success = false, message = "Invalid search field." });
 
-            Console.WriteLine(req.SearchField);
-            Console.WriteLine(req.SearchTerm);
-
+            // ── Sanction Search ──────────────────────────────────────────────────
             var filePath = Path.Combine(
-  GlobalVariables.root_folder,
-  "SanctionDatabase", "basesource",
-  "UPSanctionDB.xlsx"
-);
+                GlobalVariables.root_folder,
+                "SanctionDatabase", "basesource",
+                "UPSanctionDB.xlsx"
+            );
 
             List<SanctionEntry> sanctionList = SanctionExcelReader.LoadFromExcel(filePath);
-            List<BKTree.BKSearchResult> sanction_candiates = _sanction_tree.Search(req.SearchTerm);
+            List<BKTree.BKSearchResult> sanction_candidates = _sanction_tree.Search(req.SearchTerm);
 
+            List<SingleSearchSanctionMatchRow> completeSanctionList = new();
+            foreach (BKSearchResult candidate in sanction_candidates)
+            {
+                SanctionEntry item = sanctionList.FirstOrDefault(x => x.ID == candidate.EntryId);
+                if (item is null) continue;
+                completeSanctionList.Add(new SingleSearchSanctionMatchRow
+                {
+                    similarity = (candidate.Similarity * 100).ToString("F2") + "%",
+                    sanction_item = item
+                });
+            }
 
-            var complete_sanction_matches = (from result in sanction_candiates
-                                             join sanction in sanctionList
-                                             on result.EntryId equals sanction.ID
-                                             select new SanctionMatchRow
-                                             {
-                                                 EntryId = result.EntryId,
-                                                 MatchedName = result.MatchedName,
-                                                 Similarity = result.Similarity,
-                                                 EditDistance = result.EditDistance,
+            // ── PEP Search ───────────────────────────────────────────────────────
+            List<PepEntry> pepEntries = GlobalFunctions.FetchAllPeps();
+            var pepTree = new PEPBKTree.PEPSanctionBKTree();
+            pepTree.Load(pepEntries);
 
-                                                 ID = sanction.ID,
-                                                 SubjectType = sanction.SubjectType,
-                                                 Source = sanction.Source,
-                                                 ReferenceNumber = sanction.ReferenceNumber,
-                                                 DateDesignated = sanction.DateDesignated,
-                                                 SanctionImposed = sanction.SanctionImposed,
-                                                 Comments = sanction.Comments,
+            List<PEPSearchResult> pepResults = pepTree.Search(req.SearchTerm);
+            List<PepSearchSanctionMatchRow> completePepList = new();
+            foreach (PEPSearchResult candidate in pepResults)
+            {
+                PepEntry item = pepEntries.FirstOrDefault(x => x.Id == int.Parse(candidate.EntryId));
+                if (item is null) continue;
+                completePepList.Add(new PepSearchSanctionMatchRow
+                {
+                    similarity = (candidate.Similarity * 100).ToString("F2") + "%",
+                    pep_item = item
+                });
+            }
 
-                                                 Names = string.Join("; ", sanction.Names),
-                                                 Addresses = string.Join("; ", sanction.Addresses),
-                                                 PhoneNumbers = string.Join("; ", sanction.PhoneNumbers),
-                                                 EmailAddresses = string.Join("; ", sanction.EmailAddresses),
-                                                 Positions = string.Join("; ", sanction.Positions),
-                                                 IdList = string.Join("; ", sanction.IdList),
+            // ── Adverse Media ────────────────────────────────────────────────────
+            List<RssNewsItem> adverseMediaResults = await GoogleNewsRssService.SearchAsync(req.SearchTerm);
 
-                                                 CallSign = sanction.CallSign,
-                                                 VesselType = sanction.VesselType,
-                                                 VesselFlag = sanction.VesselFlag,
-                                                 VesselOwner = sanction.VesselOwner,
-                                                 GrossRegisteredTonnage = sanction.GrossRegisteredTonnage
-                                             }).ToList();
-
-
-
-
-
-
-
-            List < PepEntry > pepentries = GlobalFunctions.FetchAllPeps();
-            var peptree = new PEPBKTree.PEPSanctionBKTree();
-            peptree.Load(pepentries);
-
-            List<PEPSearchResult> pepresult = peptree.Search(req.SearchTerm);
-            List < RssNewsItem > adversemediaresults = await GoogleNewsRssService.SearchAsync(req.SearchTerm);
-
-            // TODO: replace mock with real BKTree / DB lookup
-            // e.g. var results = _sanction_tree.Search(req.SearchTerm, req.SearchField);
-
-            return Json(new { success = true, searchTerm = req.SearchTerm, searchField = req.SearchField });
+            return Json(new
+            {
+                success = true,
+                searchTerm = req.SearchTerm,
+                searchField = req.SearchField,
+                sanctions = completeSanctionList,
+                peps = completePepList,
+                adverseMedia = adverseMediaResults
+            });
         }
-
-
-
 
 
 
