@@ -237,6 +237,11 @@
                        rounded-xl transition-colors shadow-sm">
             Screen Now
         </button>
+        <div class="flex items-center gap-3 ml-3">
+            <label class="text-sm text-text-secondary">Match threshold</label>
+            <input id="thresholdSlider" type="range" min="50" max="100" value="90" class="w-40" />
+            <span id="thresholdLabel" class="text-sm text-text-primary">90%</span>
+        </div>
         <button onclick="openMultiScan()"
                 class="px-5 py-2.5 bg-surface border border-border hover:border-brand-300
                        text-text-secondary text-sm rounded-xl transition-colors flex items-center gap-2">
@@ -814,10 +819,13 @@
         document.getElementById('spinner').classList.remove('hidden');
 
         try {
+            const slider = document.getElementById('thresholdSlider');
+            const thresholdVal = slider ? (parseFloat(slider.value) / 100) : null;
+
             const response = await fetch('@Url.Action("SingleScreen", "Dashboard")', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ searchTerm: query, searchField: activeType })
+                body:    JSON.stringify({ searchTerm: query, searchField: activeType, threshold: thresholdVal })
             });
 
             const data = await response.json();
@@ -920,5 +928,14 @@
     document.getElementById('searchInput').addEventListener('keydown', e => {
         if (e.key === 'Enter') runSearch();
     });
+
+// threshold slider behaviour
+const slider = document.getElementById('thresholdSlider');
+const label = document.getElementById('thresholdLabel');
+if (slider) {
+    slider.addEventListener('input', () => {
+        if (label) label.textContent = slider.value + '%';
+    });
+}
 </script>
 }

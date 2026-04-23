@@ -688,10 +688,44 @@ namespace Upsanctionscreener.Controllers
             );
 
             List<SanctionEntry> sanctionList = SanctionExcelReader.LoadFromExcel(filePath);
-            List<BKTree.BKSearchResult> sanction_candidates = _sanction_tree.Search(req.SearchTerm);
+
+            // Use the appropriate BK-tree depending on requested search field
+            var sanctionMatches = new List<(string EntryId, string Matched, double Similarity, int EditDistance)>();
+
+            var field = (req.SearchField ?? "name").ToLowerInvariant();
+            if (field == "name")
+            {
+                var sanction_candidates = _sanction_tree.Search(req.SearchTerm, req.Threshold);
+                foreach (var candidate in sanction_candidates)
+                    sanctionMatches.Add((candidate.EntryId, candidate.MatchedName, candidate.Similarity, candidate.EditDistance));
+            }
+            else if (field == "email")
+            {
+                var emailTree = new SanctionEmailsBKTree();
+                emailTree.Load(sanctionList);
+                var results = emailTree.Search(req.SearchTerm, req.Threshold);
+                foreach (var r in results)
+                    sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
+            }
+            else if (field == "phone")
+            {
+                var phoneTree = new SanctionPhoneNumberBKTree();
+                phoneTree.Load(sanctionList);
+                var results = phoneTree.Search(req.SearchTerm, req.Threshold);
+                foreach (var r in results)
+                    sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
+            }
+            else if (field == "address")
+            {
+                var addrTree = new SanctionAddressesBKTree();
+                addrTree.Load(sanctionList);
+                var results = addrTree.Search(req.SearchTerm, req.Threshold);
+                foreach (var r in results)
+                    sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
+            }
 
             List<SingleSearchSanctionMatchRow> completeSanctionList = new();
-            foreach (BKSearchResult candidate in sanction_candidates)
+            foreach (var candidate in sanctionMatches)
             {
                 SanctionEntry item = sanctionList.FirstOrDefault(x => x.ID == candidate.EntryId);
                 if (item is null) continue;
@@ -707,7 +741,7 @@ namespace Upsanctionscreener.Controllers
             var pepTree = new PEPBKTree.PEPSanctionBKTree();
             pepTree.Load(pepEntries);
 
-            List<PEPSearchResult> pepResults = pepTree.Search(req.SearchTerm);
+            List<PEPSearchResult> pepResults = pepTree.Search(req.SearchTerm, req.Threshold);
             List<PepSearchSanctionMatchRow> completePepList = new();
             foreach (PEPSearchResult candidate in pepResults)
             {
