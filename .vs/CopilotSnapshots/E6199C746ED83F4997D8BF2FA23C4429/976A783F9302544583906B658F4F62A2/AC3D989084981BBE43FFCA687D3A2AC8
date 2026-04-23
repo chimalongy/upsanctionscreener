@@ -1,0 +1,929 @@
+﻿@{
+    ViewData["Title"] = "Sanction Search";
+    ViewData["ActivePage"] = "Search";
+    ViewData["HideHeader"] = true;
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<style>
+    @@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up   { opacity: 0; animation: fadeUp 0.5s ease forwards; }
+    .fade-up-1 { animation-delay: 0.05s; }
+    .fade-up-2 { animation-delay: 0.15s; }
+    .fade-up-3 { animation-delay: 0.25s; }
+
+    @@keyframes spin { to { transform: rotate(360deg); } }
+    #spinner .spin-ring {
+        width: 18px; height: 18px;
+        border: 2px solid #e5e7eb;
+        border-top-color: #534AB7;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        display: inline-block;
+    }
+
+    @@keyframes modalIn {
+        from { opacity: 0; transform: translateY(16px) scale(0.98); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── Tab styles ── */
+    .result-tab {
+        position: relative;
+        padding: 0.625rem 1rem;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #6b7280;
+        border-bottom: 2px solid transparent;
+        border-top: none; border-left: none; border-right: none;
+        transition: color 0.15s, border-color 0.15s;
+        white-space: nowrap;
+        cursor: pointer;
+        background: none;
+    }
+    .result-tab:hover { color: #534AB7; }
+    .result-tab.active { color: #534AB7; border-bottom-color: #534AB7; }
+    .result-tab .tab-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 1.25rem; height: 1.25rem; padding: 0 0.35rem;
+        font-size: 0.65rem; font-weight: 600; border-radius: 999px;
+        margin-left: 0.4rem;
+        background: #e5e7eb; color: #374151;
+        transition: background 0.15s, color 0.15s;
+    }
+    .result-tab.active .tab-badge { background: #ede9fe; color: #534AB7; }
+    .result-tab.tab-hit .tab-badge { background: #fee2e2; color: #dc2626; }
+    .result-tab.active.tab-hit .tab-badge { background: #fecaca; color: #b91c1c; }
+
+    /* ── Similarity pill ── */
+    .sim-pill {
+        font-size: 0.65rem; font-weight: 600;
+        padding: 0.15rem 0.5rem; border-radius: 999px; flex-shrink: 0;
+    }
+    .sim-high   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .sim-medium { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+    .sim-low    { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+    /* ── Modal overlay ── */
+    .modal-overlay {
+        display: none;
+        position: fixed; inset: 0; z-index: 9999;
+        background: rgba(0,0,0,0.45);
+        align-items: center; justify-content: center;
+        padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+        background: #fff;
+        border-radius: 1rem;
+        width: 100%; max-width: 560px;
+        max-height: 88vh;
+        display: flex; flex-direction: column;
+        animation: modalIn 0.22s ease forwards;
+        overflow: hidden;
+    }
+
+    /* Dark mode modal */
+    @@media (prefers-color-scheme: dark) {
+        .modal-box { background: #1e1e2e; color: #e5e7eb; }
+        .modal-header { border-bottom-color: #2d2d3f !important; }
+        .modal-body { scrollbar-color: #3f3f5a transparent; }
+        .detail-row { border-bottom-color: #2d2d3f !important; }
+        .detail-label { color: #9ca3af !important; }
+        .detail-value { color: #e5e7eb !important; }
+        .detail-tag { background: #2d2d3f !important; color: #c4b5fd !important; border-color: #4c4c6e !important; }
+        .modal-source-badge { background: #2d2d3f !important; color: #c4b5fd !important; }
+        .modal-type-badge { background: #2d2d3f !important; color: #9ca3af !important; }
+    }
+
+    .modal-header {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 1rem; padding: 1.25rem 1.5rem 1rem;
+        border-bottom: 1px solid #f3f4f6;
+        flex-shrink: 0;
+    }
+    .modal-body {
+        overflow-y: auto; padding: 1rem 1.5rem 1.5rem;
+        flex: 1;
+    }
+    .modal-close-btn {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: #f3f4f6; border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; margin-top: 2px;
+        transition: background 0.15s;
+    }
+    .modal-close-btn:hover { background: #e5e7eb; }
+
+    .detail-row {
+        display: flex; align-items: baseline;
+        gap: 0.75rem; padding: 0.6rem 0;
+        border-bottom: 1px solid #f9fafb;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label {
+        font-size: 0.72rem; font-weight: 500;
+        color: #9ca3af; min-width: 130px; flex-shrink: 0;
+        text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .detail-value {
+        font-size: 0.8125rem; color: #111827; word-break: break-word;
+    }
+    .detail-tags {
+        display: flex; flex-wrap: wrap; gap: 0.4rem;
+    }
+    .detail-tag {
+        font-size: 0.72rem; padding: 0.2rem 0.6rem;
+        background: #f5f3ff; color: #4c1d95;
+        border: 1px solid #ede9fe; border-radius: 999px;
+    }
+    .modal-source-badge {
+        font-size: 0.7rem; font-weight: 600;
+        background: #f5f3ff; color: #534AB7;
+        padding: 0.2rem 0.65rem; border-radius: 999px;
+    }
+    .modal-type-badge {
+        font-size: 0.7rem; font-weight: 500;
+        background: #f3f4f6; color: #6b7280;
+        padding: 0.2rem 0.65rem; border-radius: 999px;
+    }
+    .pep-category-badge {
+        font-size: 0.7rem; font-weight: 600;
+        background: #fffbeb; color: #92400e;
+        border: 1px solid #fde68a;
+        padding: 0.2rem 0.65rem; border-radius: 999px;
+    }
+    .section-divider {
+        font-size: 0.68rem; font-weight: 600; color: #9ca3af;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        margin: 1rem 0 0.4rem; padding-bottom: 0.35rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+</style>
+
+@* ── Hero heading ── *@
+<div class="text-center mb-10 pt-6 fade-up fade-up-1">
+    <div class="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-brand-100">
+        <img src="~/images/logo.png" alt="Unified Payments Logo" class="w-10 h-10 object-contain" />
+    </div>
+    <h1 class="font-display text-text-primary text-3xl font-semibold mb-2">
+        Sanction Screening
+    </h1>
+    <p class="text-text-secondary text-sm max-w-md mx-auto">
+        Search individuals or entities against global sanctions lists in real time.
+    </p>
+</div>
+
+@* ── Search card ── *@
+<div class="bg-surface-card border border-border rounded-2xl px-6 py-6 shadow-sm mb-6 fade-up fade-up-2">
+
+    <div class="relative mb-3">
+        <svg id="inputIcon"
+             class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none"
+             fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+        </svg>
+        <input id="searchInput"
+               type="text"
+               placeholder="Enter full name..."
+               class="w-full pl-10 pr-10 py-3 bg-surface border border-border rounded-xl
+                      text-text-primary text-sm placeholder-text-muted
+                      focus:outline-none focus:border-brand-400 focus:ring-2
+                      focus:ring-brand-100 transition-colors" />
+        <button onclick="clearSearch()"
+                title="Clear"
+                class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center
+                       text-text-muted hover:text-text-primary transition-colors rounded-full
+                       hover:bg-surface focus:outline-none">
+            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" class="w-3.5 h-3.5">
+                <path d="M18 6 6 18M6 6l12 12"/>
+            </svg>
+        </button>
+    </div>
+
+    <div class="flex items-center gap-1.5 mb-4 bg-surface rounded-xl p-1 border border-border">
+        <button onclick="setSearchType(this, 'name')"
+                class="search-type-btn flex-1 py-2 text-xs font-medium rounded-lg transition-colors bg-brand-500 text-white">
+            Name
+        </button>
+        <button onclick="setSearchType(this, 'address')"
+                class="search-type-btn flex-1 py-2 text-xs font-medium rounded-lg transition-colors text-text-secondary hover:text-brand-700">
+            Address
+        </button>
+        <button onclick="setSearchType(this, 'email')"
+                class="search-type-btn flex-1 py-2 text-xs font-medium rounded-lg transition-colors text-text-secondary hover:text-brand-700">
+            Email
+        </button>
+        <button onclick="setSearchType(this, 'phone')"
+                class="search-type-btn flex-1 py-2 text-xs font-medium rounded-lg transition-colors text-text-secondary hover:text-brand-700">
+            Phone
+        </button>
+    </div>
+
+    <div id="errorBar"
+         class="hidden mb-3 px-4 py-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">
+    </div>
+
+    <div class="flex gap-3">
+        <button id="screenBtn"
+                onclick="runSearch()"
+                class="flex-1 py-2.5 bg-accent-500 hover:bg-accent-600 disabled:opacity-50
+                       disabled:cursor-not-allowed text-white font-medium text-sm
+                       rounded-xl transition-colors shadow-sm">
+            Screen Now
+        </button>
+        <div class="flex items-center gap-3 ml-3">
+            <label class="text-sm text-text-secondary">Match threshold</label>
+            <input id="thresholdSlider" type="range" min="50" max="100" value="90" class="w-40" />
+            <span id="thresholdLabel" class="text-sm text-text-primary">90%</span>
+        </div>
+        <button onclick="openMultiScan()"
+                class="px-5 py-2.5 bg-surface border border-border hover:border-brand-300
+                       text-text-secondary text-sm rounded-xl transition-colors flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="1"/>
+                <path d="M9 12h6M9 16h4"/>
+            </svg>
+            Multi-scan
+        </button>
+    </div>
+</div>
+
+@* ── Spinner ── *@
+<div id="spinner" class="hidden text-center py-12">
+    <div class="flex items-center justify-center gap-2 text-text-muted text-sm">
+        <span class="spin-ring"></span>
+        Screening against sanctions lists…
+    </div>
+</div>
+
+@* ── Results area ── *@
+<div id="resultsArea" class="hidden fade-up fade-up-3">
+    <div class="bg-surface-card border border-border rounded-2xl shadow-sm mb-4 overflow-hidden">
+
+        @* Tab bar *@
+        <div class="flex border-b border-border overflow-x-auto">
+            <button id="tab-sanctions"  class="result-tab active"  onclick="switchTab('sanctions')">
+                Sanction Search
+                <span id="badge-sanctions" class="tab-badge">0</span>
+            </button>
+            <button id="tab-adverseMedia" class="result-tab" onclick="switchTab('adverseMedia')">
+                Adverse Media
+                <span id="badge-adverseMedia" class="tab-badge">0</span>
+            </button>
+            <button id="tab-peps" class="result-tab" onclick="switchTab('peps')">
+                PEP Search
+                <span id="badge-peps" class="tab-badge">0</span>
+            </button>
+        </div>
+
+        @* Sanctions panel *@
+        <div id="panel-sanctions" class="p-4">
+            <div id="list-sanctions" class="flex flex-col gap-3"></div>
+            <div id="empty-sanctions" class="hidden py-10 text-center text-text-muted text-sm">
+                No sanction matches found for this search.
+            </div>
+        </div>
+
+        @* Adverse Media panel *@
+        <div id="panel-adverseMedia" class="p-4 hidden">
+            <div id="list-adverseMedia" class="flex flex-col gap-3"></div>
+            <div id="empty-adverseMedia" class="hidden py-10 text-center text-text-muted text-sm">
+                No adverse media results found for this search.
+            </div>
+        </div>
+
+        @* PEP panel *@
+        <div id="panel-peps" class="p-4 hidden">
+            <div id="list-peps" class="flex flex-col gap-3"></div>
+            <div id="empty-peps" class="hidden py-10 text-center text-text-muted text-sm">
+                No PEP matches found for this search.
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Empty state ── *@
+<div id="emptyState" class="text-center py-16 text-text-muted fade-up fade-up-3">
+    <svg class="w-12 h-12 mx-auto mb-4 text-border" fill="none" stroke="currentColor"
+         stroke-width="1.5" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.35-4.35" />
+    </svg>
+    <p class="text-sm">Select a search type and enter a value to begin screening.</p>
+</div>
+
+
+@* ══════════════════════════════════════════════════════════════════
+   SANCTION DETAIL MODAL
+   ══════════════════════════════════════════════════════════════════ *@
+<div id="sanctionModal" class="modal-overlay" onclick="handleOverlayClick(event, 'sanctionModal')">
+    <div class="modal-box" onclick="event.stopPropagation()">
+
+        <div class="modal-header">
+            <div style="min-width:0;">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <span id="sm-source" class="modal-source-badge"></span>
+                    <span id="sm-type"   class="modal-type-badge"></span>
+                </div>
+                <p id="sm-name" class="text-text-primary font-semibold text-base leading-snug"></p>
+                <p id="sm-refnum" class="text-text-muted text-xs mt-0.5"></p>
+            </div>
+            <button class="modal-close-btn" onclick="closeModal('sanctionModal')" title="Close">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="modal-body">
+
+            @* Core fields *@
+            <div id="sm-core"></div>
+
+            @* Names *@
+            <div id="sm-names-section" class="hidden">
+                <p class="section-divider">All names</p>
+                <div id="sm-names" class="detail-tags pt-1 pb-2"></div>
+            </div>
+
+            @* Addresses *@
+            <div id="sm-addresses-section" class="hidden">
+                <p class="section-divider">Addresses</p>
+                <div id="sm-addresses" class="flex flex-col gap-1 pb-2"></div>
+            </div>
+
+            @* Identifiers *@
+            <div id="sm-ids-section" class="hidden">
+                <p class="section-divider">Identifiers</p>
+                <div id="sm-ids" class="flex flex-col gap-1 pb-2"></div>
+            </div>
+
+            @* Contact *@
+            <div id="sm-contact-section" class="hidden">
+                <p class="section-divider">Contact</p>
+                <div id="sm-contact"></div>
+            </div>
+
+            @* Positions *@
+            <div id="sm-positions-section" class="hidden">
+                <p class="section-divider">Positions / roles</p>
+                <div id="sm-positions" class="detail-tags pt-1 pb-2"></div>
+            </div>
+
+            @* Vessel info *@
+            <div id="sm-vessel-section" class="hidden">
+                <p class="section-divider">Vessel information</p>
+                <div id="sm-vessel"></div>
+            </div>
+
+            @* Comments *@
+            <div id="sm-comments-section" class="hidden">
+                <p class="section-divider">Comments</p>
+                <p id="sm-comments" class="text-xs text-text-secondary leading-relaxed pb-2"></p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+@* ══════════════════════════════════════════════════════════════════
+   PEP DETAIL MODAL
+   ══════════════════════════════════════════════════════════════════ *@
+<div id="pepModal" class="modal-overlay" onclick="handleOverlayClick(event, 'pepModal')">
+    <div class="modal-box" onclick="event.stopPropagation()">
+
+        <div class="modal-header">
+            <div style="min-width:0;">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                    <span id="pm-category" class="pep-category-badge"></span>
+                    <span id="pm-freq"     class="modal-type-badge"></span>
+                </div>
+                <p id="pm-name"     class="text-text-primary font-semibold text-base leading-snug"></p>
+                <p id="pm-merchant" class="text-text-muted text-xs mt-0.5"></p>
+            </div>
+            <button class="modal-close-btn" onclick="closeModal('pepModal')" title="Close">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <div id="pm-core"></div>
+
+            <div id="pm-merchantids-section" class="hidden">
+                <p class="section-divider">Merchant IDs</p>
+                <div id="pm-merchantids" class="detail-tags pt-1 pb-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+<script>
+    // ── constants ──────────────────────────────────────────────────────────────
+
+    const iconPaths = {
+        name:    `<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
+        address: `<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>`,
+        email:   `<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>`,
+        phone:   `<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.84a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>`,
+    };
+    const placeholders = {
+        name: 'Enter full name...', address: 'Enter address...',
+        email: 'Enter email address...', phone: 'Enter phone number...'
+    };
+    const inputTypes = { name: 'text', address: 'text', email: 'email', phone: 'tel' };
+
+    let activeType = 'name';
+    let activeTab  = 'sanctions';
+
+    // ── utilities ──────────────────────────────────────────────────────────────
+
+    function esc(str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function setError(msg) {
+        const bar = document.getElementById('errorBar');
+        if (msg) { bar.textContent = msg; bar.classList.remove('hidden'); }
+        else      { bar.textContent = '';  bar.classList.add('hidden');    }
+    }
+
+    function simClass(simStr) {
+        const val = parseFloat(simStr);
+        if (val >= 80) return 'sim-high';
+        if (val >= 50) return 'sim-medium';
+        return 'sim-low';
+    }
+
+    function setBadge(tab, count) {
+        const badge = document.getElementById(`badge-${tab}`);
+        const tabEl = document.getElementById(`tab-${tab}`);
+        badge.textContent = count;
+        if (count > 0 && tab !== 'adverseMedia') tabEl.classList.add('tab-hit');
+        else tabEl.classList.remove('tab-hit');
+    }
+
+    // ── modal helpers ──────────────────────────────────────────────────────────
+
+    function openModal(id) {
+        const el = document.getElementById(id);
+        el.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    function handleOverlayClick(e, id) {
+        if (e.target === document.getElementById(id)) closeModal(id);
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeModal('sanctionModal');
+            closeModal('pepModal');
+        }
+    });
+
+    // ── detail-row builder ─────────────────────────────────────────────────────
+
+    function detailRow(label, value) {
+        if (!value && value !== 0) return '';
+        return `
+            <div class="detail-row">
+                <span class="detail-label">${esc(label)}</span>
+                <span class="detail-value">${esc(String(value))}</span>
+            </div>`;
+    }
+
+    function tagList(items) {
+        if (!items || !items.length) return '';
+        return items.map(t => `<span class="detail-tag">${esc(t)}</span>`).join('');
+    }
+
+    function listRows(items) {
+        if (!items || !items.length) return '';
+        return items.map(t =>
+            `<div class="detail-row"><span class="detail-value">${esc(t)}</span></div>`
+        ).join('');
+    }
+
+    function showSection(id, content, containerSuffix) {
+        const section = document.getElementById(`${id}-section`);
+        const inner   = document.getElementById(id);
+        if (content) {
+            inner.innerHTML = content;
+            section.classList.remove('hidden');
+        } else {
+            section.classList.add('hidden');
+        }
+    }
+
+    // ── open sanction modal ────────────────────────────────────────────────────
+
+    function openSanctionModal(row) {
+        const e = row.sanction_item;
+        if (!e) return;
+
+        // Header
+        document.getElementById('sm-source').textContent = e.source || 'Unknown source';
+        document.getElementById('sm-type').textContent   = e.subjectType || '';
+        document.getElementById('sm-name').textContent   = (e.names && e.names[0]) || e.primaryName || '—';
+        document.getElementById('sm-refnum').textContent = e.referenceNumber ? `Ref: ${e.referenceNumber}` : '';
+
+        // Core fields
+        document.getElementById('sm-core').innerHTML =
+            detailRow('ID',               e.id || e.ID) +
+            detailRow('Date designated',  e.dateDesignated) +
+            detailRow('Sanction imposed', e.sanctionImposed);
+
+        // Names
+        const names = e.names ?? [];
+        showSection('sm-names', names.length > 1 ? tagList(names) : null);
+
+        // Addresses
+        const addrs = e.addresses ?? [];
+        const addrHtml = addrs.map(a =>
+            `<div class="detail-row"><span class="detail-value">${esc(a)}</span></div>`
+        ).join('');
+        showSection('sm-addresses', addrs.length ? addrHtml : null);
+
+        // Identifiers
+        const ids = e.idList ?? e.IdList ?? [];
+        const idHtml = ids.map(i =>
+            `<div class="detail-row"><span class="detail-value">${esc(i)}</span></div>`
+        ).join('');
+        showSection('sm-ids', ids.length ? idHtml : null);
+
+        // Contact
+        const phones = e.phoneNumbers ?? [];
+        const emails = e.emailAddresses ?? [];
+        const contactHtml =
+            phones.map(p => detailRow('Phone', p)).join('') +
+            emails.map(em => detailRow('Email', em)).join('');
+        showSection('sm-contact', contactHtml || null);
+
+        // Positions
+        const positions = e.positions ?? [];
+        showSection('sm-positions', positions.length ? tagList(positions) : null);
+
+        // Vessel
+        const hasVessel = e.callSign || e.vesselType || e.vesselFlag || e.vesselOwner || e.grossRegisteredTonnage;
+        const vesselHtml = hasVessel
+            ? detailRow('Call sign',   e.callSign)
+            + detailRow('Vessel type', e.vesselType)
+            + detailRow('Flag',        e.vesselFlag)
+            + detailRow('Owner',       e.vesselOwner)
+            + detailRow('Gross tonnage', e.grossRegisteredTonnage)
+            : null;
+        showSection('sm-vessel', vesselHtml);
+
+        // Comments
+        const commentsSection = document.getElementById('sm-comments-section');
+        const commentsEl      = document.getElementById('sm-comments');
+        if (e.comments) {
+            commentsEl.textContent = e.comments;
+            commentsSection.classList.remove('hidden');
+        } else {
+            commentsSection.classList.add('hidden');
+        }
+
+        openModal('sanctionModal');
+    }
+
+    // ── open PEP modal ─────────────────────────────────────────────────────────
+
+    function openPepModal(row) {
+        const e = row.pep_item;
+        if (!e) return;
+
+        const fullName  = e.fullName  ?? e.fullname  ?? '—';
+        const merchant  = e.merchantName ?? e.merchant_name ?? '';
+        const category  = e.monitoringCategory ?? e.monitoring_category ?? '—';
+        const freq      = e.transactionMonitoringFrequency ?? e.transaction_monitoring_frequency ?? '—';
+        const location  = e.merchantLocation ?? e.merchant_location ?? '';
+        const doo       = e.DOO ?? e.doo ?? '';
+        const ids       = e.merchantIds ?? e.merchant_ids ?? [];
+
+        // Header
+        document.getElementById('pm-category').textContent = category;
+        document.getElementById('pm-freq').textContent     = freq;
+        document.getElementById('pm-name').textContent     = fullName;
+        document.getElementById('pm-merchant').textContent = merchant + (location ? ` · ${location}` : '');
+
+        // Core fields
+        document.getElementById('pm-core').innerHTML =
+            detailRow('ID',                   e.id) +
+            detailRow('Full name',            fullName) +
+            detailRow('Merchant name',        merchant) +
+            detailRow('Location',             location) +
+            detailRow('Date of onboarding',   doo) +
+            detailRow('Monitoring category',  category) +
+            detailRow('Monitoring frequency', freq);
+
+        // Merchant IDs
+        const midsSection = document.getElementById('pm-merchantids-section');
+        const midsEl      = document.getElementById('pm-merchantids');
+        if (ids.length) {
+            midsEl.innerHTML = tagList(ids);
+            midsSection.classList.remove('hidden');
+        } else {
+            midsSection.classList.add('hidden');
+        }
+
+        openModal('pepModal');
+    }
+
+    // ── tab switching ──────────────────────────────────────────────────────────
+
+    function switchTab(name) {
+        ['sanctions', 'adverseMedia', 'peps'].forEach(t => {
+            document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
+            document.getElementById(`panel-${t}`).classList.toggle('hidden', t !== name);
+        });
+        activeTab = name;
+    }
+
+    // ── card renderers ─────────────────────────────────────────────────────────
+
+    function renderSanctionCard(row, idx) {
+        const entry = row.sanction_item;
+        if (!entry) return '';
+        const name    = esc(entry.names?.[0] ?? entry.primaryName ?? '—');
+        const addr    = esc((entry.addresses ?? []).join(', ') || '—');
+        const source  = esc(entry.source || '—');
+        const refNum  = esc(entry.referenceNumber || entry.id || '—');
+        const subject = esc(entry.subjectType || '—');
+        const sim     = esc(row.similarity);
+
+        return `
+        <div class="bg-surface border border-border rounded-xl px-4 py-3.5 hover:border-brand-200 transition-colors">
+            <div class="flex gap-3 items-start">
+                <div class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between gap-2">
+                        <p class="text-text-primary text-sm font-semibold leading-snug">${name}</p>
+                        <span class="sim-pill ${simClass(row.similarity)} mt-0.5">${sim}</span>
+                    </div>
+                    <p class="text-text-muted text-xs mt-0.5 truncate">${addr}</p>
+                    <div class="flex flex-wrap gap-1.5 mt-1.5">
+                        <span class="text-[10px] bg-surface-card border border-border text-text-secondary px-2 py-0.5 rounded-full">${source}</span>
+                        <span class="text-[10px] bg-surface-card border border-border text-text-secondary px-2 py-0.5 rounded-full">${subject}</span>
+                        <span class="text-[10px] bg-surface-card border border-border text-text-secondary px-2 py-0.5 rounded-full">Ref: ${refNum}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end mt-2.5 pt-2.5 border-t border-border">
+                <button onclick="openSanctionModal(_sanctionResults[${idx}])"
+                        class="flex items-center gap-1.5 text-xs font-medium text-brand-600
+                               hover:text-brand-700 hover:bg-brand-50 px-3 py-1.5
+                               rounded-lg transition-colors border border-brand-200 hover:border-brand-300">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    View more
+                </button>
+            </div>
+        </div>`;
+    }
+
+    function renderPepCard(row, idx) {
+        const entry = row.pep_item;
+        if (!entry) return '';
+        const name     = esc(entry.fullName ?? entry.fullname ?? '—');
+        const merchant = esc(entry.merchantName ?? entry.merchant_name ?? '—');
+        const category = esc(entry.monitoringCategory ?? entry.monitoring_category ?? '—');
+        const freq     = esc(entry.transactionMonitoringFrequency ?? entry.transaction_monitoring_frequency ?? '—');
+        const location = esc(entry.merchantLocation ?? entry.merchant_location ?? '');
+        const sim      = esc(row.similarity);
+
+        return `
+        <div class="bg-surface border border-border rounded-xl px-4 py-3.5 hover:border-brand-200 transition-colors">
+            <div class="flex gap-3 items-start">
+                <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between gap-2">
+                        <p class="text-text-primary text-sm font-semibold leading-snug">${name}</p>
+                        <span class="sim-pill ${simClass(row.similarity)} mt-0.5">${sim}</span>
+                    </div>
+                    <p class="text-text-muted text-xs mt-0.5">${merchant}${location ? ' &middot; ' + location : ''}</p>
+                    <div class="flex flex-wrap gap-1.5 mt-1.5">
+                        <span class="text-[10px] bg-amber-50 border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">${category}</span>
+                        <span class="text-[10px] bg-surface-card border border-border text-text-secondary px-2 py-0.5 rounded-full">${freq}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end mt-2.5 pt-2.5 border-t border-border">
+                <button onclick="openPepModal(_pepResults[${idx}])"
+                        class="flex items-center gap-1.5 text-xs font-medium text-brand-600
+                               hover:text-brand-700 hover:bg-brand-50 px-3 py-1.5
+                               rounded-lg transition-colors border border-brand-200 hover:border-brand-300">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    View more
+                </button>
+            </div>
+        </div>`;
+    }
+
+    function renderMediaCard(item) {
+        const title   = esc(item.title   ?? item.Title   ?? '—');
+        const source  = esc(item.source  ?? item.Source  ?? item.feedName ?? '—');
+        const pubDate = esc(item.pubDate  ?? item.PubDate ?? item.publishedDate ?? '');
+        const link    = item.link ?? item.Link ?? item.url ?? '#';
+
+        return `
+        <a href="${esc(link)}" target="_blank" rel="noopener noreferrer"
+           class="bg-surface border border-border rounded-xl px-4 py-3.5 flex gap-3 items-start
+                  hover:border-brand-200 transition-colors group">
+            <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M4 22V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v18l-7-4-7 4z"/>
+                </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-text-primary text-sm font-semibold leading-snug group-hover:text-brand-600 transition-colors">${title}</p>
+                <div class="flex items-center gap-1.5 mt-1">
+                    <span class="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-2 py-0.5 rounded-full">${source}</span>
+                    ${pubDate ? `<span class="text-[10px] text-text-muted">${pubDate}</span>` : ''}
+                </div>
+            </div>
+            <svg class="w-3.5 h-3.5 text-text-muted flex-shrink-0 mt-1 group-hover:text-brand-500 transition-colors"
+                 fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+        </a>`;
+    }
+
+    // ── cached result arrays (for modal access by index) ───────────────────────
+    let _sanctionResults = [];
+    let _pepResults      = [];
+
+    // ── search type toggle ─────────────────────────────────────────────────────
+
+    function setSearchType(btn, type) {
+        activeType = type;
+        document.querySelectorAll('.search-type-btn').forEach(b => {
+            b.classList.remove('bg-brand-500', 'text-white');
+            b.classList.add('text-text-secondary');
+        });
+        btn.classList.add('bg-brand-500', 'text-white');
+        btn.classList.remove('text-text-secondary');
+        const input = document.getElementById('searchInput');
+        input.placeholder = placeholders[type];
+        input.type        = inputTypes[type];
+        input.value       = '';
+        input.focus();
+        document.getElementById('inputIcon').innerHTML = iconPaths[type];
+        clearSearch();
+    }
+
+    // ── main search ────────────────────────────────────────────────────────────
+
+    async function runSearch() {
+        const query = document.getElementById('searchInput').value.trim();
+        if (!query) return;
+
+        setError(null);
+        document.getElementById('screenBtn').disabled = true;
+        document.getElementById('resultsArea').classList.add('hidden');
+        document.getElementById('emptyState').classList.add('hidden');
+        document.getElementById('spinner').classList.remove('hidden');
+
+        try {
+            const response = await fetch('@Url.Action("SingleScreen", "Dashboard")', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ searchTerm: query, searchField: activeType })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                setError(data.message || 'An error occurred. Please try again.');
+                document.getElementById('emptyState').classList.remove('hidden');
+                return;
+            }
+
+            const sanctions    = data.sanctions    ?? [];
+            const peps         = data.peps         ?? [];
+            const adverseMedia = data.adverseMedia ?? [];
+
+            // Cache for modal access
+            _sanctionResults = sanctions;
+            _pepResults      = peps;
+
+            setBadge('sanctions',    sanctions.length);
+            setBadge('peps',         peps.length);
+            setBadge('adverseMedia', adverseMedia.length);
+
+            // Render sanctions
+            const sanctionList  = document.getElementById('list-sanctions');
+            const sanctionEmpty = document.getElementById('empty-sanctions');
+            if (sanctions.length > 0) {
+                sanctionList.innerHTML = sanctions.map((r, i) => renderSanctionCard(r, i)).join('');
+                sanctionEmpty.classList.add('hidden');
+                sanctionList.classList.remove('hidden');
+            } else {
+                sanctionList.innerHTML = '';
+                sanctionList.classList.add('hidden');
+                sanctionEmpty.classList.remove('hidden');
+            }
+
+            // Render PEPs
+            const pepList  = document.getElementById('list-peps');
+            const pepEmpty = document.getElementById('empty-peps');
+            if (peps.length > 0) {
+                pepList.innerHTML = peps.map((r, i) => renderPepCard(r, i)).join('');
+                pepEmpty.classList.add('hidden');
+                pepList.classList.remove('hidden');
+            } else {
+                pepList.innerHTML = '';
+                pepList.classList.add('hidden');
+                pepEmpty.classList.remove('hidden');
+            }
+
+            // Render adverse media
+            const mediaList  = document.getElementById('list-adverseMedia');
+            const mediaEmpty = document.getElementById('empty-adverseMedia');
+            if (adverseMedia.length > 0) {
+                mediaList.innerHTML = adverseMedia.map(renderMediaCard).join('');
+                mediaEmpty.classList.add('hidden');
+                mediaList.classList.remove('hidden');
+            } else {
+                mediaList.innerHTML = '';
+                mediaList.classList.add('hidden');
+                mediaEmpty.classList.remove('hidden');
+            }
+
+            // Jump to first tab with results
+            const firstHit = sanctions.length    ? 'sanctions'
+                           : peps.length          ? 'peps'
+                           : adverseMedia.length  ? 'adverseMedia'
+                           : 'sanctions';
+            switchTab(firstHit);
+
+            const area = document.getElementById('resultsArea');
+            area.classList.remove('hidden');
+            area.style.animation = 'none';
+            area.offsetHeight;
+            area.style.animation = 'fadeUp 0.4s ease forwards';
+
+        } catch (err) {
+            setError('Request failed. Please check your connection and try again.');
+            document.getElementById('emptyState').classList.remove('hidden');
+        } finally {
+            document.getElementById('spinner').classList.add('hidden');
+            document.getElementById('screenBtn').disabled = false;
+        }
+    }
+
+    // ── clear ──────────────────────────────────────────────────────────────────
+
+    function clearSearch() {
+        document.getElementById('searchInput').value = '';
+        setError(null);
+        document.getElementById('resultsArea').classList.add('hidden');
+        document.getElementById('emptyState').classList.remove('hidden');
+        document.getElementById('spinner').classList.add('hidden');
+        _sanctionResults = [];
+        _pepResults      = [];
+    }
+
+    function openMultiScan() {
+        window.location.href = '@Url.Action("MultiScan", "Dashboard")';
+    }
+
+    document.getElementById('searchInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') runSearch();
+    });
+</script>
+}

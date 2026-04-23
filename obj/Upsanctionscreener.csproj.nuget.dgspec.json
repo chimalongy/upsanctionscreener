@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj": {}
+    "C:\\Users\\dell\\source\\repos\\Upsanctionscreener\\Upsanctionscreener.csproj": {}
   },
   "projects": {
-    "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj": {
+    "C:\\Users\\dell\\source\\repos\\Upsanctionscreener\\Upsanctionscreener.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj",
+        "projectUniqueName": "C:\\Users\\dell\\source\\repos\\Upsanctionscreener\\Upsanctionscreener.csproj",
         "projectName": "Upsanctionscreener",
-        "projectPath": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj",
+        "projectPath": "C:\\Users\\dell\\source\\repos\\Upsanctionscreener\\Upsanctionscreener.csproj",
         "packagesPath": "C:\\Users\\dell\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\obj\\",
+        "outputPath": "C:\\Users\\dell\\source\\repos\\Upsanctionscreener\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

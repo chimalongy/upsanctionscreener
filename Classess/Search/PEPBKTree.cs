@@ -76,15 +76,16 @@ namespace Upsanctionscreener.Classess.Search
                 }
             }
 
-            public List<PEPSearchResult> Search(string query)
+            public List<PEPSearchResult> Search(string query, double? threshold = null)
             {
                 if (_root == null) return new List<PEPSearchResult>();
                 if (string.IsNullOrWhiteSpace(query)) return new List<PEPSearchResult>();
 
                 var normQuery = Normalise(query);
                 var results = new List<PEPSearchResult>();
+                double th = threshold ?? _threshold;
 
-                RecursiveSearch(_root, normQuery, results);
+                RecursiveSearch(_root, normQuery, results, th);
 
                 return results
                     .OrderByDescending(r => r.Similarity)
@@ -125,11 +126,11 @@ namespace Upsanctionscreener.Classess.Search
                 }
             }
 
-            private void RecursiveSearch(BKNode node, string query, List<PEPSearchResult> results)
+            private void RecursiveSearch(BKNode node, string query, List<PEPSearchResult> results, double threshold)
             {
                 int dist = LevenshteinDistance(query, node.Key);
                 int maxLen = Math.Max(query.Length, node.Key.Length);
-                int maxAllowed = maxLen == 0 ? 0 : (int)Math.Floor((1.0 - _threshold) * maxLen);
+                int maxAllowed = maxLen == 0 ? 0 : (int)Math.Floor((1.0 - threshold) * maxLen);
 
                 if (dist <= maxAllowed && maxLen > 0)
                 {
@@ -142,7 +143,7 @@ namespace Upsanctionscreener.Classess.Search
 
                 foreach (var kvp in node.Children)
                     if (kvp.Key >= lo && kvp.Key <= hi)
-                        RecursiveSearch(kvp.Value, query, results);
+                        RecursiveSearch(kvp.Value, query, results, threshold);
             }
 
             // ── Distance & normalisation ─────────────────────────────────────────

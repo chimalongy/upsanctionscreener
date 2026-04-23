@@ -3,24 +3,36 @@
   "WorkspaceRootPath": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\views\\dashboard\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:views\\dashboard\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\models\\pepentry.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:models\\pepentry.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\classess\\search\\bktree.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\search\\bktree.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\models\\sanctionentry.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:models\\sanctionentry.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\classess\\search\\pepbktree.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\search\\pepbktree.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\models\\sanctionmatchrow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:models\\sanctionmatchrow.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\classess\\search\\sanctionemailsbktree.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\search\\sanctionemailsbktree.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\classess\\search\\sanctionphonenumberbktree.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\search\\sanctionphonenumberbktree.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\classess\\search\\sanctionaddressesbktree.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\search\\sanctionaddressesbktree.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\models\\viewmodels\\singlescreenrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:models\\viewmodels\\singlescreenrequest.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\views\\dashboard\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:views\\dashboard\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     }
   ],
   "DocumentGroupContainers": [
@@ -30,7 +42,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 6,
           "Children": [
             {
               "$type": "Bookmark",
@@ -38,67 +50,106 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "PepEntry.cs",
-              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Models\\PepEntry.cs",
-              "RelativeDocumentMoniker": "Models\\PepEntry.cs",
-              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Models\\PepEntry.cs",
-              "RelativeToolTip": "Models\\PepEntry.cs",
-              "ViewState": "AgIAAAcAAAAAAAAAAAAUwCIAAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-23T11:43:00.005Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "SanctionEntry.cs",
-              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Models\\SanctionEntry.cs",
-              "RelativeDocumentMoniker": "Models\\SanctionEntry.cs",
-              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Models\\SanctionEntry.cs",
-              "RelativeToolTip": "Models\\SanctionEntry.cs",
-              "ViewState": "AgIAAAoAAAAAAAAAAADwvx8AAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-23T11:55:49.906Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 7,
               "Title": "Index.cshtml",
               "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Index.cshtml",
               "RelativeDocumentMoniker": "Views\\Dashboard\\Index.cshtml",
               "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Index.cshtml",
               "RelativeToolTip": "Views\\Dashboard\\Index.cshtml",
-              "ViewState": "AgIAAHkDAAAAAAAAAAAAwIQDAAAJAAAAAAAAAA==",
+              "ViewState": "AgIAADwDAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2026-04-23T11:54:59.188Z",
+              "WhenOpened": "2026-04-23T20:56:57.179Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "SingleScreenRequest.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Models\\ViewModels\\SingleScreenRequest.cs",
+              "RelativeDocumentMoniker": "Models\\ViewModels\\SingleScreenRequest.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Models\\ViewModels\\SingleScreenRequest.cs",
+              "RelativeToolTip": "Models\\ViewModels\\SingleScreenRequest.cs",
+              "ViewState": "AgIAAAwAAAAAAAAAAABQwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-23T20:55:59.333Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "SanctionAddressesBKTree.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\SanctionAddressesBKTree.cs",
+              "RelativeDocumentMoniker": "Classess\\Search\\SanctionAddressesBKTree.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\SanctionAddressesBKTree.cs",
+              "RelativeToolTip": "Classess\\Search\\SanctionAddressesBKTree.cs",
+              "ViewState": "AgIAAD0AAAAAAAAAAABQwKIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-23T20:34:10.407Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 4,
-              "Title": "SanctionMatchRow.cs",
-              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Models\\SanctionMatchRow.cs",
-              "RelativeDocumentMoniker": "Models\\SanctionMatchRow.cs",
-              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Models\\SanctionMatchRow.cs",
-              "RelativeToolTip": "Models\\SanctionMatchRow.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAqwBYAAAAHAAAAAAAAAA==",
+              "Title": "SanctionPhoneNumberBKTree.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\SanctionPhoneNumberBKTree.cs",
+              "RelativeDocumentMoniker": "Classess\\Search\\SanctionPhoneNumberBKTree.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\SanctionPhoneNumberBKTree.cs",
+              "RelativeToolTip": "Classess\\Search\\SanctionPhoneNumberBKTree.cs",
+              "ViewState": "AgIAAD0AAAAAAAAAAABQwKIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-23T11:28:55.639Z",
+              "WhenOpened": "2026-04-23T20:33:48.139Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
+              "Title": "SanctionEmailsBKTree.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\SanctionEmailsBKTree.cs",
+              "RelativeDocumentMoniker": "Classess\\Search\\SanctionEmailsBKTree.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\SanctionEmailsBKTree.cs",
+              "RelativeToolTip": "Classess\\Search\\SanctionEmailsBKTree.cs",
+              "ViewState": "AgIAAD0AAAAAAAAAAABQwKIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-23T20:33:13.832Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
               "Title": "DashboardController.cs",
               "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\DashboardController.cs",
               "RelativeDocumentMoniker": "Controllers\\DashboardController.cs",
               "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\DashboardController.cs",
               "RelativeToolTip": "Controllers\\DashboardController.cs",
-              "ViewState": "AgIAAIsCAAAAAAAAAAAUwOUCAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAKYCAAAAAAAAAAASwKACAAAHAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-23T11:11:39.196Z",
+              "WhenOpened": "2026-04-23T20:24:55.698Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "BKTree.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\BKTree.cs",
+              "RelativeDocumentMoniker": "Classess\\Search\\BKTree.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\BKTree.cs",
+              "RelativeToolTip": "Classess\\Search\\BKTree.cs",
+              "ViewState": "AgIAAGkAAAAAAAAAAAAiwP4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-23T17:44:33.86Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "PEPBKTree.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\PEPBKTree.cs",
+              "RelativeDocumentMoniker": "Classess\\Search\\PEPBKTree.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\PEPBKTree.cs",
+              "RelativeToolTip": "Classess\\Search\\PEPBKTree.cs",
+              "ViewState": "AgIAADsAAAAAAAAAAAAiwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-23T17:44:24.924Z",
               "EditorCaption": ""
             }
           ]
