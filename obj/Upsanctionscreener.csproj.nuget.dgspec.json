@@ -1,20 +1,24 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj": {}
+    "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj": {}
   },
   "projects": {
-    "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj": {
+    "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj",
+        "projectUniqueName": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj",
         "projectName": "Upsanctionscreener",
-        "projectPath": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj",
-        "packagesPath": "C:\\Users\\colegeme\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\obj\\",
+        "projectPath": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Upsanctionscreener.csproj",
+        "packagesPath": "C:\\Users\\dell\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "C:\\Users\\colegeme\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\dell\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
