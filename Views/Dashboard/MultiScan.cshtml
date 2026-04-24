@@ -14,24 +14,114 @@
     .fade-up-1 { animation-delay: 0.05s; }
     .fade-up-2 { animation-delay: 0.15s; }
     .fade-up-3 { animation-delay: 0.25s; }
-    .fade-up-4 { animation-delay: 0.35s; }
 
-    @@keyframes spin {
-        to { transform: rotate(360deg); }
-    }
+    @@keyframes spin { to { transform: rotate(360deg); } }
     .spinner { animation: spin 0.8s linear infinite; }
 
-    /* Drag-over highlight */
     .drop-active {
         border-color: var(--color-brand-400, #6366f1) !important;
         background-color: var(--color-brand-50, #eef2ff) !important;
     }
 
-    /* Row states */
-    .row-pending  { background: transparent; }
-    .row-match    { background-color: #fef2f2; }
-    .row-clear    { background-color: #f0fdf4; }
-    .row-scanning { background-color: #fafafa; }
+    .config-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-text-muted, #9ca3af);
+        margin-bottom: 0.4rem;
+        display: block;
+    }
+    .config-input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        background: var(--color-surface-card, #ffffff);
+        border: 1px solid var(--color-border, #e5e7eb);
+        border-radius: 0.625rem;
+        font-size: 0.8125rem;
+        color: var(--color-text-primary, #111827);
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .config-input:focus {
+        border-color: var(--color-brand-400, #6366f1);
+        box-shadow: 0 0 0 2px var(--color-brand-100, #e0e7ff);
+    }
+    .config-input::placeholder { color: var(--color-text-muted, #9ca3af); }
+    .config-input:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .toggle-pill {
+        display: flex; align-items: center; gap: 0.375rem;
+        cursor: pointer; user-select: none;
+    }
+    .toggle-pill input[type="checkbox"] { display: none; }
+    .pill-track {
+        width: 2rem; height: 1.125rem;
+        background: var(--color-border, #d1d5db);
+        border-radius: 9999px; position: relative;
+        transition: background 0.2s; flex-shrink: 0;
+    }
+    .pill-track::after {
+        content: ''; position: absolute;
+        top: 0.1875rem; left: 0.1875rem;
+        width: 0.75rem; height: 0.75rem;
+        background: #fff; border-radius: 50%;
+        transition: transform 0.2s;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+    .toggle-pill input:checked + .pill-track { background: var(--color-brand-500, #6366f1); }
+    .toggle-pill input:checked + .pill-track::after { transform: translateX(0.875rem); }
+
+    .req-mark { color: #ef4444; margin-left: 2px; }
+    .field-error { font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem; display: none; }
+    .field-error.visible { display: block; }
+
+    .scan-type-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.18rem 0.55rem;
+        border-radius: 9999px;
+        font-size: 0.68rem; font-weight: 600; letter-spacing: 0.03em;
+    }
+    .badge-document { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
+    .badge-list     { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+
+    /* ── Ready card ── */
+    #readyCard {
+        background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
+        border: 1px solid #bbf7d0;
+    }
+    #readyCard .big-check {
+        width: 3rem; height: 3rem;
+        background: #22c55e;
+        border-radius: 9999px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+    }
+    .btn-start-screening {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.65rem 1.5rem;
+        background: #22c55e;
+        color: #fff;
+        font-weight: 600; font-size: 0.875rem;
+        border-radius: 0.75rem;
+        border: none; cursor: pointer;
+        transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(34,197,94,0.35);
+    }
+    .btn-start-screening:hover {
+        background: #16a34a;
+        box-shadow: 0 4px 14px rgba(34,197,94,0.45);
+        transform: translateY(-1px);
+    }
+    .btn-start-screening:active { transform: translateY(0); }
+    .btn-start-screening svg { width: 1rem; height: 1rem; }
+
+    /* upload spinner overlay on the submit button */
+    #submitBtn:disabled { opacity: 0.65; cursor: not-allowed; }
+    #submitBtn .btn-label  { transition: opacity 0.15s; }
+    #submitBtn .btn-spinner { display: none; }
+    #submitBtn.loading .btn-label  { opacity: 0; }
+    #submitBtn.loading .btn-spinner { display: flex; }
 </style>
 
 @* ── Hero ── *@
@@ -45,31 +135,46 @@
     </div>
     <h1 class="font-display text-text-primary text-3xl font-semibold mb-2">Multi-Scan</h1>
     <p class="text-text-secondary text-sm max-w-md mx-auto">
-        Upload a CSV or paste names to screen multiple entities against global sanctions lists at once.
+        Upload a CSV or Excel file, or paste names to screen multiple entities against global sanctions lists at once.
     </p>
 </div>
 
 @* ── Input card ── *@
-<div class="bg-surface-card border border-border rounded-2xl px-6 py-6 shadow-sm mb-6 fade-up fade-up-2">
+<div id="inputCard" class="bg-surface-card border border-border rounded-2xl px-6 py-6 shadow-sm mb-6 fade-up fade-up-2">
 
-    @* Tabs: Upload / Paste *@
+    @* ── Tabs ── *@
     <div class="flex items-center gap-1.5 mb-5 bg-surface rounded-xl p-1 border border-border">
         <button onclick="switchTab('upload')" id="tab-upload"
                 class="tab-btn flex-1 py-2 text-xs font-medium rounded-lg transition-colors bg-brand-500 text-white">
-            Upload CSV
+            <span class="flex items-center justify-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Upload Document
+            </span>
         </button>
         <button onclick="switchTab('paste')" id="tab-paste"
                 class="tab-btn flex-1 py-2 text-xs font-medium rounded-lg transition-colors text-text-secondary hover:text-brand-700">
-            Paste Names
+            <span class="flex items-center justify-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                    <rect x="9" y="3" width="6" height="4" rx="1"/>
+                </svg>
+                Paste List
+            </span>
         </button>
     </div>
 
-    @* ── Upload panel ── *@
+    @* ════════════════════════════════════════════════════════════
+       PANEL A — Document upload  →  scanType = "document"
+    ════════════════════════════════════════════════════════════ *@
     <div id="panel-upload">
+
         <div id="dropZone"
              class="border-2 border-dashed border-border rounded-xl p-10 text-center cursor-pointer
                     transition-colors hover:border-brand-300 hover:bg-brand-50"
-             onclick="document.getElementById('csvFile').click()"
+             onclick="document.getElementById('multiFile').click()"
              ondragover="onDragOver(event)"
              ondragleave="onDragLeave(event)"
              ondrop="onDrop(event)">
@@ -79,36 +184,118 @@
                 <polyline points="16 12 12 16 8 12"/>
                 <line x1="12" y1="3" x2="12" y2="16"/>
             </svg>
-            <p class="text-text-primary text-sm font-medium mb-1">Drop your CSV here or click to browse</p>
-            <p class="text-text-muted text-xs">One name per row — header row optional</p>
+            <p class="text-text-primary text-sm font-medium mb-1">Drop your file here or click to browse</p>
+            <p class="text-text-muted text-xs">
+                Supported: <strong>.csv</strong> &middot; <strong>.xlsx</strong> &middot; <strong>.xls</strong>
+            </p>
         </div>
-        <input id="csvFile" type="file" accept=".csv,.txt" class="hidden" onchange="handleFileSelect(event)" />
 
-        <div id="fileInfo" class="hidden mt-3 flex items-center gap-2 text-sm text-text-secondary
-                                  bg-surface border border-border rounded-xl px-4 py-2.5">
+        <input id="multiFile" type="file" accept=".csv,.xlsx,.xls"
+               class="hidden" onchange="handleFileSelect(event)" />
+
+        @* File info strip *@
+        <div id="fileInfo"
+             class="hidden mt-3 flex items-center gap-2 text-sm text-text-secondary
+                    bg-surface border border-border rounded-xl px-4 py-2.5">
             <svg class="w-4 h-4 text-brand-400 flex-shrink-0" fill="none" stroke="currentColor"
                  stroke-width="2" viewBox="0 0 24 24">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
             </svg>
-            <span id="fileName" class="truncate flex-1"></span>
-            <button onclick="clearFile()" class="text-text-muted hover:text-error transition-colors flex-shrink-0">
+            <span id="fileName" class="truncate flex-1 text-xs font-mono"></span>
+            <span class="scan-type-badge badge-document flex-shrink-0">
+                <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"/>
+                </svg>
+                document
+            </span>
+            <button onclick="clearFile()"
+                    class="text-text-muted hover:text-error transition-colors flex-shrink-0 ml-1">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <path d="M18 6 6 18M6 6l12 12"/>
                 </svg>
             </button>
         </div>
 
-        <p class="text-[11px] text-text-muted mt-2">
+        @* ── Column mapping ── *@
+        <div id="fileConfig" class="hidden mt-4">
+            <div class="border-t border-border pt-4">
+
+                <p class="text-xs font-semibold text-text-primary mb-3 flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-brand-500" fill="none" stroke="currentColor"
+                         stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                    </svg>
+                    Column Mapping
+                </p>
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+                    <div>
+                        <label class="config-label" for="scanColumnInput">
+                            Column to Scan <span class="req-mark">*</span>
+                        </label>
+                        <input id="scanColumnInput" type="text" class="config-input"
+                               placeholder="e.g. Full Name, entity_name…"
+                               autocomplete="off" />
+                        <p class="field-error" id="err-scanColumn">Please enter the column name to scan.</p>
+                        <p class="text-[11px] text-text-muted mt-1">
+                            Exact header name from your file. Values here are screened against sanctions lists.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="config-label">
+                            Record ID Column <span class="req-mark">*</span>
+                        </label>
+                        <div class="flex items-center gap-3 mb-2">
+                            <label class="toggle-pill">
+                                <input type="checkbox" id="autoIdCheck" onchange="toggleAutoId()" />
+                                <span class="pill-track"></span>
+                                <span class="text-xs text-text-secondary">Auto-generate IDs</span>
+                            </label>
+                        </div>
+                        <div id="idColumnWrap">
+                            <input id="idColumnInput" type="text" class="config-input"
+                                   placeholder="e.g. ID, record_id, CustomerID…"
+                                   autocomplete="off" />
+                            <p class="field-error" id="err-idColumn">
+                                Enter the ID column name or enable auto-generate.
+                            </p>
+                        </div>
+                        <p class="text-[11px] text-text-muted mt-1">
+                            Used to uniquely identify each record in the results.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-[11px] text-text-muted mt-3">
             Need a template?
             <a href="#" onclick="downloadTemplate(); return false;"
                class="text-brand-500 hover:underline">Download sample CSV</a>
         </p>
     </div>
 
-    @* ── Paste panel ── *@
+    @* ════════════════════════════════════════════════════════════
+       PANEL B — Paste list  →  scanType = "non-document"
+    ════════════════════════════════════════════════════════════ *@
     <div id="panel-paste" class="hidden">
-        <textarea id="pasteInput" rows="7"
+        <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-medium text-text-secondary">
+                Paste names — one per line
+            </label>
+            <span class="scan-type-badge badge-list">
+                <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                          d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h8a1 1 0 110 2H4a1 1 0 01-1-1z"
+                          clip-rule="evenodd"/>
+                </svg>
+                non-document
+            </span>
+        </div>
+        <textarea id="pasteInput" rows="8"
                   placeholder="Paste names here, one per line&#10;e.g.&#10;Nikolai Volkov&#10;Ahmed Al-Rashid&#10;Eastern Bridge Corp"
                   class="w-full px-4 py-3 bg-surface border border-border rounded-xl text-text-primary
                          text-sm placeholder-text-muted resize-none
@@ -117,15 +304,24 @@
         <p id="pasteCount" class="text-[11px] text-text-muted mt-1">0 entries detected</p>
     </div>
 
-    @* Actions *@
+    @* ── Actions ── *@
     <div class="flex gap-3 mt-5">
-        <button onclick="runMultiScan()"
+        <button id="submitBtn" onclick="runMultiScan()"
                 class="flex-1 py-2.5 bg-accent-500 hover:bg-accent-600 text-white
-                       font-medium text-sm rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            Run Scan
+                       font-medium text-sm rounded-xl transition-colors shadow-sm
+                       relative flex items-center justify-center gap-2">
+            <span class="btn-label flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                Upload &amp; Prepare Scan
+            </span>
+            <span class="btn-spinner absolute inset-0 flex items-center justify-center gap-2">
+                <svg class="w-4 h-4 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                Uploading…
+            </span>
         </button>
         <a href="@Url.Action("Index", "Dashboard")"
            class="px-5 py-2.5 bg-surface border border-border hover:border-brand-300
@@ -138,316 +334,338 @@
     </div>
 </div>
 
-@* ── Progress bar (hidden until scan starts) ── *@
-<div id="progressWrap" class="hidden mb-6 fade-up">
-    <div class="flex items-center justify-between text-xs text-text-secondary mb-1.5">
-        <span id="progressLabel">Scanning…</span>
-        <span id="progressPct">0%</span>
-    </div>
-    <div class="h-2 bg-surface border border-border rounded-full overflow-hidden">
-        <div id="progressBar"
-             class="h-full bg-brand-500 rounded-full transition-all duration-300"
-             style="width: 0%"></div>
-    </div>
-</div>
-
-@* ── Summary badges (hidden until done) ── *@
-<div id="summaryRow" class="hidden flex gap-3 mb-5 fade-up">
-    <div class="flex-1 bg-surface-card border border-border rounded-xl px-4 py-3 text-center">
-        <p class="text-2xl font-bold text-text-primary" id="sumTotal">0</p>
-        <p class="text-xs text-text-muted mt-0.5">Total Scanned</p>
-    </div>
-    <div class="flex-1 bg-error-bg border border-error-border rounded-xl px-4 py-3 text-center">
-        <p class="text-2xl font-bold text-error" id="sumMatches">0</p>
-        <p class="text-xs text-text-muted mt-0.5">Matches Found</p>
-    </div>
-    <div class="flex-1 bg-surface-card border border-border rounded-xl px-4 py-3 text-center">
-        <p class="text-2xl font-bold text-brand-500" id="sumClear">0</p>
-        <p class="text-xs text-text-muted mt-0.5">Clear</p>
-    </div>
-</div>
-
-@* ── Results table ── *@
-<div id="resultsWrap" class="hidden bg-surface-card border border-border rounded-2xl shadow-sm overflow-hidden fade-up fade-up-3 mb-8">
-    <div class="flex items-center justify-between px-5 py-3.5 border-b border-border">
-        <p class="text-text-primary text-sm font-semibold">Scan Results</p>
-        <button onclick="exportResults()"
-                class="flex items-center gap-1.5 text-xs text-text-secondary hover:text-brand-500 transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
+@* ── Ready card — shown after successful upload ── *@
+<div id="readyCard" class="hidden rounded-2xl px-6 py-6 shadow-sm mb-6 fade-up">
+    <div class="flex items-start gap-4">
+        <div class="big-check">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="M20 6 9 17l-5-5"/>
             </svg>
-            Export CSV
-        </button>
-    </div>
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="border-b border-border text-left">
-                    <th class="px-5 py-3 text-xs font-medium text-text-muted">#</th>
-                    <th class="px-5 py-3 text-xs font-medium text-text-muted">Name</th>
-                    <th class="px-5 py-3 text-xs font-medium text-text-muted">Status</th>
-                    <th class="px-5 py-3 text-xs font-medium text-text-muted">List</th>
-                    <th class="px-5 py-3 text-xs font-medium text-text-muted">Risk</th>
-                    <th class="px-5 py-3 text-xs font-medium text-text-muted">ID</th>
-                </tr>
-            </thead>
-            <tbody id="resultsBody"></tbody>
-        </table>
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="text-text-primary font-semibold text-base mb-0.5">Ready to Screen</p>
+            <p class="text-text-secondary text-sm mb-3" id="readySummary">
+                <!-- populated by JS -->
+            </p>
+
+            <div class="flex flex-wrap gap-3 text-xs text-text-secondary mb-4">
+                <span class="flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <span id="readyFileName" class="font-mono truncate max-w-[220px]"></span>
+                </span>
+                <span id="readyScanTypeBadge" class="scan-type-badge badge-document"></span>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+                <button onclick="startScreening()"
+                        class="btn-start-screening">
+                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    Start Screening
+                </button>
+                <button onclick="resetForm()"
+                        class="px-4 py-2 bg-surface border border-border hover:border-brand-300
+                               text-text-secondary text-sm rounded-xl transition-colors">
+                    Change File / List
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
 @section Scripts {
 <script>
-    /* ── Mock sanctions data ── */
-    const sanctionedNames = [
-        { name: "Nikolai Volkov",        list: "OFAC", risk: "high",   id: "SDN-00421", country: "Russia"  },
-        { name: "Black Sea Trading LLC", list: "EU",   risk: "high",   id: "EU-20934",  country: "Ukraine" },
-        { name: "Ahmed Al-Rashid",       list: "UK",   risk: "medium", id: "UK-01234",  country: "Syria"   },
-        { name: "Eastern Bridge Corp",   list: "OFAC", risk: "high",   id: "SDN-00988", country: "Belarus" },
-        { name: "MV Petrov Star",        list: "UN",   risk: "high",   id: "UN-00871",  country: "Iran"    },
-    ];
+/* ═══════════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════════ */
+let activeTab    = 'upload';
+let loadedFile   = null;
+let uploadResult = null;
 
-    let activeTab = 'upload';
-    let parsedNames = [];
-    let csvFile = null;
-    let scanResults = [];
+/* ═══════════════════════════════════════════════════════════════════
+   ANTIFORGERY TOKEN  (same pattern as every other page in the app)
+═══════════════════════════════════════════════════════════════════ */
+function getToken() {
+    const el = document.querySelector('input[name="__RequestVerificationToken"]');
+    return el ? el.value : '';
+}
 
-    /* ── Tab switching ── */
-    function switchTab(tab) {
-        activeTab = tab;
-        ['upload','paste'].forEach(t => {
-            const btn   = document.getElementById('tab-' + t);
-            const panel = document.getElementById('panel-' + t);
-            if (t === tab) {
-                btn.classList.add('bg-brand-500','text-white');
-                btn.classList.remove('text-text-secondary');
-                panel.classList.remove('hidden');
-            } else {
-                btn.classList.remove('bg-brand-500','text-white');
-                btn.classList.add('text-text-secondary');
-                panel.classList.add('hidden');
-            }
-        });
-    }
-
-    /* ── Paste counter ── */
-    document.getElementById('pasteInput').addEventListener('input', function() {
-        const lines = this.value.split('\n').map(l => l.trim()).filter(Boolean);
-        document.getElementById('pasteCount').textContent = `${lines.length} entr${lines.length === 1 ? 'y' : 'ies'} detected`;
+/* ═══════════════════════════════════════════════════════════════════
+   TAB SWITCHING
+═══════════════════════════════════════════════════════════════════ */
+function switchTab(tab) {
+    activeTab = tab;
+    ['upload', 'paste'].forEach(t => {
+        const isActive = t === tab;
+        document.getElementById('tab-'   + t).classList.toggle('bg-brand-500',       isActive);
+        document.getElementById('tab-'   + t).classList.toggle('text-white',          isActive);
+        document.getElementById('tab-'   + t).classList.toggle('text-text-secondary', !isActive);
+        document.getElementById('panel-' + t).classList.toggle('hidden',              !isActive);
     });
+}
 
-    /* ── Drag & drop ── */
-    function onDragOver(e) {
-        e.preventDefault();
-        document.getElementById('dropZone').classList.add('drop-active');
+/* ═══════════════════════════════════════════════════════════════════
+   PASTE COUNTER
+═══════════════════════════════════════════════════════════════════ */
+document.getElementById('pasteInput').addEventListener('input', function () {
+    const n = this.value.split('\n').map(l => l.trim()).filter(Boolean).length;
+    document.getElementById('pasteCount').textContent =
+        `${n} entr${n === 1 ? 'y' : 'ies'} detected`;
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   DRAG & DROP / FILE SELECT
+═══════════════════════════════════════════════════════════════════ */
+function onDragOver(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').classList.add('drop-active');
+}
+function onDragLeave() {
+    document.getElementById('dropZone').classList.remove('drop-active');
+}
+function onDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').classList.remove('drop-active');
+    const f = e.dataTransfer.files[0];
+    if (f) attachFile(f);
+}
+function handleFileSelect(e) {
+    const f = e.target.files[0];
+    if (f) attachFile(f);
+}
+function attachFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['csv', 'xlsx', 'xls'].includes(ext)) {
+        alert('Unsupported file type. Please upload a .csv, .xlsx, or .xls file.');
+        return;
     }
-    function onDragLeave(e) {
-        document.getElementById('dropZone').classList.remove('drop-active');
+    loadedFile = file;
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileInfo').classList.remove('hidden');
+    document.getElementById('fileConfig').classList.remove('hidden');
+}
+function clearFile() {
+    loadedFile = null;
+    document.getElementById('multiFile').value        = '';
+    document.getElementById('fileInfo').classList.add('hidden');
+    document.getElementById('fileConfig').classList.add('hidden');
+    document.getElementById('scanColumnInput').value  = '';
+    document.getElementById('idColumnInput').value    = '';
+    document.getElementById('autoIdCheck').checked    = false;
+    document.getElementById('idColumnInput').disabled = false;
+    document.getElementById('idColumnWrap').style.opacity = '1';
+    hideError('err-scanColumn');
+    hideError('err-idColumn');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   AUTO-ID TOGGLE
+═══════════════════════════════════════════════════════════════════ */
+function toggleAutoId() {
+    const on = document.getElementById('autoIdCheck').checked;
+    document.getElementById('idColumnInput').disabled         = on;
+    document.getElementById('idColumnWrap').style.opacity     = on ? '0.4' : '1';
+    if (on) hideError('err-idColumn');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   VALIDATION
+═══════════════════════════════════════════════════════════════════ */
+function showError(id) { document.getElementById(id).classList.add('visible'); }
+function hideError(id) { document.getElementById(id).classList.remove('visible'); }
+
+function validateDocumentConfig() {
+    let ok = true;
+    if (!document.getElementById('scanColumnInput').value.trim()) {
+        showError('err-scanColumn'); ok = false;
+    } else { hideError('err-scanColumn'); }
+
+    const autoId = document.getElementById('autoIdCheck').checked;
+    if (!autoId && !document.getElementById('idColumnInput').value.trim()) {
+        showError('err-idColumn'); ok = false;
+    } else { hideError('err-idColumn'); }
+
+    return ok;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TEMPLATE DOWNLOAD
+═══════════════════════════════════════════════════════════════════ */
+function downloadTemplate() {
+    const csv  = 'ID,Name\n1,Nikolai Volkov\n2,Ahmed Al-Rashid\n3,Eastern Bridge Corp';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a    = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'multiscan_template.csv';
+    a.click();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ENTRY POINT
+═══════════════════════════════════════════════════════════════════ */
+async function runMultiScan() {
+    if (activeTab === 'upload') {
+        if (!loadedFile)               { alert('Please upload a file first.'); return; }
+        if (!validateDocumentConfig()) { return; }
+        await submitDocument();
+    } else {
+        const names = document.getElementById('pasteInput').value
+            .split('\n').map(l => l.trim()).filter(Boolean);
+        if (!names.length) { alert('Please paste at least one name.'); return; }
+        await submitPasteList(names);
     }
-    function onDrop(e) {
-        e.preventDefault();
-        document.getElementById('dropZone').classList.remove('drop-active');
-        const file = e.dataTransfer.files[0];
-        if (file) loadFile(file);
-    }
+}
 
-    function handleFileSelect(e) {
-        const file = e.target.files[0];
-        if (file) loadFile(file);
-    }
+/* ═══════════════════════════════════════════════════════════════════
+   PATH A — non-document (JSON body, mirrors Index.cshtml exactly)
+═══════════════════════════════════════════════════════════════════ */
+async function submitPasteList(names) {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.classList.add('loading');
 
-    function loadFile(file) {
-        csvFile = file;
-        document.getElementById('fileName').textContent = file.name;
-        document.getElementById('fileInfo').classList.remove('hidden');
-        const reader = new FileReader();
-        reader.onload = ev => {
-            parsedNames = ev.target.result
-                .split('\n')
-                .map(l => l.trim().replace(/^["']|["']$/g,''))
-                .filter(Boolean);
-        };
-        reader.readAsText(file);
-    }
-
-    function clearFile() {
-        csvFile = null;
-        parsedNames = [];
-        document.getElementById('fileInfo').classList.add('hidden');
-        document.getElementById('csvFile').value = '';
-    }
-
-    /* ── Template download ── */
-    function downloadTemplate() {
-        const csv = "Name\nNikolai Volkov\nAhmed Al-Rashid\nEastern Bridge Corp";
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'multiscan_template.csv';
-        a.click();
-    }
-
-    /* ── Main scan ── */
-    async function runMultiScan() {
-        let names = [];
-
-        if (activeTab === 'upload') {
-            if (!parsedNames.length) { alert('Please upload a CSV file first.'); return; }
-            names = parsedNames;
-        } else {
-            const raw = document.getElementById('pasteInput').value;
-            names = raw.split('\n').map(l => l.trim()).filter(Boolean);
-            if (!names.length) { alert('Please paste at least one name.'); return; }
-        }
-
-        /* Reset UI */
-        scanResults = [];
-        document.getElementById('resultsBody').innerHTML = '';
-        document.getElementById('resultsWrap').classList.remove('hidden');
-        document.getElementById('progressWrap').classList.remove('hidden');
-        document.getElementById('summaryRow').classList.add('hidden');
-        setProgress(0, `Scanning 0 / ${names.length}…`);
-
-        let matches = 0;
-
-        for (let i = 0; i < names.length; i++) {
-            const name = names[i];
-
-            /* Insert "scanning" placeholder row */
-            insertRow(i + 1, name, 'scanning', null);
-
-            /* Simulate async API call */
-            await delay(280 + Math.random() * 200);
-
-            /* Check against mock data */
-            const hit = sanctionedNames.find(s =>
-                s.name.toLowerCase().includes(name.toLowerCase()) ||
-                name.toLowerCase().includes(s.name.toLowerCase().split(' ')[0])
-            );
-
-            const result = { name, hit };
-            scanResults.push(result);
-            if (hit) matches++;
-
-            /* Update row */
-            updateRow(i + 1, name, hit ? 'match' : 'clear', hit);
-            setProgress(
-                Math.round(((i + 1) / names.length) * 100),
-                `Scanning ${i + 1} / ${names.length}…`
-            );
-        }
-
-        /* Done */
-        setProgress(100, 'Scan complete');
-        document.getElementById('sumTotal').textContent   = names.length;
-        document.getElementById('sumMatches').textContent = matches;
-        document.getElementById('sumClear').textContent   = names.length - matches;
-        document.getElementById('summaryRow').classList.remove('hidden');
-    }
-
-    function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-    function setProgress(pct, label) {
-        document.getElementById('progressBar').style.width = pct + '%';
-        document.getElementById('progressPct').textContent = pct + '%';
-        document.getElementById('progressLabel').textContent = label;
-    }
-
-    /* ── Table row helpers ── */
-    function rowId(n) { return 'row-' + n; }
-
-    function insertRow(n, name, state, hit) {
-        const tbody = document.getElementById('resultsBody');
-        const tr = document.createElement('tr');
-        tr.id = rowId(n);
-        tr.className = 'border-b border-border transition-colors ' + 'row-' + state;
-        tr.innerHTML = buildRowHtml(n, name, state, hit);
-        tbody.appendChild(tr);
-    }
-
-    function updateRow(n, name, state, hit) {
-        const tr = document.getElementById(rowId(n));
-        if (!tr) return;
-        tr.className = 'border-b border-border transition-colors row-' + state;
-        tr.innerHTML = buildRowHtml(n, name, state, hit);
-    }
-
-    function buildRowHtml(n, name, state, hit) {
-        if (state === 'scanning') {
-            return `
-                <td class="px-5 py-3 text-text-muted text-xs">${n}</td>
-                <td class="px-5 py-3 text-text-primary text-sm font-medium">${escHtml(name)}</td>
-                <td class="px-5 py-3" colspan="4">
-                    <span class="flex items-center gap-1.5 text-xs text-text-muted">
-                        <svg class="w-3.5 h-3.5 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-                        </svg>
-                        Scanning…
-                    </span>
-                </td>`;
-        }
-
-        if (state === 'match' && hit) {
-            return `
-                <td class="px-5 py-3 text-text-muted text-xs">${n}</td>
-                <td class="px-5 py-3 text-text-primary text-sm font-semibold">${escHtml(name)}</td>
-                <td class="px-5 py-3">
-                    <span class="inline-flex items-center gap-1 text-xs font-medium text-error bg-error-bg px-2 py-0.5 rounded-full border border-error-border">
-                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1-8a1 1 0 0 0-1 1v3a1 1 0 0 0 2 0V6a1 1 0 0 0-1-1z" clip-rule="evenodd"/></svg>
-                        Match
-                    </span>
-                </td>
-                <td class="px-5 py-3"><span class="text-xs font-medium text-text-primary">${hit.list}</span></td>
-                <td class="px-5 py-3">
-                    <span class="text-xs px-2 py-0.5 rounded-full border
-                        ${hit.risk === 'high' ? 'bg-error-bg text-error border-error-border' : 'bg-accent-50 text-accent-600 border-accent-200'}">
-                        ${hit.risk}
-                    </span>
-                </td>
-                <td class="px-5 py-3 text-xs text-text-muted">${hit.id}</td>`;
-        }
-
-        /* clear */
-        return `
-            <td class="px-5 py-3 text-text-muted text-xs">${n}</td>
-            <td class="px-5 py-3 text-text-primary text-sm">${escHtml(name)}</td>
-            <td class="px-5 py-3">
-                <span class="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
-                    Clear
-                </span>
-            </td>
-            <td class="px-5 py-3 text-xs text-text-muted">—</td>
-            <td class="px-5 py-3 text-xs text-text-muted">—</td>
-            <td class="px-5 py-3 text-xs text-text-muted">—</td>`;
-    }
-
-    function escHtml(str) {
-        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    /* ── Export ── */
-    function exportResults() {
-        if (!scanResults.length) return;
-        const rows = [['#','Name','Status','List','Risk','ID']];
-        scanResults.forEach((r, i) => {
-            rows.push([
-                i + 1,
-                r.name,
-                r.hit ? 'Match' : 'Clear',
-                r.hit ? r.hit.list : '',
-                r.hit ? r.hit.risk : '',
-                r.hit ? r.hit.id   : '',
-            ]);
+    try {
+        const response = await fetch('@Url.Action("MultiScanUpload", "Dashboard")', {
+            method : 'POST',
+            headers: {
+                'Content-Type'            : 'application/json',
+                'X-Requested-With'        : 'XMLHttpRequest',
+                'RequestVerificationToken': getToken()
+            },
+            body: JSON.stringify({
+                scanType : 'non-document',
+                nameList : names.join('\n')
+            })
         });
-        const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `multiscan_results_${new Date().toISOString().slice(0,10)}.csv`;
-        a.click();
+
+        await handleResponse(response, 'non-document');
+
+    } catch (ex) {
+        console.error('submitPasteList error:', ex);
+        alert('Error contacting server: ' + ex.message);
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('loading');
     }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PATH B — document (FormData multipart, file must be a binary blob)
+═══════════════════════════════════════════════════════════════════ */
+async function submitDocument() {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    try {
+        const formData = new FormData();
+        formData.append('scanType',       'document');
+        formData.append('file',           loadedFile);
+        formData.append('scanColumn',     document.getElementById('scanColumnInput').value.trim());
+        formData.append('autoGenerateId', document.getElementById('autoIdCheck').checked ? 'true' : 'false');
+        if (!document.getElementById('autoIdCheck').checked) {
+            formData.append('idColumn', document.getElementById('idColumnInput').value.trim());
+        }
+
+        const response = await fetch('@Url.Action("MultiScanUpload", "Dashboard")', {
+            method : 'POST',
+            headers: {
+                // Do NOT set Content-Type here — the browser must set it with the boundary
+                'X-Requested-With'        : 'XMLHttpRequest',
+                'RequestVerificationToken': getToken()
+            },
+            body: formData
+        });
+
+        await handleResponse(response, 'document');
+
+    } catch (ex) {
+        console.error('submitDocument error:', ex);
+        alert('Error contacting server: ' + ex.message);
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SHARED RESPONSE HANDLER
+═══════════════════════════════════════════════════════════════════ */
+async function handleResponse(response, scanType) {
+    // Try to parse JSON; if it fails, surface the raw body in the console
+    let data;
+    const rawText = await response.text();
+    try {
+        data = JSON.parse(rawText);
+    } catch (_) {
+        console.error('Non-JSON response from server:\n', rawText);
+        alert('Server returned an unexpected response. Check the browser console for details.');
+        return;
+    }
+
+    if (!response.ok || !data.success) {
+        alert('Upload failed: ' + (data.message || `HTTP ${response.status}`));
+        return;
+    }
+
+    uploadResult = data;
+    showReadyCard(data, scanType);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   READY CARD
+═══════════════════════════════════════════════════════════════════ */
+function showReadyCard(data, scanType) {
+    document.getElementById('inputCard').classList.add('hidden');
+    const card = document.getElementById('readyCard');
+    card.classList.remove('hidden');
+
+    const count = data.rowCount ?? 0;
+    const noun  = count === 1 ? 'record' : 'records';
+
+    document.getElementById('readySummary').textContent =
+        `${count} ${noun} loaded and saved — ready to run sanctions screening.`;
+
+    document.getElementById('readyFileName').textContent = data.fileName || '—';
+
+    const badge = document.getElementById('readyScanTypeBadge');
+    if (scanType === 'document') {
+        badge.textContent = 'document';
+        badge.className   = 'scan-type-badge badge-document';
+    } else {
+        badge.textContent = 'non-document';
+        badge.className   = 'scan-type-badge badge-list';
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   START SCREENING
+═══════════════════════════════════════════════════════════════════ */
+function startScreening() {
+    if (!uploadResult) return;
+    const params = new URLSearchParams({
+        filePath : uploadResult.savedFilePath,
+        rowCount : uploadResult.rowCount,
+        scanType : uploadResult.scanType
+    });
+    window.location.href = '/Dashboard/MultiScan/Screen?' + params.toString();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESET
+═══════════════════════════════════════════════════════════════════ */
+function resetForm() {
+    uploadResult = null;
+    document.getElementById('readyCard').classList.add('hidden');
+    document.getElementById('inputCard').classList.remove('hidden');
+    clearFile();
+    document.getElementById('pasteInput').value = '';
+    document.getElementById('pasteCount').textContent = '0 entries detected';
+}
 </script>
 }
+

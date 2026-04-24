@@ -16,6 +16,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton(_ => SanctionBKTree.Instance);
 builder.Services.AddHostedService<SanctionListRefreshService>();
 
+
+
+
+
+
+
+
+
+
+
 // ── Database ──────────────────────────────────────────────────────────────────
 string? encryptedConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrEmpty(encryptedConnectionString))
