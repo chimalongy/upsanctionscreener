@@ -1,6 +1,7 @@
 ﻿using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Data;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -769,25 +770,145 @@ namespace Upsanctionscreener.Controllers
         }
 
 
+        // ══════════════════════════════════════════════════════════════════════
+        // REPLACE the existing MultiScanUpload action in DashboardController.cs
+        // with this updated version.
+        // ══════════════════════════════════════════════════════════════════════
 
+        // ─────────────────────────────────────────────────────────────────────────────
+        // Replace the existing MultiScanUpload action in DashboardController.cs
+        //
+        // WHY TWO ACTIONS?
+        // ─────────────────
+        // ASP.NET Core cannot bind [FromForm] and [FromBody] on the same action —
+        // they use different body readers and the framework picks one.
+        //
+        // • Document uploads  must use multipart/form-data (FormData) because a
+        //   real File object is in the payload.  →  [FromForm]
+        //
+        // • Paste-list uploads send a JSON body (matching how Index.cshtml calls
+        //   SingleScreen) and have no file.        →  [FromBody]
+        //
+        // Both share the same route prefix; the `scanType` field in the body
+        // disambiguates, but because the content-type differs we split them into
+        // two actions on different sub-routes. The front-end already calls
+        // Url.Action("MultiScanUpload", "Dashboard") for both — just update the
+        // JS Url.Action values to the two routes below if you prefer named routes,
+        // OR keep one route and let the JS decide which URL to hit.
+        // ─────────────────────────────────────────────────────────────────────────────
 
+        // ── REQUEST MODEL for the JSON (paste) path ───────────────────────────────────
+        public class MultiScanPasteRequest
+        {
+            public string ScanType { get; set; } = "non-document";
+            public string? NameList { get; set; }   // newline-delimited names
+        }
 
+        // ── Inside DashboardController ────────────────────────────────────────────────
 
+        // ─── PATH A: non-document  (JSON body, no file) ───────────────────────────────
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        [Route("Dashboard/MultiScan/Upload/Paste")]
+        public async Task<IActionResult> MultiScanUploadPaste([FromBody] MultiScanPasteRequest req)
+        {
+            if (req.ScanType != "non-document")
+                return BadRequest(new { success = false, message = "This endpoint only accepts non-document scans." });
 
+            if (string.IsNullOrWhiteSpace(req.NameList))
+                return BadRequest(new { success = false, message = "nameList is required." });
 
+            var names = req.NameList
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(n => n.Trim())
+                .Where(n => !string.IsNullOrEmpty(n))
+                .ToList();
 
+            if (!names.Any())
+                return BadRequest(new { success = false, message = "nameList contains no valid entries." });
 
+            // Save to disk
+            var uploadDir = Path.Combine(GlobalVariables.root_folder, "MultiScanUploads");
+            Directory.CreateDirectory(uploadDir);
 
+            var safeFileName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_paste.txt";
+            var savedFilePath = Path.Combine(uploadDir, safeFileName);
+            await System.IO.File.WriteAllLinesAsync(savedFilePath, names);
 
+            return Json(new
+            {
+                success = true,
+                scanType = "non-document",
+                rowCount = names.Count,
+                savedFilePath = savedFilePath,
+                fileName = safeFileName
+            });
+        }
 
+        // ─── PATH B: document  (multipart/form-data, has a file) ─────────────────────
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        [Route("Dashboard/MultiScan/Upload/Document")]
+        public async Task<IActionResult> MultiScanUploadDocument(
+            IFormFile? file,
+            [FromForm] string? scanColumn,
+            [FromForm] string? idColumn,
+            [FromForm] bool autoGenerateId)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { success = false, message = "No file provided." });
 
+            if (string.IsNullOrWhiteSpace(scanColumn))
+                return BadRequest(new { success = false, message = "scanColumn is required." });
 
+            if (!autoGenerateId && string.IsNullOrWhiteSpace(idColumn))
+                return BadRequest(new { success = false, message = "idColumn is required when autoGenerateId is false." });
 
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (ext != ".csv" && ext != ".xlsx" && ext != ".xls")
+                return BadRequest(new { success = false, message = "Unsupported file type. Use .csv, .xlsx, or .xls." });
 
+            // Save raw file to disk first (before parsing, so we keep the original)
+            var uploadDir = Path.Combine(GlobalVariables.root_folder, "MultiScanUploads");
+            Directory.CreateDirectory(uploadDir);
 
+            var safeFileName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Path.GetFileName(file.FileName)}";
+            var savedFilePath = Path.Combine(uploadDir, safeFileName);
 
+            await using (var stream = new FileStream(savedFilePath, FileMode.Create, FileAccess.Write))
+            {
+                await file.CopyToAsync(stream);
+            }
 
+            // Parse to get row count
+            DataTable data_to_scan = new DataTable();
 
+            if (ext == ".csv")
+            {
+                var csvReader = new CsvFileReader();
+                var csvResult = csvReader.ReadCsvFile(file, idColumn!, scanColumn);
+                if (!csvResult.Success)
+                    return BadRequest(new { success = false, message = csvResult.Error });
+                data_to_scan = csvResult.Data!;
+            }
+            else
+            {
+                var excelReader = new ExcelMultiSheetReader();
+                var excelResult = excelReader.ReadExcelFile(file, idColumn!, scanColumn);
+                if (!excelResult.Success)
+                    return BadRequest(new { success = false, message = excelResult.Error });
+                data_to_scan = excelResult.Data!;
+            }
+
+            return Json(new
+            {
+                success = true,
+                scanType = "document",
+                rowCount = data_to_scan.Rows.Count,
+                savedFilePath = savedFilePath,
+                fileName = safeFileName
+            });
+        }
 
 
 
