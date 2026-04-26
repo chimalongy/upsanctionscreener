@@ -38,7 +38,19 @@ namespace Upsanctionscreener.Controllers
         // VIEWS
         // ══════════════════════════════════════════════════════════════════════
 
-        public IActionResult Index() => View();
+        public async Task<IActionResult> Index()
+        {
+            var svc = new UpSanctionSettingsService(_db);
+            SettingsResult<ScanSettings> result = await svc.GetScanSettingsAsync();
+
+            int default_threshold = result.Success && result.Data is not null
+                ? result.Data.ScanThreshold
+                : 90;
+
+            ViewData["DefaultThreshold"] = default_threshold;
+
+            return View("~/Views/Dashboard/Index.cshtml");
+        }
 
         [Route("Dashboard/MultiScan")]
         public IActionResult MultiScan() =>
@@ -1071,16 +1083,7 @@ namespace Upsanctionscreener.Controllers
         
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // REQUEST / RESPONSE MODELS FOR TARGET SETTINGS
-    // (Add to your Models/ViewModels folder or keep here)
-    // ══════════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Used internally to deserialise a saved target when we need to inspect
-    /// its type (e.g. to clean up an uploaded document on delete).
-    /// </summary>
-   
+  
 
 
 }
