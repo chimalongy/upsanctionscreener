@@ -33,7 +33,7 @@
     /* ── Tab styles ── */
     .result-tab {
         position: relative;
-        padding: 0.625rem 1rem;
+        padding: 0.625rem 0.875rem;
         font-size: 0.8125rem;
         font-weight: 500;
         color: #6b7280;
@@ -43,6 +43,9 @@
         white-space: nowrap;
         cursor: pointer;
         background: none;
+    }
+    @@media (max-width: 480px) {
+        .result-tab { padding: 0.5rem 0.6rem; font-size: 0.75rem; }
     }
     .result-tab:hover { color: #534AB7; }
     .result-tab.active { color: #534AB7; border-bottom-color: #534AB7; }
@@ -72,20 +75,39 @@
         display: none;
         position: fixed; inset: 0; z-index: 9999;
         background: rgba(0,0,0,0.45);
-        align-items: center; justify-content: center;
-        padding: 1rem;
+        align-items: flex-end; justify-content: center;
+        padding: 0;
+    }
+    @@media (min-width: 640px) {
+        .modal-overlay { align-items: center; padding: 1rem; }
     }
     .modal-overlay.open { display: flex; }
 
     .modal-box {
         background: #fff;
-        border-radius: 1rem;
-        width: 100%; max-width: 560px;
-        max-height: 88vh;
+        border-radius: 1.25rem 1.25rem 0 0;
+        width: 100%;
+        max-height: 92vh;
         display: flex; flex-direction: column;
         animation: modalIn 0.22s ease forwards;
         overflow: hidden;
     }
+    @@media (min-width: 640px) {
+        .modal-box {
+            border-radius: 1rem;
+            max-width: 560px;
+            max-height: 88vh;
+        }
+    }
+
+    /* Modal drag handle for mobile */
+    .modal-drag-handle {
+        width: 36px; height: 4px;
+        background: #e5e7eb; border-radius: 2px;
+        margin: 0.6rem auto 0;
+        flex-shrink: 0;
+    }
+    @@media (min-width: 640px) { .modal-drag-handle { display: none; } }
 
     /* Dark mode modal */
     @@media (prefers-color-scheme: dark) {
@@ -98,6 +120,7 @@
         .detail-tag { background: #2d2d3f !important; color: #c4b5fd !important; border-color: #4c4c6e !important; }
         .modal-source-badge { background: #2d2d3f !important; color: #c4b5fd !important; }
         .modal-type-badge { background: #2d2d3f !important; color: #9ca3af !important; }
+        .modal-drag-handle { background: #3f3f5a; }
     }
 
     .modal-header {
@@ -109,6 +132,8 @@
     .modal-body {
         overflow-y: auto; padding: 1rem 1.5rem 1.5rem;
         flex: 1;
+        /* iOS momentum scroll */
+        -webkit-overflow-scrolling: touch;
     }
     .modal-close-btn {
         width: 28px; height: 28px; border-radius: 50%;
@@ -116,6 +141,8 @@
         display: flex; align-items: center; justify-content: center;
         flex-shrink: 0; margin-top: 2px;
         transition: background 0.15s;
+        /* larger tap target */
+        min-width: 36px; min-height: 36px;
     }
     .modal-close-btn:hover { background: #e5e7eb; }
 
@@ -127,7 +154,7 @@
     .detail-row:last-child { border-bottom: none; }
     .detail-label {
         font-size: 0.72rem; font-weight: 500;
-        color: #9ca3af; min-width: 130px; flex-shrink: 0;
+        color: #9ca3af; min-width: 110px; flex-shrink: 0;
         text-transform: uppercase; letter-spacing: 0.03em;
     }
     .detail-value {
@@ -163,24 +190,85 @@
         margin: 1rem 0 0.4rem; padding-bottom: 0.35rem;
         border-bottom: 1px solid #f3f4f6;
     }
+
+    /* ── Threshold row ── */
+    .threshold-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex: 1;
+        min-width: 0;
+    }
+    .threshold-row label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .threshold-row input[type="range"] {
+        flex: 1;
+        min-width: 0;
+        accent-color: #534AB7;
+    }
+    .threshold-row .threshold-val {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #111827;
+        min-width: 2.5rem;
+        text-align: right;
+        flex-shrink: 0;
+    }
+
+    /* ── Action row ── */
+    .action-row {
+        display: flex;
+        gap: 0.625rem;
+        flex-wrap: wrap;
+    }
+    .action-row .btn-screen {
+        flex: 1 1 auto;
+        min-width: 120px;
+    }
+    .action-row .btn-multiscan {
+        flex-shrink: 0;
+    }
+
+    /* ── Search type buttons ── */
+    .search-type-bar {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.25rem;
+    }
+    @@media (max-width: 360px) {
+        .search-type-bar {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    /* ── Tap-friendly tap targets ── */
+    @@media (max-width: 640px) {
+        .result-tab { min-height: 44px; }
+        button { min-height: 36px; }
+    }
 </style>
 
 @* ── Hero heading ── *@
-<div class="text-center mb-10 pt-6 fade-up fade-up-1">
-    <div class="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-brand-100">
-        <img src="~/images/logo.png" alt="Unified Payments Logo" class="w-10 h-10 object-contain" />
+<div class="text-center mb-8 pt-5 fade-up fade-up-1">
+    <div class="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-brand-100">
+        <img src="~/images/logo.png" alt="Unified Payments Logo" class="w-9 h-9 object-contain" />
     </div>
-    <h1 class="font-display text-text-primary text-3xl font-semibold mb-2">
+    <h1 class="font-display text-text-primary text-2xl sm:text-3xl font-semibold mb-1.5">
         Sanction Screening
     </h1>
-    <p class="text-text-secondary text-sm max-w-md mx-auto">
+    <p class="text-text-secondary text-sm max-w-sm mx-auto px-4">
         Search individuals or entities against global sanctions lists in real time.
     </p>
 </div>
 
 @* ── Search card ── *@
-<div class="bg-surface-card border border-border rounded-2xl px-6 py-6 shadow-sm mb-6 fade-up fade-up-2">
+<div class="bg-surface-card border border-border rounded-2xl px-4 sm:px-6 py-5 shadow-sm mb-5 fade-up fade-up-2">
 
+    @* Input *@
     <div class="relative mb-3">
         <svg id="inputIcon"
              class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none"
@@ -197,7 +285,7 @@
                       focus:ring-brand-100 transition-colors" />
         <button onclick="clearSearch()"
                 title="Clear"
-                class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center
+                class="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center
                        text-text-muted hover:text-text-primary transition-colors rounded-full
                        hover:bg-surface focus:outline-none">
             <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" class="w-3.5 h-3.5">
@@ -206,46 +294,51 @@
         </button>
     </div>
 
-    <div class="flex items-center gap-1.5 mb-4 bg-surface rounded-xl p-1 border border-border">
+    @* Search-type toggle *@
+    <div class="search-type-bar mb-4 bg-surface rounded-xl p-1 border border-border">
         <button onclick="setSearchType(this, 'name')"
-                class="search-type-btn flex-1 py-2 text-xs font-medium rounded-lg transition-colors bg-brand-500 text-white">
+                class="search-type-btn py-2 text-xs font-medium rounded-lg transition-colors bg-brand-500 text-white">
             Name
         </button>
         <button onclick="setSearchType(this, 'address')"
-                class="search-type-btn flex-1 py-2 text-xs font-medium rounded-lg transition-colors text-text-secondary hover:text-brand-700">
+                class="search-type-btn py-2 text-xs font-medium rounded-lg transition-colors text-text-secondary hover:text-brand-700">
             Address
         </button>
         <button onclick="setSearchType(this, 'email')"
-                class="search-type-btn flex-1 py-2 text-xs font-medium rounded-lg transition-colors text-text-secondary hover:text-brand-700">
+                class="search-type-btn py-2 text-xs font-medium rounded-lg transition-colors text-text-secondary hover:text-brand-700">
             Email
         </button>
         <button onclick="setSearchType(this, 'phone')"
-                class="search-type-btn flex-1 py-2 text-xs font-medium rounded-lg transition-colors text-text-secondary hover:text-brand-700">
+                class="search-type-btn py-2 text-xs font-medium rounded-lg transition-colors text-text-secondary hover:text-brand-700">
             Phone
         </button>
     </div>
 
+    @* Error bar *@
     <div id="errorBar"
          class="hidden mb-3 px-4 py-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">
     </div>
 
-    <div class="flex gap-3">
+    @* Threshold slider — full width row *@
+    <div class="threshold-row mb-3">
+        <label for="thresholdSlider">Match threshold</label>
+        <input id="thresholdSlider" type="range" min="50" max="100" value="90" />
+        <span id="thresholdLabel" class="threshold-val">90%</span>
+    </div>
+
+    @* Action buttons *@
+    <div class="action-row">
         <button id="screenBtn"
                 onclick="runSearch()"
-                class="flex-1 py-2.5 bg-accent-500 hover:bg-accent-600 disabled:opacity-50
+                class="btn-screen py-2.5 bg-accent-500 hover:bg-accent-600 disabled:opacity-50
                        disabled:cursor-not-allowed text-white font-medium text-sm
-                       rounded-xl transition-colors shadow-sm">
+                       rounded-xl transition-colors shadow-sm text-center">
             Screen Now
         </button>
-        <div class="flex items-center gap-3 ml-3">
-            <label class="text-sm text-text-secondary">Match threshold</label>
-            <input id="thresholdSlider" type="range" min="50" max="100" value="90" class="w-40" />
-            <span id="thresholdLabel" class="text-sm text-text-primary">90%</span>
-        </div>
         <button onclick="openMultiScan()"
-                class="px-5 py-2.5 bg-surface border border-border hover:border-brand-300
-                       text-text-secondary text-sm rounded-xl transition-colors flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                class="btn-multiscan px-4 py-2.5 bg-surface border border-border hover:border-brand-300
+                       text-text-secondary text-sm rounded-xl transition-colors flex items-center gap-2 justify-center">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
                 <rect x="9" y="3" width="6" height="4" rx="1"/>
                 <path d="M9 12h6M9 16h4"/>
@@ -267,10 +360,10 @@
 <div id="resultsArea" class="hidden fade-up fade-up-3">
     <div class="bg-surface-card border border-border rounded-2xl shadow-sm mb-4 overflow-hidden">
 
-        @* Tab bar *@
-        <div class="flex border-b border-border overflow-x-auto">
-            <button id="tab-sanctions"  class="result-tab active"  onclick="switchTab('sanctions')">
-                Sanction Search
+        @* Tab bar — horizontally scrollable on mobile *@
+        <div class="flex border-b border-border overflow-x-auto scrollbar-none" style="-webkit-overflow-scrolling:touch; scrollbar-width:none;">
+            <button id="tab-sanctions"   class="result-tab active"  onclick="switchTab('sanctions')">
+                Sanctions
                 <span id="badge-sanctions" class="tab-badge">0</span>
             </button>
             <button id="tab-adverseMedia" class="result-tab" onclick="switchTab('adverseMedia')">
@@ -278,7 +371,7 @@
                 <span id="badge-adverseMedia" class="tab-badge">0</span>
             </button>
             <button id="tab-peps" class="result-tab" onclick="switchTab('peps')">
-                PEP Search
+                PEPs
                 <span id="badge-peps" class="tab-badge">0</span>
             </button>
         </div>
@@ -325,6 +418,7 @@
    ══════════════════════════════════════════════════════════════════ *@
 <div id="sanctionModal" class="modal-overlay" onclick="handleOverlayClick(event, 'sanctionModal')">
     <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-drag-handle"></div>
 
         <div class="modal-header">
             <div style="min-width:0;">
@@ -332,7 +426,7 @@
                     <span id="sm-source" class="modal-source-badge"></span>
                     <span id="sm-type"   class="modal-type-badge"></span>
                 </div>
-                <p id="sm-name" class="text-text-primary font-semibold text-base leading-snug"></p>
+                <p id="sm-name"   class="text-text-primary font-semibold text-base leading-snug"></p>
                 <p id="sm-refnum" class="text-text-muted text-xs mt-0.5"></p>
             </div>
             <button class="modal-close-btn" onclick="closeModal('sanctionModal')" title="Close">
@@ -343,52 +437,42 @@
         </div>
 
         <div class="modal-body">
-
-            @* Core fields *@
             <div id="sm-core"></div>
 
-            @* Names *@
             <div id="sm-names-section" class="hidden">
                 <p class="section-divider">All names</p>
                 <div id="sm-names" class="detail-tags pt-1 pb-2"></div>
             </div>
 
-            @* Addresses *@
             <div id="sm-addresses-section" class="hidden">
                 <p class="section-divider">Addresses</p>
                 <div id="sm-addresses" class="flex flex-col gap-1 pb-2"></div>
             </div>
 
-            @* Identifiers *@
             <div id="sm-ids-section" class="hidden">
                 <p class="section-divider">Identifiers</p>
                 <div id="sm-ids" class="flex flex-col gap-1 pb-2"></div>
             </div>
 
-            @* Contact *@
             <div id="sm-contact-section" class="hidden">
                 <p class="section-divider">Contact</p>
                 <div id="sm-contact"></div>
             </div>
 
-            @* Positions *@
             <div id="sm-positions-section" class="hidden">
                 <p class="section-divider">Positions / roles</p>
                 <div id="sm-positions" class="detail-tags pt-1 pb-2"></div>
             </div>
 
-            @* Vessel info *@
             <div id="sm-vessel-section" class="hidden">
                 <p class="section-divider">Vessel information</p>
                 <div id="sm-vessel"></div>
             </div>
 
-            @* Comments *@
             <div id="sm-comments-section" class="hidden">
                 <p class="section-divider">Comments</p>
                 <p id="sm-comments" class="text-xs text-text-secondary leading-relaxed pb-2"></p>
             </div>
-
         </div>
     </div>
 </div>
@@ -399,6 +483,7 @@
    ══════════════════════════════════════════════════════════════════ *@
 <div id="pepModal" class="modal-overlay" onclick="handleOverlayClick(event, 'pepModal')">
     <div class="modal-box" onclick="event.stopPropagation()">
+        <div class="modal-drag-handle"></div>
 
         <div class="modal-header">
             <div style="min-width:0;">
@@ -516,14 +601,7 @@
         return items.map(t => `<span class="detail-tag">${esc(t)}</span>`).join('');
     }
 
-    function listRows(items) {
-        if (!items || !items.length) return '';
-        return items.map(t =>
-            `<div class="detail-row"><span class="detail-value">${esc(t)}</span></div>`
-        ).join('');
-    }
-
-    function showSection(id, content, containerSuffix) {
+    function showSection(id, content) {
         const section = document.getElementById(`${id}-section`);
         const inner   = document.getElementById(id);
         if (content) {
@@ -540,60 +618,45 @@
         const e = row.sanction_item;
         if (!e) return;
 
-        // Header
         document.getElementById('sm-source').textContent = e.source || 'Unknown source';
         document.getElementById('sm-type').textContent   = e.subjectType || '';
         document.getElementById('sm-name').textContent   = (e.names && e.names[0]) || e.primaryName || '—';
         document.getElementById('sm-refnum').textContent = e.referenceNumber ? `Ref: ${e.referenceNumber}` : '';
 
-        // Core fields
         document.getElementById('sm-core').innerHTML =
             detailRow('ID',               e.id || e.ID) +
             detailRow('Date designated',  e.dateDesignated) +
             detailRow('Sanction imposed', e.sanctionImposed);
 
-        // Names
-        const names = e.names ?? [];
-        showSection('sm-names', names.length > 1 ? tagList(names) : null);
+        showSection('sm-names', (e.names ?? []).length > 1 ? tagList(e.names) : null);
 
-        // Addresses
         const addrs = e.addresses ?? [];
-        const addrHtml = addrs.map(a =>
-            `<div class="detail-row"><span class="detail-value">${esc(a)}</span></div>`
-        ).join('');
-        showSection('sm-addresses', addrs.length ? addrHtml : null);
+        showSection('sm-addresses', addrs.length
+            ? addrs.map(a => `<div class="detail-row"><span class="detail-value">${esc(a)}</span></div>`).join('')
+            : null);
 
-        // Identifiers
         const ids = e.idList ?? e.IdList ?? [];
-        const idHtml = ids.map(i =>
-            `<div class="detail-row"><span class="detail-value">${esc(i)}</span></div>`
-        ).join('');
-        showSection('sm-ids', ids.length ? idHtml : null);
+        showSection('sm-ids', ids.length
+            ? ids.map(i => `<div class="detail-row"><span class="detail-value">${esc(i)}</span></div>`).join('')
+            : null);
 
-        // Contact
         const phones = e.phoneNumbers ?? [];
         const emails = e.emailAddresses ?? [];
-        const contactHtml =
-            phones.map(p => detailRow('Phone', p)).join('') +
-            emails.map(em => detailRow('Email', em)).join('');
+        const contactHtml = phones.map(p => detailRow('Phone', p)).join('') +
+                            emails.map(em => detailRow('Email', em)).join('');
         showSection('sm-contact', contactHtml || null);
 
-        // Positions
-        const positions = e.positions ?? [];
-        showSection('sm-positions', positions.length ? tagList(positions) : null);
+        showSection('sm-positions', (e.positions ?? []).length ? tagList(e.positions) : null);
 
-        // Vessel
         const hasVessel = e.callSign || e.vesselType || e.vesselFlag || e.vesselOwner || e.grossRegisteredTonnage;
-        const vesselHtml = hasVessel
+        showSection('sm-vessel', hasVessel
             ? detailRow('Call sign',   e.callSign)
             + detailRow('Vessel type', e.vesselType)
             + detailRow('Flag',        e.vesselFlag)
             + detailRow('Owner',       e.vesselOwner)
             + detailRow('Gross tonnage', e.grossRegisteredTonnage)
-            : null;
-        showSection('sm-vessel', vesselHtml);
+            : null);
 
-        // Comments
         const commentsSection = document.getElementById('sm-comments-section');
         const commentsEl      = document.getElementById('sm-comments');
         if (e.comments) {
@@ -620,13 +683,11 @@
         const doo       = e.DOO ?? e.doo ?? '';
         const ids       = e.merchantIds ?? e.merchant_ids ?? [];
 
-        // Header
         document.getElementById('pm-category').textContent = category;
         document.getElementById('pm-freq').textContent     = freq;
         document.getElementById('pm-name').textContent     = fullName;
         document.getElementById('pm-merchant').textContent = merchant + (location ? ` · ${location}` : '');
 
-        // Core fields
         document.getElementById('pm-core').innerHTML =
             detailRow('ID',                   e.id) +
             detailRow('Full name',            fullName) +
@@ -636,7 +697,6 @@
             detailRow('Monitoring category',  category) +
             detailRow('Monitoring frequency', freq);
 
-        // Merchant IDs
         const midsSection = document.getElementById('pm-merchantids-section');
         const midsEl      = document.getElementById('pm-merchantids');
         if (ids.length) {
@@ -770,7 +830,7 @@
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-text-primary text-sm font-semibold leading-snug group-hover:text-brand-600 transition-colors">${title}</p>
-                <div class="flex items-center gap-1.5 mt-1">
+                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
                     <span class="text-[10px] bg-blue-50 border border-blue-200 text-blue-700 px-2 py-0.5 rounded-full">${source}</span>
                     ${pubDate ? `<span class="text-[10px] text-text-muted">${pubDate}</span>` : ''}
                 </div>
@@ -840,7 +900,6 @@
             const peps         = data.peps         ?? [];
             const adverseMedia = data.adverseMedia ?? [];
 
-            // Cache for modal access
             _sanctionResults = sanctions;
             _pepResults      = peps;
 
@@ -929,13 +988,13 @@
         if (e.key === 'Enter') runSearch();
     });
 
-// threshold slider behaviour
-const slider = document.getElementById('thresholdSlider');
-const label = document.getElementById('thresholdLabel');
-if (slider) {
-    slider.addEventListener('input', () => {
-        if (label) label.textContent = slider.value + '%';
-    });
-}
+    // ── threshold slider ───────────────────────────────────────────────────────
+    const slider = document.getElementById('thresholdSlider');
+    const label  = document.getElementById('thresholdLabel');
+    if (slider) {
+        slider.addEventListener('input', () => {
+            if (label) label.textContent = slider.value + '%';
+        });
+    }
 </script>
 }

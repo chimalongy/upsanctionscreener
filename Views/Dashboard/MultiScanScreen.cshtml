@@ -1,0 +1,644 @@
+﻿@{
+    ViewData["Title"] = "Multi-Scan · Tasks";
+    ViewData["ActivePage"] = "Search";
+    ViewData["HideHeader"] = true;
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<style>
+    @@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up   { opacity: 0; animation: fadeUp 0.4s ease forwards; }
+    .fade-up-1 { animation-delay: 0.05s; }
+    .fade-up-2 { animation-delay: 0.15s; }
+    .fade-up-3 { animation-delay: 0.25s; }
+
+    /* ── Marquee / indeterminate progress bar ── */
+    @@keyframes marquee {
+        0%   { transform: translateX(-100%); }
+        100% { transform: translateX(350%); }
+    }
+    .progress-track {
+        height: 4px;
+        background: var(--color-border, #e5e7eb);
+        border-radius: 9999px;
+        overflow: hidden;
+        position: relative;
+    }
+    .progress-fill-static {
+        height: 100%;
+        border-radius: 9999px;
+        background: linear-gradient(90deg, #6366f1, #4f46e5);
+        transition: width 0.4s ease;
+    }
+    .progress-fill-marquee {
+        position: absolute;
+        top: 0; left: 0;
+        height: 100%;
+        width: 40%;
+        border-radius: 9999px;
+        background: linear-gradient(90deg, transparent, #6366f1, #818cf8, transparent);
+        animation: marquee 1.4s ease-in-out infinite;
+    }
+
+    /* ── Status badge ── */
+    .status-badge {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.18rem 0.6rem;
+        border-radius: 9999px;
+        font-size: 0.67rem; font-weight: 700; letter-spacing: 0.04em;
+        white-space: nowrap;
+    }
+    .s-pending   { background:#f3f4f6; border:1px solid #e5e7eb;   color:#6b7280; }
+    .s-scanning  { background:#eff6ff; border:1px solid #bfdbfe;   color:#1d4ed8; }
+    .s-completed { background:#f0fdf4; border:1px solid #bbf7d0;   color:#15803d; }
+    .s-failed    { background:#fef2f2; border:1px solid #fecaca;   color:#b91c1c; }
+
+    /* ── Scan-type badge ── */
+    .type-badge {
+        display: inline-flex; align-items: center; gap: 0.25rem;
+        padding: 0.15rem 0.5rem; border-radius: 9999px;
+        font-size: 0.65rem; font-weight: 600;
+    }
+    .type-document { background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; }
+    .type-list     { background:#f0fdf4; border:1px solid #bbf7d0; color:#15803d; }
+
+    /* ── Task card ── */
+    .task-card {
+        background: var(--color-surface-card, #fff);
+        border: 1px solid var(--color-border, #e5e7eb);
+        border-radius: 1.125rem;
+        overflow: hidden;
+        transition: box-shadow 0.2s;
+    }
+    .task-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
+    .task-card.is-active { border-color: #bfdbfe; }
+    .task-card.is-failed { border-color: #fecaca; }
+
+    .task-header {
+        display: flex; align-items: flex-start; gap: 0.875rem;
+        padding: 1rem 1.25rem 0.75rem;
+    }
+    .task-icon {
+        width: 2.25rem; height: 2.25rem; flex-shrink: 0;
+        border-radius: 0.625rem;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .task-icon-pending  { background:#f3f4f6; }
+    .task-icon-scanning { background:#eff6ff; }
+    .task-icon-completed{ background:#f0fdf4; }
+    .task-icon-failed   { background:#fef2f2; }
+
+    .task-meta { flex: 1; min-width: 0; }
+    .task-name {
+        font-size: 0.875rem; font-weight: 600;
+        color: var(--color-text-primary, #111827);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        margin-bottom: 0.25rem;
+    }
+    .task-sub {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+        font-size: 0.7rem; color: var(--color-text-muted, #9ca3af);
+    }
+
+    .task-body {
+        padding: 0 1.25rem 1rem;
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;
+    }
+    .task-stat {
+        background: var(--color-surface, #f9fafb);
+        border: 1px solid var(--color-border, #f3f4f6);
+        border-radius: 0.625rem;
+        padding: 0.5rem 0.75rem;
+    }
+    .task-stat-val {
+        font-size: 1.1rem; font-weight: 700;
+        color: var(--color-text-primary, #111827); line-height: 1;
+    }
+    .task-stat-lbl {
+        font-size: 0.62rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.05em; color: var(--color-text-muted, #9ca3af);
+        margin-top: 0.2rem;
+    }
+
+    .task-progress { padding: 0 1.25rem 1rem; }
+    .task-progress-label {
+        display: flex; justify-content: space-between;
+        font-size: 0.68rem; color: var(--color-text-muted, #9ca3af);
+        margin-bottom: 0.35rem;
+    }
+
+    /* ── Error banner ── */
+    .task-error-banner {
+        margin: 0 1.25rem 1rem;
+        background: #fff5f5;
+        border: 1px solid #fecaca;
+        border-radius: 0.625rem;
+        padding: 0.65rem 0.875rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.625rem;
+    }
+    .task-error-banner-icon {
+        flex-shrink: 0;
+        width: 1.25rem; height: 1.25rem;
+        color: #ef4444;
+        margin-top: 0.05rem;
+    }
+    .task-error-banner-body {}
+    .task-error-banner-title {
+        font-size: 0.72rem; font-weight: 700;
+        color: #b91c1c;
+        margin-bottom: 0.2rem;
+        letter-spacing: 0.01em;
+    }
+    .task-error-banner-msg {
+        font-size: 0.7rem;
+        color: #dc2626;
+        font-family: monospace;
+        word-break: break-word;
+        line-height: 1.5;
+    }
+
+    /* ── Download button ── */
+    .btn-download {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.9rem;
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+        box-shadow: 0 1px 6px rgba(34,197,94,0.3);
+        letter-spacing: 0.01em;
+    }
+    .btn-download:hover {
+        opacity: 0.92;
+        box-shadow: 0 2px 10px rgba(34,197,94,0.4);
+        transform: translateY(-1px);
+    }
+    .btn-download:active { transform: translateY(0); opacity: 1; }
+    .btn-download svg { flex-shrink: 0; }
+
+    /* ── Action bar (sits at same level as expand toggle) ── */
+    .task-actions-bar {
+        padding: 0.75rem 1.25rem 0.875rem;
+        border-top: 1px solid var(--color-border, #f3f4f6);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    /* ── Detail expand section ── */
+    .task-detail {
+        border-top: 1px solid var(--color-border, #f3f4f6);
+        padding: 0.875rem 1.25rem;
+        display: none;
+    }
+    .task-detail.open { display: block; }
+    .detail-grid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem;
+        font-size: 0.75rem;
+    }
+    .detail-row-item { display: flex; flex-direction: column; gap: 0.1rem; }
+    .detail-row-item .lbl {
+        font-size: 0.62rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.05em; color: var(--color-text-muted, #9ca3af);
+    }
+    .detail-row-item .val {
+        color: var(--color-text-primary, #111827);
+        font-weight: 500; word-break: break-all;
+    }
+    .detail-row-item .val.mono { font-family: monospace; font-size: 0.7rem; }
+
+    /* ── Expand toggle ── */
+    .btn-expand {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        font-size: 0.7rem; font-weight: 500;
+        color: var(--color-text-muted, #9ca3af);
+        cursor: pointer; border: none; background: none; padding: 0;
+        transition: color 0.15s;
+    }
+    .btn-expand:hover { color: var(--color-brand-500, #6366f1); }
+    .btn-expand svg { transition: transform 0.2s; }
+    .btn-expand.open svg { transform: rotate(180deg); }
+
+    /* ── Empty state ── */
+    .empty-state {
+        text-align: center; padding: 4rem 1rem;
+        color: var(--color-text-muted, #9ca3af);
+    }
+
+    /* ── Last-updated pulse ── */
+    @@keyframes ping {
+        0%   { transform: scale(1); opacity: 0.8; }
+        75%  { transform: scale(1.8); opacity: 0; }
+        100% { transform: scale(1.8); opacity: 0; }
+    }
+    .ping-dot {
+        position: relative; display: inline-block;
+        width: 0.5rem; height: 0.5rem;
+    }
+    .ping-dot::before {
+        content: ''; position: absolute; inset: 0;
+        background: #22c55e; border-radius: 50%;
+        animation: ping 1.5s ease-out infinite;
+    }
+    .ping-dot::after {
+        content: ''; position: absolute; inset: 0;
+        background: #22c55e; border-radius: 50%;
+    }
+</style>
+
+@* ── Hero ── *@
+<div class="text-center mb-6 pt-6 fade-up fade-up-1">
+    <div class="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-brand-100">
+        <svg class="w-7 h-7 text-brand-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+            <rect x="9" y="3" width="6" height="4" rx="1"/>
+            <path d="M9 12h6M9 16h4"/>
+        </svg>
+    </div>
+    <h1 class="font-display text-text-primary text-2xl font-semibold mb-1">Scan Tasks</h1>
+    <p class="text-text-secondary text-sm max-w-sm mx-auto">
+        All multi-scan jobs — live status updates every 5 seconds.
+    </p>
+</div>
+
+@* ── Toolbar ── *@
+<div class="flex items-center justify-between mb-4 fade-up fade-up-2">
+    <div class="flex items-center gap-2 text-xs text-text-muted">
+        <span class="ping-dot" id="pollDot" style="display:none"></span>
+        <span id="lastUpdated">Loading…</span>
+    </div>
+    <a href="@Url.Action("MultiScan", "Dashboard")"
+       class="inline-flex items-center gap-1.5 px-4 py-2
+              bg-surface-card border border-border hover:border-brand-300
+              text-text-secondary text-xs font-medium rounded-xl transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12l7-7 7 7"/>
+        </svg>
+        New Scan
+    </a>
+</div>
+
+@* ── Task list ── *@
+<div id="taskList" class="flex flex-col gap-3 mb-10 fade-up fade-up-3">
+    <div class="empty-state">
+        <svg class="w-10 h-10 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+            <rect x="9" y="3" width="6" height="4" rx="1"/>
+        </svg>
+        <p class="text-sm font-medium">Loading tasks…</p>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════════════════════ */
+let expandedIds = new Set();   // track which task cards are expanded
+let pollTimer   = null;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ANTIFORGERY
+══════════════════════════════════════════════════════════════════════════ */
+function getToken() {
+    const el = document.querySelector('input[name="__RequestVerificationToken"]');
+    return el ? el.value : '';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   POLL
+══════════════════════════════════════════════════════════════════════════ */
+async function poll() {
+    try {
+        const resp = await fetch('/Dashboard/MultiScan/GetTasks', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+        if (data.success) renderTasks(data.tasks);
+        document.getElementById('lastUpdated').textContent =
+            'Updated ' + new Date().toLocaleTimeString();
+        document.getElementById('pollDot').style.display = 'inline-block';
+    } catch (ex) {
+        console.warn('Poll error:', ex);
+        document.getElementById('lastUpdated').textContent = 'Update failed — retrying…';
+    }
+}
+
+function startPolling() {
+    poll();                                   // immediate first fetch
+    pollTimer = setInterval(poll, 5000);      // then every 5 s
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RENDER
+══════════════════════════════════════════════════════════════════════════ */
+function renderTasks(tasks) {
+    const container = document.getElementById('taskList');
+
+    if (!tasks || !tasks.length) {
+        container.innerHTML = `
+        <div class="empty-state">
+            <svg class="w-10 h-10 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                <rect x="9" y="3" width="6" height="4" rx="1"/>
+            </svg>
+            <p class="text-sm font-medium">No scan tasks yet</p>
+            <p class="text-xs mt-1">
+                <a href="@Url.Action("MultiScan", "Dashboard")" class="text-brand-500 hover:underline">Upload a file</a>
+                to start your first scan.
+            </p>
+        </div>`;
+        return;
+    }
+
+    // Sort: active first, then by id desc
+    const sorted = [...tasks].sort((a, b) => {
+        const activeA = isActive(a.status);
+        const activeB = isActive(b.status);
+        if (activeA !== activeB) return activeA ? -1 : 1;
+        return b.id - a.id;
+    });
+
+    container.innerHTML = sorted.map(t => taskCardHtml(t)).join('');
+
+    // Re-apply expanded state
+    expandedIds.forEach(id => {
+        const det = document.getElementById(`detail-${id}`);
+        const btn = document.getElementById(`expand-btn-${id}`);
+        if (det) { det.classList.add('open'); btn?.classList.add('open'); }
+    });
+}
+
+function isActive(status) {
+    const s = (status || '').toLowerCase();
+    return s === 'pending' || s === 'scanning';
+}
+
+function taskCardHtml(t) {
+    const status   = (t.status || 'Pending').toLowerCase();
+    const active   = status === 'pending' || status === 'scanning';
+    const rowCount = parseInt(t.rowCount) || 0;
+    const scanType = (t.scanType || 'document').toLowerCase();
+    const isDoc    = scanType === 'document';
+
+    // ── Status badge ─────────────────────────────────────────────────
+    const badgeClass = {
+        pending  : 's-pending',
+        scanning : 's-scanning',
+        completed: 's-completed',
+        failed   : 's-failed'
+    }[status] || 's-pending';
+
+    const badgeLabel = {
+        pending  : 'Pending',
+        scanning : 'Scanning…',
+        completed: 'Completed',
+        failed   : 'Failed'
+    }[status] || t.status;
+
+    const badgeDot = {
+        pending  : '#9ca3af',
+        scanning : '#3b82f6',
+        completed: '#22c55e',
+        failed   : '#ef4444'
+    }[status] || '#9ca3af';
+
+    // ── Icon colour ───────────────────────────────────────────────────
+    const iconClass = {
+        pending  : 'task-icon-pending',
+        scanning : 'task-icon-scanning',
+        completed: 'task-icon-completed',
+        failed   : 'task-icon-failed'
+    }[status] || 'task-icon-pending';
+
+    const iconColor = {
+        pending  : '#9ca3af',
+        scanning : '#3b82f6',
+        completed: '#22c55e',
+        failed   : '#ef4444'
+    }[status] || '#9ca3af';
+
+    // ── Progress bar ──────────────────────────────────────────────────
+    let progressHtml = '';
+    if (active) {
+        progressHtml = `
+        <div class="task-progress">
+            <div class="task-progress-label">
+                <span>${badgeLabel}</span>
+                <span>${rowCount} records</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill-marquee"></div>
+            </div>
+        </div>`;
+    } else if (status === 'completed') {
+        progressHtml = `
+        <div class="task-progress">
+            <div class="task-progress-label">
+                <span>Complete</span>
+                <span>${rowCount} records</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill-static" style="width:100%"></div>
+            </div>
+        </div>`;
+    } else if (status === 'failed') {
+        progressHtml = `
+        <div class="task-progress">
+            <div class="task-progress-label" style="color:#b91c1c">
+                <span>Failed</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill-static" style="width:100%;background:#ef4444"></div>
+            </div>
+        </div>`;
+    }
+
+    // ── Error banner (only shown when failed and message exists) ─────
+    let errorBannerHtml = '';
+    if (status === 'failed' && t.errorMessage && t.errorMessage.trim() !== '') {
+        errorBannerHtml = `
+        <div class="task-error-banner">
+            <svg class="task-error-banner-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v4M12 16h.01"/>
+            </svg>
+            <div class="task-error-banner-body">
+                <div class="task-error-banner-title">Error Details</div>
+                <div class="task-error-banner-msg">${escHtml(t.errorMessage)}</div>
+            </div>
+        </div>`;
+    }
+
+    // ── Timestamps ────────────────────────────────────────────────────
+    const startFmt = formatTs(t.startTime);
+    const endFmt   = formatTs(t.completionTIme);
+
+    // ── Actions bar (expand toggle + optional download button) ────────
+    let downloadBtnHtml = '';
+    if (status === 'completed') {
+        // Derive a download URL from the task id — adjust the route to match your actual download endpoint
+        const downloadUrl = `/Dashboard/MultiScan/DownloadResult/${t.id}`;
+        downloadBtnHtml = `
+        <a href="${escHtml(downloadUrl)}"
+           class="btn-download"
+           title="Download scan results for task #${t.id}">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path d="M12 5v10M8 15l4 4 4-4"/>
+                <path d="M4 20h16"/>
+            </svg>
+            Download Results
+        </a>`;
+    }
+
+    const actionsBarHtml = `
+    <div class="task-actions-bar">
+        <button class="btn-expand" id="expand-btn-${t.id}" onclick="toggleDetail(${t.id})">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="m6 9 6 6 6-6"/>
+            </svg>
+            View details
+        </button>
+        ${downloadBtnHtml}
+    </div>`;
+
+    // ── Detail section ────────────────────────────────────────────────
+    const detailHtml = `
+    <div class="task-detail" id="detail-${t.id}">
+        <div class="detail-grid">
+            <div class="detail-row-item">
+                <span class="lbl">File Name</span>
+                <span class="val mono">${escHtml(t.fileName || '—')}</span>
+            </div>
+            <div class="detail-row-item">
+                <span class="lbl">Scan Type</span>
+                <span class="val">${escHtml(t.scanType || '—')}</span>
+            </div>
+            <div class="detail-row-item">
+                <span class="lbl">Scan Column</span>
+                <span class="val mono">${escHtml(t.scanColumn || '—')}</span>
+            </div>
+            <div class="detail-row-item">
+                <span class="lbl">ID Column</span>
+                <span class="val mono">${escHtml(t.autoGenerateId === 'true' || t.autoGenerateId === true ? 'auto-generated' : (t.idColumn || '—'))}</span>
+            </div>
+            <div class="detail-row-item">
+                <span class="lbl">Started</span>
+                <span class="val">${startFmt}</span>
+            </div>
+            <div class="detail-row-item">
+                <span class="lbl">Completed</span>
+                <span class="val">${endFmt || '—'}</span>
+            </div>
+            <div class="detail-row-item" style="grid-column:1/-1">
+                <span class="lbl">File Path</span>
+                <span class="val mono" style="font-size:0.65rem;opacity:0.7">${escHtml(t.filePath || '—')}</span>
+            </div>
+        </div>
+    </div>`;
+
+    return `
+    <div class="task-card ${active ? 'is-active' : ''} ${status === 'failed' ? 'is-failed' : ''}" id="task-card-${t.id}">
+        <div class="task-header">
+            <div class="task-icon ${iconClass}">
+                <svg width="18" height="18" fill="none" stroke="${iconColor}" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                    <rect x="9" y="3" width="6" height="4" rx="1"/>
+                    <path d="M9 12h6M9 16h4"/>
+                </svg>
+            </div>
+            <div class="task-meta">
+                <div class="task-name">#${t.id} — ${escHtml(t.fileName || 'Unnamed scan')}</div>
+                <div class="task-sub">
+                    <span class="status-badge ${badgeClass}">
+                        <svg width="6" height="6" viewBox="0 0 8 8" fill="${badgeDot}"><circle cx="4" cy="4" r="3"/></svg>
+                        ${badgeLabel}
+                    </span>
+                    <span class="type-badge ${isDoc ? 'type-document' : 'type-list'}">
+                        ${isDoc ? 'document' : 'non-document'}
+                    </span>
+                    <span>${startFmt || '—'}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="task-body">
+            <div class="task-stat">
+                <div class="task-stat-val">${rowCount}</div>
+                <div class="task-stat-lbl">Records</div>
+            </div>
+            <div class="task-stat">
+                <div class="task-stat-val text-xs font-mono truncate">${escHtml(t.scanColumn || '—')}</div>
+                <div class="task-stat-lbl">Scan Col</div>
+            </div>
+            <div class="task-stat">
+                <div class="task-stat-val text-xs font-mono truncate">
+                    ${t.autoGenerateId === 'true' || t.autoGenerateId === true ? 'auto' : escHtml(t.idColumn || '—')}
+                </div>
+                <div class="task-stat-lbl">ID Col</div>
+            </div>
+        </div>
+
+        ${progressHtml}
+        ${errorBannerHtml}
+        ${actionsBarHtml}
+        ${detailHtml}
+    </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TOGGLE DETAIL
+══════════════════════════════════════════════════════════════════════════ */
+function toggleDetail(id) {
+    const det = document.getElementById(`detail-${id}`);
+    const btn = document.getElementById(`expand-btn-${id}`);
+    if (!det) return;
+    const open = det.classList.toggle('open');
+    btn?.classList.toggle('open', open);
+    if (open) expandedIds.add(id);
+    else       expandedIds.delete(id);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════════════════════════════════ */
+function formatTs(ts) {
+    if (!ts) return '';
+    try {
+        const d = new Date(ts);
+        if (isNaN(d)) return ts;
+        return d.toLocaleString(undefined, {
+            month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    } catch { return ts; }
+}
+
+function escHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', startPolling);
+</script>
+}
