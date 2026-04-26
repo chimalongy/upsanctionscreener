@@ -100,11 +100,9 @@
     .btn-start-screening {
         display: inline-flex; align-items: center; gap: 0.5rem;
         padding: 0.65rem 1.5rem;
-        background: #22c55e;
-        color: #fff;
+        background: #22c55e; color: #fff;
         font-weight: 600; font-size: 0.875rem;
-        border-radius: 0.75rem;
-        border: none; cursor: pointer;
+        border-radius: 0.75rem; border: none; cursor: pointer;
         transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
         box-shadow: 0 2px 8px rgba(34,197,94,0.35);
     }
@@ -116,12 +114,113 @@
     .btn-start-screening:active { transform: translateY(0); }
     .btn-start-screening svg { width: 1rem; height: 1rem; }
 
-    /* upload spinner overlay on the submit button */
+    /* ── Submit button loading state ── */
     #submitBtn:disabled { opacity: 0.65; cursor: not-allowed; }
     #submitBtn .btn-label  { transition: opacity 0.15s; }
     #submitBtn .btn-spinner { display: none; }
     #submitBtn.loading .btn-label  { opacity: 0; }
     #submitBtn.loading .btn-spinner { display: flex; }
+
+    /* ══════════════════════════════════════════════════════════════
+       SHARED MODAL BASE
+    ══════════════════════════════════════════════════════════════ */
+    .modal-overlay {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(3px);
+        opacity: 0; pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+    .modal-overlay.open {
+        opacity: 1; pointer-events: auto;
+    }
+    .modal-box {
+        background: var(--color-surface-card, #ffffff);
+        border: 1px solid var(--color-border, #e5e7eb);
+        border-radius: 1.25rem;
+        padding: 1.75rem 2rem;
+        max-width: 420px; width: 90%;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+        transform: translateY(12px) scale(0.97);
+        transition: transform 0.2s ease;
+    }
+    .modal-overlay.open .modal-box {
+        transform: translateY(0) scale(1);
+    }
+    .modal-icon-wrap {
+        width: 3rem; height: 3rem;
+        border-radius: 9999px;
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 1rem;
+    }
+    .modal-icon-wrap.error   { background: #fef2f2; border: 1px solid #fecaca; }
+    .modal-icon-wrap.warning { background: #fffbeb; border: 1px solid #fde68a; }
+
+    /* ── Shared button styles ── */
+    .btn-modal-secondary {
+        flex: 1; padding: 0.6rem 1rem;
+        background: var(--color-surface, #f9fafb);
+        border: 1px solid var(--color-border, #e5e7eb);
+        border-radius: 0.75rem;
+        font-size: 0.875rem; font-weight: 500;
+        color: var(--color-text-secondary, #6b7280);
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-modal-secondary:hover {
+        border-color: var(--color-brand-300, #a5b4fc);
+        color: var(--color-text-primary, #111827);
+    }
+    .btn-modal-danger {
+        flex: 1; padding: 0.6rem 1rem;
+        background: #ef4444; border: none;
+        border-radius: 0.75rem;
+        font-size: 0.875rem; font-weight: 600; color: #fff;
+        cursor: pointer;
+        transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+        box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+    }
+    .btn-modal-danger:hover {
+        background: #dc2626;
+        box-shadow: 0 4px 14px rgba(239,68,68,0.4);
+        transform: translateY(-1px);
+    }
+    .btn-modal-danger:active  { transform: translateY(0); }
+    .btn-modal-danger:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .btn-modal-danger .proc-spinner { display: none; }
+    .btn-modal-danger.deleting .proc-label   { display: none; }
+    .btn-modal-danger.deleting .proc-spinner {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+    }
+
+    /* ── Error modal specifics ── */
+    .btn-modal-dismiss {
+        width: 100%; padding: 0.6rem 1rem;
+        background: var(--color-surface, #f9fafb);
+        border: 1px solid var(--color-border, #e5e7eb);
+        border-radius: 0.75rem;
+        font-size: 0.875rem; font-weight: 500;
+        color: var(--color-text-secondary, #6b7280);
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-modal-dismiss:hover {
+        border-color: var(--color-brand-300, #a5b4fc);
+        color: var(--color-text-primary, #111827);
+    }
+    #errorModalDetail {
+        font-size: 0.8rem;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 0.625rem;
+        padding: 0.65rem 0.875rem;
+        color: #b91c1c;
+        margin-bottom: 1.25rem;
+        word-break: break-word;
+        line-height: 1.55;
+        white-space: pre-wrap;
+    }
 </style>
 
 @* ── Hero ── *@
@@ -167,7 +266,7 @@
     </div>
 
     @* ════════════════════════════════════════════════════════════
-       PANEL A — Document upload  →  scanType = "document"
+       PANEL A — Document upload
     ════════════════════════════════════════════════════════════ *@
     <div id="panel-upload">
 
@@ -220,7 +319,6 @@
         @* ── Column mapping ── *@
         <div id="fileConfig" class="hidden mt-4">
             <div class="border-t border-border pt-4">
-
                 <p class="text-xs font-semibold text-text-primary mb-3 flex items-center gap-1.5">
                     <svg class="w-3.5 h-3.5 text-brand-500" fill="none" stroke="currentColor"
                          stroke-width="2" viewBox="0 0 24 24">
@@ -228,22 +326,18 @@
                     </svg>
                     Column Mapping
                 </p>
-
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-
                     <div>
                         <label class="config-label" for="scanColumnInput">
                             Column to Scan <span class="req-mark">*</span>
                         </label>
                         <input id="scanColumnInput" type="text" class="config-input"
-                               placeholder="e.g. Full Name, entity_name…"
-                               autocomplete="off" />
+                               placeholder="e.g. Full Name, entity_name…" autocomplete="off" />
                         <p class="field-error" id="err-scanColumn">Please enter the column name to scan.</p>
                         <p class="text-[11px] text-text-muted mt-1">
                             Exact header name from your file. Values here are screened against sanctions lists.
                         </p>
                     </div>
-
                     <div>
                         <label class="config-label">
                             Record ID Column <span class="req-mark">*</span>
@@ -257,8 +351,7 @@
                         </div>
                         <div id="idColumnWrap">
                             <input id="idColumnInput" type="text" class="config-input"
-                                   placeholder="e.g. ID, record_id, CustomerID…"
-                                   autocomplete="off" />
+                                   placeholder="e.g. ID, record_id, CustomerID…" autocomplete="off" />
                             <p class="field-error" id="err-idColumn">
                                 Enter the ID column name or enable auto-generate.
                             </p>
@@ -279,13 +372,11 @@
     </div>
 
     @* ════════════════════════════════════════════════════════════
-       PANEL B — Paste list  →  scanType = "non-document"
+       PANEL B — Paste list
     ════════════════════════════════════════════════════════════ *@
     <div id="panel-paste" class="hidden">
         <div class="flex items-center justify-between mb-2">
-            <label class="text-xs font-medium text-text-secondary">
-                Paste names — one per line
-            </label>
+            <label class="text-xs font-medium text-text-secondary">Paste names — one per line</label>
             <span class="scan-type-badge badge-list">
                 <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd"
@@ -334,7 +425,7 @@
     </div>
 </div>
 
-@* ── Ready card — shown after successful upload ── *@
+@* ── Ready card ── *@
 <div id="readyCard" class="hidden rounded-2xl px-6 py-6 shadow-sm mb-6 fade-up">
     <div class="flex items-start gap-4">
         <div class="big-check">
@@ -344,10 +435,7 @@
         </div>
         <div class="flex-1 min-w-0">
             <p class="text-text-primary font-semibold text-base mb-0.5">Ready to Screen</p>
-            <p class="text-text-secondary text-sm mb-3" id="readySummary">
-                <!-- populated by JS -->
-            </p>
-
+            <p class="text-text-secondary text-sm mb-3" id="readySummary"></p>
             <div class="flex flex-wrap gap-3 text-xs text-text-secondary mb-4">
                 <span class="flex items-center gap-1">
                     <svg class="w-3.5 h-3.5 text-text-muted" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -358,21 +446,72 @@
                 </span>
                 <span id="readyScanTypeBadge" class="scan-type-badge badge-document"></span>
             </div>
-
             <div class="flex flex-wrap gap-3">
-                <button onclick="startScreening()"
-                        class="btn-start-screening">
+                <button onclick="startScreening()" class="btn-start-screening">
                     <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                     </svg>
                     Start Screening
                 </button>
-                <button onclick="resetForm()"
+                <button onclick="promptChangeFile()"
                         class="px-4 py-2 bg-surface border border-border hover:border-brand-300
                                text-text-secondary text-sm rounded-xl transition-colors">
                     Change File / List
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+@* ══════════════════════════════════════════════════════════════════
+   ERROR MODAL — replaces every alert() call
+══════════════════════════════════════════════════════════════════ *@
+<div id="errorModal" class="modal-overlay" role="alertdialog" aria-modal="true" aria-labelledby="errorModalTitle">
+    <div class="modal-box">
+        <div class="modal-icon-wrap error">
+            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 8v4M12 16h.01"/>
+            </svg>
+        </div>
+        <h2 id="errorModalTitle" class="text-text-primary font-semibold text-base mb-1.5"></h2>
+        <div id="errorModalDetail"></div>
+        <button class="btn-modal-dismiss" onclick="closeErrorModal()">Dismiss</button>
+    </div>
+</div>
+
+@* ══════════════════════════════════════════════════════════════════
+   DELETE-CONFIRM MODAL
+══════════════════════════════════════════════════════════════════ *@
+<div id="deleteModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+    <div class="modal-box">
+        <div class="modal-icon-wrap warning">
+            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+            </svg>
+        </div>
+        <h2 id="deleteModalTitle" class="text-text-primary font-semibold text-base mb-1">Discard this upload?</h2>
+        <p class="text-text-secondary text-sm mb-5">
+            The file currently saved on the server will be <strong>permanently deleted</strong>.
+            You will need to re-upload or re-paste your data before running another scan.
+        </p>
+        <div class="flex gap-3">
+            <button class="btn-modal-secondary" onclick="closeDeleteModal()">Cancel</button>
+            <button id="proceedDeleteBtn" class="btn-modal-danger" onclick="proceedDelete()">
+                <span class="proc-label flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    </svg>
+                    Yes, Delete &amp; Reset
+                </span>
+                <span class="proc-spinner">
+                    <svg class="w-3.5 h-3.5 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    </svg>
+                    Deleting…
+                </span>
+            </button>
         </div>
     </div>
 </div>
@@ -387,12 +526,36 @@ let loadedFile   = null;
 let uploadResult = null;
 
 /* ═══════════════════════════════════════════════════════════════════
-   ANTIFORGERY TOKEN  (same pattern as every other page in the app)
+   ANTIFORGERY TOKEN
 ═══════════════════════════════════════════════════════════════════ */
 function getToken() {
     const el = document.querySelector('input[name="__RequestVerificationToken"]');
     return el ? el.value : '';
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ERROR MODAL  ── central replacement for every alert() call
+   showError(title, message)
+   closeErrorModal()
+═══════════════════════════════════════════════════════════════════ */
+function showError(title, message) {
+    document.getElementById('errorModalTitle').textContent  = title;
+    document.getElementById('errorModalDetail').textContent = message;
+    document.getElementById('errorModal').classList.add('open');
+}
+function closeErrorModal() {
+    document.getElementById('errorModal').classList.remove('open');
+}
+document.getElementById('errorModal').addEventListener('click', function (e) {
+    if (e.target === this) closeErrorModal();
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+   GLOBAL ESCAPE KEY  — closes whichever modal is open
+═══════════════════════════════════════════════════════════════════ */
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeErrorModal(); closeDeleteModal(); }
+});
 
 /* ═══════════════════════════════════════════════════════════════════
    TAB SWITCHING
@@ -440,7 +603,10 @@ function handleFileSelect(e) {
 function attachFile(file) {
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['csv', 'xlsx', 'xls'].includes(ext)) {
-        alert('Unsupported file type. Please upload a .csv, .xlsx, or .xls file.');
+        showError(
+            'Unsupported File Type',
+            'Please upload a .csv, .xlsx, or .xls file.\n\nYou selected: ' + file.name
+        );
         return;
     }
     loadedFile = file;
@@ -458,8 +624,8 @@ function clearFile() {
     document.getElementById('autoIdCheck').checked    = false;
     document.getElementById('idColumnInput').disabled = false;
     document.getElementById('idColumnWrap').style.opacity = '1';
-    hideError('err-scanColumn');
-    hideError('err-idColumn');
+    hideFieldError('err-scanColumn');
+    hideFieldError('err-idColumn');
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -467,27 +633,28 @@ function clearFile() {
 ═══════════════════════════════════════════════════════════════════ */
 function toggleAutoId() {
     const on = document.getElementById('autoIdCheck').checked;
-    document.getElementById('idColumnInput').disabled         = on;
-    document.getElementById('idColumnWrap').style.opacity     = on ? '0.4' : '1';
-    if (on) hideError('err-idColumn');
+    document.getElementById('idColumnInput').disabled     = on;
+    document.getElementById('idColumnWrap').style.opacity = on ? '0.4' : '1';
+    if (on) hideFieldError('err-idColumn');
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   VALIDATION
+   INLINE FIELD VALIDATION HELPERS
+   (named showFieldError / hideFieldError to avoid clash with showError)
 ═══════════════════════════════════════════════════════════════════ */
-function showError(id) { document.getElementById(id).classList.add('visible'); }
-function hideError(id) { document.getElementById(id).classList.remove('visible'); }
+function showFieldError(id) { document.getElementById(id).classList.add('visible'); }
+function hideFieldError(id) { document.getElementById(id).classList.remove('visible'); }
 
 function validateDocumentConfig() {
     let ok = true;
     if (!document.getElementById('scanColumnInput').value.trim()) {
-        showError('err-scanColumn'); ok = false;
-    } else { hideError('err-scanColumn'); }
+        showFieldError('err-scanColumn'); ok = false;
+    } else { hideFieldError('err-scanColumn'); }
 
     const autoId = document.getElementById('autoIdCheck').checked;
     if (!autoId && !document.getElementById('idColumnInput').value.trim()) {
-        showError('err-idColumn'); ok = false;
-    } else { hideError('err-idColumn'); }
+        showFieldError('err-idColumn'); ok = false;
+    } else { hideFieldError('err-idColumn'); }
 
     return ok;
 }
@@ -509,57 +676,58 @@ function downloadTemplate() {
 ═══════════════════════════════════════════════════════════════════ */
 async function runMultiScan() {
     if (activeTab === 'upload') {
-        if (!loadedFile)               { alert('Please upload a file first.'); return; }
+        if (!loadedFile) {
+            showError('No File Selected',
+                'Please upload a .csv, .xlsx, or .xls file before continuing.');
+            return;
+        }
         if (!validateDocumentConfig()) { return; }
         await submitDocument();
     } else {
         const names = document.getElementById('pasteInput').value
             .split('\n').map(l => l.trim()).filter(Boolean);
-        if (!names.length) { alert('Please paste at least one name.'); return; }
+        if (!names.length) {
+            showError('No Names Entered',
+                'Please paste at least one name into the text area before continuing.');
+            return;
+        }
         await submitPasteList(names);
     }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   PATH A — non-document (JSON body, mirrors Index.cshtml exactly)
+   PATH A — non-document (JSON body)
 ═══════════════════════════════════════════════════════════════════ */
 async function submitPasteList(names) {
     const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    btn.classList.add('loading');
+    btn.disabled = true; btn.classList.add('loading');
 
     try {
-        const response = await fetch('@Url.Action("MultiScanUpload", "Dashboard")', {
+        const response = await fetch('/Dashboard/MultiScan/Upload/Paste', {
             method : 'POST',
             headers: {
                 'Content-Type'            : 'application/json',
                 'X-Requested-With'        : 'XMLHttpRequest',
                 'RequestVerificationToken': getToken()
             },
-            body: JSON.stringify({
-                scanType : 'non-document',
-                nameList : names.join('\n')
-            })
+            body: JSON.stringify({ scanType: 'non-document', nameList: names.join('\n') })
         });
-
         await handleResponse(response, 'non-document');
-
     } catch (ex) {
         console.error('submitPasteList error:', ex);
-        alert('Error contacting server: ' + ex.message);
+        showError('Network Error',
+            'Could not reach the server. Please check your connection and try again.\n\n' + ex.message);
     } finally {
-        btn.disabled = false;
-        btn.classList.remove('loading');
+        btn.disabled = false; btn.classList.remove('loading');
     }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   PATH B — document (FormData multipart, file must be a binary blob)
+   PATH B — document (FormData multipart)
 ═══════════════════════════════════════════════════════════════════ */
 async function submitDocument() {
     const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    btn.classList.add('loading');
+    btn.disabled = true; btn.classList.add('loading');
 
     try {
         const formData = new FormData();
@@ -571,24 +739,21 @@ async function submitDocument() {
             formData.append('idColumn', document.getElementById('idColumnInput').value.trim());
         }
 
-        const response = await fetch('@Url.Action("MultiScanUpload", "Dashboard")', {
+        const response = await fetch('/Dashboard/MultiScan/Upload/Document', {
             method : 'POST',
             headers: {
-                // Do NOT set Content-Type here — the browser must set it with the boundary
                 'X-Requested-With'        : 'XMLHttpRequest',
                 'RequestVerificationToken': getToken()
             },
             body: formData
         });
-
         await handleResponse(response, 'document');
-
     } catch (ex) {
         console.error('submitDocument error:', ex);
-        alert('Error contacting server: ' + ex.message);
+        showError('Network Error',
+            'Could not reach the server. Please check your connection and try again.\n\n' + ex.message);
     } finally {
-        btn.disabled = false;
-        btn.classList.remove('loading');
+        btn.disabled = false; btn.classList.remove('loading');
     }
 }
 
@@ -596,19 +761,20 @@ async function submitDocument() {
    SHARED RESPONSE HANDLER
 ═══════════════════════════════════════════════════════════════════ */
 async function handleResponse(response, scanType) {
-    // Try to parse JSON; if it fails, surface the raw body in the console
     let data;
     const rawText = await response.text();
     try {
         data = JSON.parse(rawText);
     } catch (_) {
-        console.error('Non-JSON response from server:\n', rawText);
-        alert('Server returned an unexpected response. Check the browser console for details.');
+        console.error('Non-JSON response:\n', rawText);
+        showError('Unexpected Server Response',
+            'The server returned a response that could not be understood. Check the browser console for the raw output.');
         return;
     }
 
     if (!response.ok || !data.success) {
-        alert('Upload failed: ' + (data.message || `HTTP ${response.status}`));
+        showError('Upload Failed',
+            data.message || `The server responded with HTTP ${response.status}.`);
         return;
     }
 
@@ -621,15 +787,11 @@ async function handleResponse(response, scanType) {
 ═══════════════════════════════════════════════════════════════════ */
 function showReadyCard(data, scanType) {
     document.getElementById('inputCard').classList.add('hidden');
-    const card = document.getElementById('readyCard');
-    card.classList.remove('hidden');
+    document.getElementById('readyCard').classList.remove('hidden');
 
     const count = data.rowCount ?? 0;
-    const noun  = count === 1 ? 'record' : 'records';
-
     document.getElementById('readySummary').textContent =
-        `${count} ${noun} loaded and saved — ready to run sanctions screening.`;
-
+        `${count} ${count === 1 ? 'record' : 'records'} loaded and saved — ready to run sanctions screening.`;
     document.getElementById('readyFileName').textContent = data.fileName || '—';
 
     const badge = document.getElementById('readyScanTypeBadge');
@@ -647,18 +809,80 @@ function showReadyCard(data, scanType) {
 ═══════════════════════════════════════════════════════════════════ */
 function startScreening() {
     if (!uploadResult) return;
+
     const params = new URLSearchParams({
-        filePath : uploadResult.savedFilePath,
-        rowCount : uploadResult.rowCount,
-        scanType : uploadResult.scanType
+        filePath      : uploadResult.savedFilePath,
+        fileName      : uploadResult.fileName      ?? '',
+        rowCount      : uploadResult.rowCount       ?? 0,
+        scanType      : uploadResult.scanType       ?? (activeTab === 'upload' ? 'document' : 'non-document'),
+        scanColumn    : uploadResult.scanColumn     ?? document.getElementById('scanColumnInput').value.trim(),
+        idColumn      : uploadResult.idColumn       ?? document.getElementById('idColumnInput').value.trim(),
+        autoGenerateId: uploadResult.autoGenerateId ?? document.getElementById('autoIdCheck').checked
     });
+
     window.location.href = '/Dashboard/MultiScan/Screen?' + params.toString();
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   RESET
+   DELETE MODAL
 ═══════════════════════════════════════════════════════════════════ */
-function resetForm() {
+function promptChangeFile() {
+    document.getElementById('deleteModal').classList.add('open');
+}
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('open');
+}
+document.getElementById('deleteModal').addEventListener('click', function (e) {
+    if (e.target === this) closeDeleteModal();
+});
+
+async function proceedDelete() {
+    if (!uploadResult || !uploadResult.savedFilePath) {
+        closeDeleteModal();
+        hardReset();
+        return;
+    }
+
+    const btn = document.getElementById('proceedDeleteBtn');
+    btn.disabled = true; btn.classList.add('deleting');
+
+    try {
+        const response = await fetch('/Dashboard/MultiScan/DeleteUpload', {
+            method : 'POST',
+            headers: {
+                'Content-Type'            : 'application/json',
+                'X-Requested-With'        : 'XMLHttpRequest',
+                'RequestVerificationToken': getToken()
+            },
+            body: JSON.stringify({ filePath: uploadResult.savedFilePath })
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || !data.success) {
+            closeDeleteModal();
+            showError('Delete Failed',
+                data.message || `The server responded with HTTP ${response.status}.`);
+            return;
+        }
+
+        closeDeleteModal();
+        hardReset();
+
+    } catch (ex) {
+        console.error('proceedDelete error:', ex);
+        closeDeleteModal();
+        showError('Network Error',
+            'Could not reach the server while deleting the file.\n\n' + ex.message);
+    } finally {
+        btn.disabled = false; btn.classList.remove('deleting');
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   HARD RESET
+═══════════════════════════════════════════════════════════════════ */
+function hardReset() {
     uploadResult = null;
     document.getElementById('readyCard').classList.add('hidden');
     document.getElementById('inputCard').classList.remove('hidden');
@@ -668,4 +892,3 @@ function resetForm() {
 }
 </script>
 }
-

@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml.Spreadsheet;
+﻿using DocumentFormat.OpenXml.Bibliography;
+using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
@@ -14,6 +15,7 @@ using Upsanctionscreener.Models.ViewModels;
 using Upsanctionscreener.Services;
 using static Upsanctionscreener.Classess.Search.BKTree;
 using static Upsanctionscreener.Classess.Search.PEPBKTree;
+
 namespace Upsanctionscreener.Controllers
 {
     [Authorize]
@@ -155,6 +157,9 @@ namespace Upsanctionscreener.Controllers
         // TARGET SETTINGS API
         // ══════════════════════════════════════════════════════════════════════
 
+        /// <summary>
+        /// GET all target configurations.
+        /// </summary>
         [HttpGet]
         [Route("Dashboard/Settings/TargetSettings/GetAll")]
         public async Task<IActionResult> TargetSettingsGetAll()
@@ -166,10 +171,35 @@ namespace Upsanctionscreener.Controllers
             return Json(new { success = true, data = result.Data });
         }
 
+        /// <summary>
+        /// POST create or update a target (database OR document type).
+        /// The payload shape differs by target_type:
+        ///   - "database" : includes database_settings (connection + data_settings)
+        ///   - "document" : includes document_settings (file metadata + data_settings)
+        /// Both include notification_settings and automation_settings.
+        /// </summary>
         [HttpPost]
         [Route("Dashboard/Settings/TargetSettings/Upsert")]
         public async Task<IActionResult> TargetSettingsUpsert([FromBody] UpsertTargetRequest target)
         {
+            // Basic guard: target_type must be known
+            if (target.TargetType != "database" && target.TargetType != "document")
+                return BadRequest(new { success = false, message = "target_type must be 'database' or 'document'." });
+
+            // Document-specific guard: upload_path must point inside the designated folder
+            if (target.TargetType == "document" && target.DocumentSettings is not null)
+            {
+                var uploadRoot = Path.GetFullPath(
+                    Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
+
+                if (!string.IsNullOrWhiteSpace(target.DocumentSettings.UploadPath))
+                {
+                    var resolvedPath = Path.GetFullPath(target.DocumentSettings.UploadPath);
+                    if (!resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
+                        return BadRequest(new { success = false, message = "Invalid document upload path." });
+                }
+            }
+
             var svc = new UpSanctionSettingsService(_db);
             var result = await svc.UpsertTargetAsync(target);
             if (!result.Success)
@@ -177,17 +207,60 @@ namespace Upsanctionscreener.Controllers
             return Json(new { success = true });
         }
 
+        /// <summary>
+        /// POST delete a target by ID.
+        /// If the target is a document type, also deletes the uploaded file.
+        /// </summary>
         [HttpPost]
         [Route("Dashboard/Settings/TargetSettings/Delete/{id:int}")]
         public async Task<IActionResult> TargetSettingsDelete(int id)
         {
             var svc = new UpSanctionSettingsService(_db);
+
+            // Fetch the target first so we can clean up any uploaded document
+            var getAllResult = await svc.GetTargetSettingsAsync();
+            if (getAllResult.Success && getAllResult.Data is not null)
+            {
+                // Data is a list of raw JSON / dynamic objects from the service.
+                // We try to find a document target whose upload file we should remove.
+                try
+                {
+                    var json = JsonSerializer.Serialize(getAllResult.Data);
+                    var targets = JsonSerializer.Deserialize<List<TargetSettingEntry>>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    var target = targets?.FirstOrDefault(t => t.Id == id);
+                    if (target?.TargetType == "document")
+                    {
+                        var uploadPath = target.DocumentSettings?.UploadPath;
+                        if (!string.IsNullOrWhiteSpace(uploadPath) && System.IO.File.Exists(uploadPath))
+                        {
+                            // Safety check: must be inside the designated upload folder
+                            var uploadRoot = Path.GetFullPath(
+                                Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
+                            var resolvedPath = Path.GetFullPath(uploadPath);
+                            if (resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
+                                System.IO.File.Delete(uploadPath);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Non-fatal — proceed with DB deletion even if file cleanup fails
+                }
+            }
+
             var result = await svc.DeleteTargetAsync(id);
             if (!result.Success)
                 return BadRequest(new { success = false, message = result.Error });
             return Json(new { success = true });
         }
 
+        /// <summary>
+        /// POST test a database connection (database targets only).
+        /// Supports PostgreSQL and Oracle.
+        /// Returns { success, message }.
+        /// </summary>
         [HttpPost]
         [Route("Dashboard/Settings/TargetSettings/TestConnection")]
         public async Task<IActionResult> TargetSettingsTestConnection([FromBody] TestConnectionRequest req)
@@ -222,9 +295,62 @@ namespace Upsanctionscreener.Controllers
             }
         }
 
+        /// <summary>
+        /// POST upload a document (Excel) for a document-type target.
+        /// Accepts .xlsx and .xls files only.
+        /// Saves the file to: {RootFolder}/Targets/TargetUploads/
+        /// Returns { success, fileName, fileExtension, uploadPath }.
+        /// </summary>
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        [DisableRequestSizeLimit]
+        [RequestFormLimits(MultipartBodyLengthLimit = 104857600)] // 100 MB
+        [Route("Dashboard/Settings/TargetSettings/UploadDocument")]
+        public async Task<IActionResult> TargetSettingsUploadDocument(IFormFile? file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { success = false, message = "No file provided." });
 
+            var ext = Path.GetExtension(file.FileName).TrimStart('.').ToLowerInvariant();
+            if (ext != "xlsx" && ext != "xls")
+                return BadRequest(new { success = false, message = "Only .xlsx and .xls files are supported." });
 
-        // ── SCAN SETTINGS API ─────────────────────────────────────────────────────
+            try
+            {
+                var uploadDir = Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads");
+                Directory.CreateDirectory(uploadDir);
+
+                // Build a safe, unique file name: timestamp_originalname.ext
+                var originalNameWithoutExt = Path.GetFileNameWithoutExtension(file.FileName);
+                var safeOriginalName = string.Concat(
+                    originalNameWithoutExt
+                        .Where(c => char.IsLetterOrDigit(c) || c == '_' || c == '-')
+                        .Take(60));
+
+                var safeFileName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_{safeOriginalName}.{ext}";
+                var savePath = Path.Combine(uploadDir, safeFileName);
+
+                await using (var stream = new FileStream(savePath, FileMode.Create, FileAccess.Write))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    fileName = safeOriginalName,   // human-readable name (no ext, no timestamp)
+                    fileExtension = ext,
+                    uploadPath = savePath,
+                    savedFileName = safeFileName        // full file name on disk
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = $"Upload failed: {ex.Message}" });
+            }
+        }
+
+        // ── SCAN SETTINGS API ──────────────────────────────────────────────────
 
         [HttpGet]
         [Route("Dashboard/Settings/ScanSettings/Get")]
@@ -247,8 +373,6 @@ namespace Upsanctionscreener.Controllers
                 return BadRequest(new { success = false, message = result.Error });
             return Json(new { success = true });
         }
-
-
 
         // ══════════════════════════════════════════════════════════════════════
         // SOURCE SETTINGS API
@@ -280,9 +404,6 @@ namespace Upsanctionscreener.Controllers
         [Route("Dashboard/Settings/SourceSettings/RefetchDatabase")]
         public async Task<IActionResult> SourceSettingsRefetch()
         {
-            // TODO: plug in your actual refetch logic here
-            // e.g. await _sanctionSyncService.SyncAsync();
-
             var downloader = new SanctionDownloader();
             await downloader.DownloadParseAndExportAsync(_settingsService);
             GlobalVariables.refetching_sanction_database = true;
@@ -299,16 +420,13 @@ namespace Upsanctionscreener.Controllers
                 return NotFound(new { message = "Database file not found." });
 
             var bytes = await System.IO.File.ReadAllBytesAsync(path);
-
             return File(bytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 Path.GetFileName(path));
         }
 
-
         // ══════════════════════════════════════════════════════════════════════
         // NIGERIAN SANCTION LIST API
-        // Add these action methods inside DashboardController.cs
         // ══════════════════════════════════════════════════════════════════════
 
         [HttpGet]
@@ -323,7 +441,6 @@ namespace Upsanctionscreener.Controllers
             }
             catch (FileNotFoundException)
             {
-                // Return empty list if file doesn't exist yet
                 return Json(new { success = true, data = new List<SanctionEntry>() });
             }
             catch (Exception ex)
@@ -340,23 +457,17 @@ namespace Upsanctionscreener.Controllers
             {
                 var filePath = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase", "NigerianSanctionList.json");
 
-                // Load existing entries (or start fresh)
                 List<SanctionEntry> entries;
                 try { entries = NigerianSanctionListReader.LoadFromFile(filePath); }
                 catch { entries = new List<SanctionEntry>(); }
 
                 if (req.IsEdit && req.OriginalId is not null)
-                {
-                    // Remove the old entry
                     entries = entries.Where(e => e.ID != req.OriginalId).ToList();
-                }
 
-                // Auto-generate an ID if none supplied
                 var newId = string.IsNullOrWhiteSpace(req.Id)
                     ? $"NSL-{Guid.NewGuid().ToString("N")[..8].ToUpper()}"
                     : req.Id.Trim();
 
-                // Ensure ID uniqueness for new entries
                 if (!req.IsEdit && entries.Any(e => e.ID == newId))
                     return BadRequest(new { success = false, message = $"An entry with ID '{newId}' already exists." });
 
@@ -384,7 +495,6 @@ namespace Upsanctionscreener.Controllers
 
                 entries.Add(entry);
 
-                // Persist back to JSON
                 Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
                 var json = System.Text.Json.JsonSerializer.Serialize(entries, new System.Text.Json.JsonSerializerOptions
                 {
@@ -421,7 +531,6 @@ namespace Upsanctionscreener.Controllers
                     DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
                 });
                 await System.IO.File.WriteAllTextAsync(filePath, json);
-
                 return Json(new { success = true });
             }
             catch (Exception ex)
@@ -430,17 +539,9 @@ namespace Upsanctionscreener.Controllers
             }
         }
 
-
-
-        //═══════════════════════════════════════════════════════════════════════════
-        //CONTROLLER METHODS TO ADD TO DashboardController.cs
-        //═══════════════════════════════════════════════════════════════════════════
-
-        // Add these using statements at the top:
-        // using System.Text.Json;
-        // using System.Text.Json.Serialization;
-
-        // Add these action methods inside DashboardController:
+        // ══════════════════════════════════════════════════════════════════════
+        // PEPs API
+        // ══════════════════════════════════════════════════════════════════════
 
         [HttpGet]
         [Route("Dashboard/List/PEPs/GetAll")]
@@ -469,8 +570,8 @@ namespace Upsanctionscreener.Controllers
                 if (System.IO.File.Exists(filePath))
                 {
                     var json = await System.IO.File.ReadAllTextAsync(filePath);
-                    var deserializeOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    entries = JsonSerializer.Deserialize<List<PepEntry>>(json, deserializeOptions) ?? new List<PepEntry>();
+                    var deserializeOpts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    entries = JsonSerializer.Deserialize<List<PepEntry>>(json, deserializeOpts) ?? new();
                 }
                 else
                 {
@@ -478,9 +579,7 @@ namespace Upsanctionscreener.Controllers
                 }
 
                 if (req.Id.HasValue && req.Id.Value > 0)
-                {
                     entries = entries.Where(e => e.Id != req.Id.Value).ToList();
-                }
 
                 int newId = req.Id ?? (entries.Any() ? entries.Max(e => e.Id) + 1 : 1);
 
@@ -499,14 +598,13 @@ namespace Upsanctionscreener.Controllers
                 entries.Add(entry);
 
                 Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-                var serializeOptions = new JsonSerializerOptions
+                var serializeOpts = new JsonSerializerOptions
                 {
                     WriteIndented = true,
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
                 };
-                var outputJson = JsonSerializer.Serialize(entries, serializeOptions);
-                await System.IO.File.WriteAllTextAsync(filePath, outputJson);
+                await System.IO.File.WriteAllTextAsync(filePath, JsonSerializer.Serialize(entries, serializeOpts));
 
                 return Json(new { success = true, id = newId });
             }
@@ -516,52 +614,45 @@ namespace Upsanctionscreener.Controllers
             }
         }
 
-
-
         [HttpPost]
-   [Route("Dashboard/List/PEPs/Delete/{id:int}")]
-   public async Task<IActionResult> PEPsDelete(int id)
-   {
-       try
-       {
-           var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "peps.json");
-           if (!System.IO.File.Exists(filePath))
-               return NotFound(new { success = false, message = "File not found." });
+        [Route("Dashboard/List/PEPs/Delete/{id:int}")]
+        public async Task<IActionResult> PEPsDelete(int id)
+        {
+            try
+            {
+                var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "peps.json");
+                if (!System.IO.File.Exists(filePath))
+                    return NotFound(new { success = false, message = "File not found." });
 
-           var json = await System.IO.File.ReadAllTextAsync(filePath);
-           var entries = JsonSerializer.Deserialize<List<PepEntry>>(json) ?? new List<PepEntry>();
-           var before = entries.Count;
-           entries = entries.Where(e => e.Id != id).ToList();
+                var json = await System.IO.File.ReadAllTextAsync(filePath);
+                var entries = JsonSerializer.Deserialize<List<PepEntry>>(json) ?? new();
+                var before = entries.Count;
+                entries = entries.Where(e => e.Id != id).ToList();
 
-           if (entries.Count == before)
-               return NotFound(new { success = false, message = "PEP not found." });
+                if (entries.Count == before)
+                    return NotFound(new { success = false, message = "PEP not found." });
 
-           var options = new JsonSerializerOptions { WriteIndented = true };
-           var outputJson = JsonSerializer.Serialize(entries, options);
-           await System.IO.File.WriteAllTextAsync(filePath, outputJson);
+                await System.IO.File.WriteAllTextAsync(filePath,
+                    JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true }));
 
-           return Json(new { success = true });
-       }
-       catch (Exception ex)
-       {
-           return BadRequest(new { success = false, message = ex.Message });
-       }
-   }
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
 
-        // ═══════════════════════════════════════════════════════════════════════════
-        // UBOS API
-        // ═══════════════════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════════════════════
+        // UBOs API
+        // ══════════════════════════════════════════════════════════════════════
 
         [HttpGet]
         [Route("Dashboard/List/UBOs/GetAll")]
         public IActionResult UBOsGetAll()
         {
-
             List<UboEntry> Ubos = GlobalFunctions.FetchAllUBOs();
-
             return Json(new { success = true, data = Ubos });
-
-          
         }
 
         [HttpPost]
@@ -576,8 +667,8 @@ namespace Upsanctionscreener.Controllers
                 if (System.IO.File.Exists(filePath))
                 {
                     var json = await System.IO.File.ReadAllTextAsync(filePath);
-                    var deserializeOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                    entries = JsonSerializer.Deserialize<List<UboEntry>>(json, deserializeOptions) ?? new List<UboEntry>();
+                    var deserializeOpts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    entries = JsonSerializer.Deserialize<List<UboEntry>>(json, deserializeOpts) ?? new();
                 }
                 else
                 {
@@ -585,12 +676,8 @@ namespace Upsanctionscreener.Controllers
                 }
 
                 if (req.Id.HasValue && req.Id.Value > 0)
-                {
-                    // Edit mode: remove existing
                     entries = entries.Where(e => e.Id != req.Id.Value).ToList();
-                }
 
-                // Generate new ID if needed
                 int newId = req.Id ?? (entries.Any() ? entries.Max(e => e.Id) + 1 : 1);
 
                 var entry = new UboEntry
@@ -612,14 +699,13 @@ namespace Upsanctionscreener.Controllers
                 entries.Add(entry);
 
                 Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-                var serializeOptions = new JsonSerializerOptions
+                var serializeOpts = new JsonSerializerOptions
                 {
                     WriteIndented = true,
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
                 };
-                var outputJson = JsonSerializer.Serialize(entries, serializeOptions);
-                await System.IO.File.WriteAllTextAsync(filePath, outputJson);
+                await System.IO.File.WriteAllTextAsync(filePath, JsonSerializer.Serialize(entries, serializeOpts));
 
                 return Json(new { success = true, id = newId });
             }
@@ -640,22 +726,21 @@ namespace Upsanctionscreener.Controllers
                     return NotFound(new { success = false, message = "File not found." });
 
                 var json = await System.IO.File.ReadAllTextAsync(filePath);
-                var deserializeOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var entries = JsonSerializer.Deserialize<List<UboEntry>>(json, deserializeOptions) ?? new List<UboEntry>();
+                var deserializeOpts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var entries = JsonSerializer.Deserialize<List<UboEntry>>(json, deserializeOpts) ?? new();
                 var before = entries.Count;
                 entries = entries.Where(e => e.Id != id).ToList();
 
                 if (entries.Count == before)
                     return NotFound(new { success = false, message = "UBO not found." });
 
-                var serializeOptions = new JsonSerializerOptions
+                var serializeOpts = new JsonSerializerOptions
                 {
                     WriteIndented = true,
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
                 };
-                var outputJson = JsonSerializer.Serialize(entries, serializeOptions);
-                await System.IO.File.WriteAllTextAsync(filePath, outputJson);
+                await System.IO.File.WriteAllTextAsync(filePath, JsonSerializer.Serialize(entries, serializeOpts));
 
                 return Json(new { success = true });
             }
@@ -664,7 +749,6 @@ namespace Upsanctionscreener.Controllers
                 return BadRequest(new { success = false, message = ex.Message });
             }
         }
-
 
         // ══════════════════════════════════════════════════════════════════════
         // SINGLE SCREEN API
@@ -681,82 +765,58 @@ namespace Upsanctionscreener.Controllers
             if (!validFields.Contains(req.SearchField?.ToLower()))
                 return BadRequest(new { success = false, message = "Invalid search field." });
 
-            // ── Sanction Search ──────────────────────────────────────────────────
-            var filePath = Path.Combine(
-                GlobalVariables.root_folder,
-                "SanctionDatabase", "basesource",
-                "UPSanctionDB.xlsx"
-            );
-
-            List<SanctionEntry> sanctionList = SanctionExcelReader.LoadFromExcel(filePath);
-
-            // Use the appropriate BK-tree depending on requested search field
+            var filePath = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase", "basesource", "UPSanctionDB.xlsx");
+            var sanctionList = SanctionExcelReader.LoadFromExcel(filePath);
             var sanctionMatches = new List<(string EntryId, string Matched, double Similarity, int EditDistance)>();
 
             var field = (req.SearchField ?? "name").ToLowerInvariant();
             if (field == "name")
             {
-                var sanction_candidates = _sanction_tree.Search(req.SearchTerm, req.Threshold);
-                foreach (var candidate in sanction_candidates)
-                    sanctionMatches.Add((candidate.EntryId, candidate.MatchedName, candidate.Similarity, candidate.EditDistance));
+                foreach (var c in _sanction_tree.Search(req.SearchTerm, req.Threshold))
+                    sanctionMatches.Add((c.EntryId, c.MatchedName, c.Similarity, c.EditDistance));
             }
             else if (field == "email")
             {
-                var emailTree = new SanctionEmailsBKTree();
-                emailTree.Load(sanctionList);
-                var results = emailTree.Search(req.SearchTerm, req.Threshold);
-                foreach (var r in results)
+                var tree = new SanctionEmailsBKTree(); tree.Load(sanctionList);
+                foreach (var r in tree.Search(req.SearchTerm, req.Threshold))
                     sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
             }
             else if (field == "phone")
             {
-                var phoneTree = new SanctionPhoneNumberBKTree();
-                phoneTree.Load(sanctionList);
-                var results = phoneTree.Search(req.SearchTerm, req.Threshold);
-                foreach (var r in results)
+                var tree = new SanctionPhoneNumberBKTree(); tree.Load(sanctionList);
+                foreach (var r in tree.Search(req.SearchTerm, req.Threshold))
                     sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
             }
             else if (field == "address")
             {
-                var addrTree = new SanctionAddressesBKTree();
-                addrTree.Load(sanctionList);
-                var results = addrTree.Search(req.SearchTerm, req.Threshold);
-                foreach (var r in results)
+                var tree = new SanctionAddressesBKTree(); tree.Load(sanctionList);
+                foreach (var r in tree.Search(req.SearchTerm, req.Threshold))
                     sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
             }
 
-            List<SingleSearchSanctionMatchRow> completeSanctionList = new();
-            foreach (var candidate in sanctionMatches)
-            {
-                SanctionEntry item = sanctionList.FirstOrDefault(x => x.ID == candidate.EntryId);
-                if (item is null) continue;
-                completeSanctionList.Add(new SingleSearchSanctionMatchRow
+            var completeSanctionList = sanctionMatches
+                .Select(c => new { entry = sanctionList.FirstOrDefault(x => x.ID == c.EntryId), c.Similarity })
+                .Where(x => x.entry is not null)
+                .Select(x => new SingleSearchSanctionMatchRow
                 {
-                    similarity = (candidate.Similarity * 100).ToString("F2") + "%",
-                    sanction_item = item
-                });
-            }
+                    similarity = (x.Similarity * 100).ToString("F2") + "%",
+                    sanction_item = x.entry!
+                }).ToList();
 
-            // ── PEP Search ───────────────────────────────────────────────────────
-            List<PepEntry> pepEntries = GlobalFunctions.FetchAllPeps();
+            var pepEntries = GlobalFunctions.FetchAllPeps();
             var pepTree = new PEPBKTree.PEPSanctionBKTree();
             pepTree.Load(pepEntries);
 
-            List<PEPSearchResult> pepResults = pepTree.Search(req.SearchTerm, req.Threshold);
-            List<PepSearchSanctionMatchRow> completePepList = new();
-            foreach (PEPSearchResult candidate in pepResults)
-            {
-                PepEntry item = pepEntries.FirstOrDefault(x => x.Id == int.Parse(candidate.EntryId));
-                if (item is null) continue;
-                completePepList.Add(new PepSearchSanctionMatchRow
+            var completePepList = pepTree.Search(req.SearchTerm, req.Threshold)
+                .Select(c => new { entry = pepEntries.FirstOrDefault(x => x.Id == int.Parse(c.EntryId)), c.Similarity })
+                .Where(x => x.entry is not null)
+                .Select(x => new PepSearchSanctionMatchRow
                 {
-                    similarity = (candidate.Similarity * 100).ToString("F2") + "%",
-                    pep_item = item
-                });
-            }
+                    similarity = (x.Similarity * 100).ToString("F2") + "%",
+                    pep_item = x.entry!
+                }).ToList();
 
-            // ── Adverse Media ────────────────────────────────────────────────────
-            List<RssNewsItem> adverseMediaResults = await GoogleNewsRssService.SearchAsync(req.SearchTerm);
+            var adverseMediaResults = await GoogleNewsRssService.SearchAsync(req.SearchTerm);
 
             return Json(new
             {
@@ -769,44 +829,10 @@ namespace Upsanctionscreener.Controllers
             });
         }
 
-
         // ══════════════════════════════════════════════════════════════════════
-        // REPLACE the existing MultiScanUpload action in DashboardController.cs
-        // with this updated version.
+        // MULTI-SCAN API
         // ══════════════════════════════════════════════════════════════════════
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // Replace the existing MultiScanUpload action in DashboardController.cs
-        //
-        // WHY TWO ACTIONS?
-        // ─────────────────
-        // ASP.NET Core cannot bind [FromForm] and [FromBody] on the same action —
-        // they use different body readers and the framework picks one.
-        //
-        // • Document uploads  must use multipart/form-data (FormData) because a
-        //   real File object is in the payload.  →  [FromForm]
-        //
-        // • Paste-list uploads send a JSON body (matching how Index.cshtml calls
-        //   SingleScreen) and have no file.        →  [FromBody]
-        //
-        // Both share the same route prefix; the `scanType` field in the body
-        // disambiguates, but because the content-type differs we split them into
-        // two actions on different sub-routes. The front-end already calls
-        // Url.Action("MultiScanUpload", "Dashboard") for both — just update the
-        // JS Url.Action values to the two routes below if you prefer named routes,
-        // OR keep one route and let the JS decide which URL to hit.
-        // ─────────────────────────────────────────────────────────────────────────────
-
-        // ── REQUEST MODEL for the JSON (paste) path ───────────────────────────────────
-        public class MultiScanPasteRequest
-        {
-            public string ScanType { get; set; } = "non-document";
-            public string? NameList { get; set; }   // newline-delimited names
-        }
-
-        // ── Inside DashboardController ────────────────────────────────────────────────
-
-        // ─── PATH A: non-document  (JSON body, no file) ───────────────────────────────
         [HttpPost]
         [IgnoreAntiforgeryToken]
         [Route("Dashboard/MultiScan/Upload/Paste")]
@@ -827,8 +853,7 @@ namespace Upsanctionscreener.Controllers
             if (!names.Any())
                 return BadRequest(new { success = false, message = "nameList contains no valid entries." });
 
-            // Save to disk
-            var uploadDir = Path.Combine(GlobalVariables.root_folder, "MultiScanUploads");
+            var uploadDir = Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanUploads");
             Directory.CreateDirectory(uploadDir);
 
             var safeFileName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_paste.txt";
@@ -840,14 +865,15 @@ namespace Upsanctionscreener.Controllers
                 success = true,
                 scanType = "non-document",
                 rowCount = names.Count,
-                savedFilePath = savedFilePath,
+                savedFilePath,
                 fileName = safeFileName
             });
         }
 
-        // ─── PATH B: document  (multipart/form-data, has a file) ─────────────────────
         [HttpPost]
         [IgnoreAntiforgeryToken]
+        [DisableRequestSizeLimit]
+        [RequestFormLimits(MultipartBodyLengthLimit = 524288000)]
         [Route("Dashboard/MultiScan/Upload/Document")]
         public async Task<IActionResult> MultiScanUploadDocument(
             IFormFile? file,
@@ -865,22 +891,6 @@ namespace Upsanctionscreener.Controllers
                 return BadRequest(new { success = false, message = "idColumn is required when autoGenerateId is false." });
 
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-            if (ext != ".csv" && ext != ".xlsx" && ext != ".xls")
-                return BadRequest(new { success = false, message = "Unsupported file type. Use .csv, .xlsx, or .xls." });
-
-            // Save raw file to disk first (before parsing, so we keep the original)
-            var uploadDir = Path.Combine(GlobalVariables.root_folder, "MultiScanUploads");
-            Directory.CreateDirectory(uploadDir);
-
-            var safeFileName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Path.GetFileName(file.FileName)}";
-            var savedFilePath = Path.Combine(uploadDir, safeFileName);
-
-            await using (var stream = new FileStream(savedFilePath, FileMode.Create, FileAccess.Write))
-            {
-                await file.CopyToAsync(stream);
-            }
-
-            // Parse to get row count
             DataTable data_to_scan = new DataTable();
 
             if (ext == ".csv")
@@ -900,20 +910,177 @@ namespace Upsanctionscreener.Controllers
                 data_to_scan = excelResult.Data!;
             }
 
+            string? savedFilePath = null;
+            string? safeFileName = null;
+
+            if (data_to_scan.Rows.Count > 0)
+            {
+                if (ext != ".csv" && ext != ".xlsx" && ext != ".xls")
+                    return BadRequest(new { success = false, message = "Unsupported file type." });
+
+                var uploadDir = Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanUploads");
+                Directory.CreateDirectory(uploadDir);
+
+                safeFileName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Path.GetFileName(file.FileName)}";
+                savedFilePath = Path.Combine(uploadDir, safeFileName);
+
+                await using var stream = new FileStream(savedFilePath, FileMode.Create, FileAccess.Write);
+                await file.CopyToAsync(stream);
+            }
+
             return Json(new
             {
                 success = true,
                 scanType = "document",
                 rowCount = data_to_scan.Rows.Count,
-                savedFilePath = savedFilePath,
+                savedFilePath,
                 fileName = safeFileName
             });
         }
 
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        [Route("Dashboard/MultiScan/DeleteUpload")]
+        public IActionResult MultiScanDeleteUpload([FromBody] MultiScanDeleteRequest req)
+        {
+            if (string.IsNullOrWhiteSpace(req.FilePath))
+                return BadRequest(new { success = false, message = "filePath is required." });
 
+            var uploadDir = Path.GetFullPath(Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanUploads"));
+            var targetPath = Path.GetFullPath(req.FilePath);
 
+            if (!targetPath.StartsWith(uploadDir, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { success = false, message = "Invalid file path." });
 
+            if (!System.IO.File.Exists(targetPath))
+                return NotFound(new { success = false, message = "File not found on server." });
+
+            try
+            {
+                System.IO.File.Delete(targetPath);
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = $"Could not delete file: {ex.Message}" });
+            }
+        }
+
+        [HttpGet]
+        [Route("Dashboard/MultiScan/Screen")]
+        public IActionResult MultiScanScreen(
+            string filePath,
+            string? fileName,
+            int rowCount,
+            string scanType,
+            string? scanColumn,
+            string? idColumn,
+            bool autoGenerateId)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !System.IO.File.Exists(filePath))
+                return RedirectToAction(nameof(MultiScan));
+
+            var uploadDir = Path.GetFullPath(Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanUploads"));
+            var targetPath = Path.GetFullPath(filePath);
+
+            if (!targetPath.StartsWith(uploadDir, StringComparison.OrdinalIgnoreCase))
+                return RedirectToAction(nameof(MultiScan));
+
+            var newTask = new MultiScanTask
+            {
+                FileName = fileName ?? Path.GetFileName(filePath),
+                FilePath = filePath,
+                ScanType = scanType,
+                RowCount = rowCount.ToString(),
+                AutoGenerateId = autoGenerateId.ToString(),
+                IdColumn = idColumn ?? string.Empty,
+                ScanColumn = scanColumn ?? string.Empty,
+                Status = "Pending",
+                StartTime = DateTime.UtcNow.ToString("o"),
+                CompletionTIme = string.Empty,
+                ErrorMessage = string.Empty
+            };
+
+            int newId = Scanner.AddMultiScanTask(newTask);
+            Task.Run(() => Scanner.MultiScanScreener(newTask));
+
+            ViewData["TaskId"] = newId;
+            ViewData["FilePath"] = filePath;
+            ViewData["FileName"] = newTask.FileName;
+            ViewData["RowCount"] = rowCount;
+            ViewData["ScanType"] = scanType;
+            ViewData["ScanColumn"] = scanColumn;
+            ViewData["IdColumn"] = idColumn;
+            ViewData["AutoGenerateId"] = autoGenerateId;
+
+            return View("~/Views/Dashboard/MultiScanScreen.cshtml");
+        }
+
+        [HttpGet]
+        [Route("Dashboard/MultiScan/GetTasks")]
+        public IActionResult MultiScanGetTasks()
+        {
+            try
+            {
+                var tasks = Scanner.GetAllTasks();
+                return Json(new { success = true, tasks });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        [Route("Dashboard/MultiScan/DownloadResult/{id:int}")]
+        public IActionResult MultiScanDownloadResult(int id)
+        {
+            var tasks = Scanner.GetAllTasks();
+            var task = tasks.FirstOrDefault(t => t.Id == id);
+
+            if (task is null)
+                return NotFound(new { success = false, message = "Task not found." });
+
+            if (!task.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { success = false, message = "Task has not completed successfully." });
+
+            var resultsDir = Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanResults");
+            var filePath = Path.Combine(resultsDir, $"result_{id}.xlsx");
+
+            if (!System.IO.File.Exists(filePath))
+                return NotFound(new { success = false, message = "Result file not found." });
+
+            var safeDir = Path.GetFullPath(resultsDir);
+            var safePath = Path.GetFullPath(filePath);
+
+            if (!safePath.StartsWith(safeDir, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { success = false, message = "Invalid file path." });
+
+            var bytes = System.IO.File.ReadAllBytes(safePath);
+            var fileName = $"ScanResult_{id}_{Path.GetFileName(task.FileName ?? "scan")}.xlsx";
+
+            return File(bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileName);
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // INNER CLASSES / REQUEST MODELS
+        // ══════════════════════════════════════════════════════════════════════
+
+        
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // REQUEST / RESPONSE MODELS FOR TARGET SETTINGS
+    // (Add to your Models/ViewModels folder or keep here)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Used internally to deserialise a saved target when we need to inspect
+    /// its type (e.g. to clean up an uploaded document on delete).
+    /// </summary>
+   
 
 
 }

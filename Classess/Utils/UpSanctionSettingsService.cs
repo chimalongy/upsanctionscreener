@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Upsanctionscreener.Controllers;
 using Upsanctionscreener.Data;
 using Upsanctionscreener.Models;
 
@@ -28,10 +29,16 @@ namespace Upsanctionscreener.Classess.Utils
         public string TargetName { get; set; } = "";
 
         [JsonPropertyName("target_type")]
-        public string TargetType { get; set; } = "";
+        public string TargetType { get; set; } = "database";
 
         [JsonPropertyName("database_settings")]
-        public DatabaseSettings DatabaseSettings { get; set; } = new();
+        public DatabaseSettings? DatabaseSettings { get; set; }
+
+        [JsonPropertyName("document_settings")]
+        public DocumentSettings? DocumentSettings { get; set; }
+
+        [JsonPropertyName("notification_settings")]
+        public NotificationSettings? NotificationSettings { get; set; }
 
         [JsonPropertyName("automation_settings")]
         public AutomationSettings AutomationSettings { get; set; } = new();
@@ -77,20 +84,53 @@ namespace Upsanctionscreener.Classess.Utils
         [JsonPropertyName("user_name")]
         public string UserName { get; set; } = "";
 
-        // Stored value is always the ENCRYPTED connection string.
-        // Never serialised back to JSON with a raw password inside.
         [JsonPropertyName("connection_string")]
         public string ConnectionString { get; set; } = "";
 
-        // Transient — only populated when coming IN from the client (upsert payload).
-        // Never stored; used solely to build + encrypt the connection string.
         [JsonPropertyName("password")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string? Password { get; set; }
 
-        // ── NEW: table / column / field-mapping configuration ────────────────
         [JsonPropertyName("data_settings")]
         public DataSettings DataSettings { get; set; } = new();
+    }
+
+    // ── Document settings ────────────────────────────────────────────────────
+    public class DocumentSettings
+    {
+        [JsonPropertyName("file_name")]
+        public string? FileName { get; set; }
+
+        [JsonPropertyName("upload_path")]
+        public string? UploadPath { get; set; }
+
+        [JsonPropertyName("file_extension")]
+        public string? FileExtension { get; set; }
+
+        [JsonPropertyName("id_column")]
+        public string IdColumn { get; set; } = "";
+
+        [JsonPropertyName("other_fields")]
+        public List<FieldMapping> OtherFields { get; set; } = new();
+    }
+
+    // ── Notification settings ────────────────────────────────────────────────
+    public class NotificationSettings
+    {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; }
+
+        [JsonPropertyName("recipients")]
+        public List<string> Recipients { get; set; } = new();
+
+        [JsonPropertyName("notify_on_complete")]
+        public bool NotifyOnComplete { get; set; }
+
+        [JsonPropertyName("notify_on_match")]
+        public bool NotifyOnMatch { get; set; }
+
+        [JsonPropertyName("notify_on_error")]
+        public bool NotifyOnError { get; set; }
     }
 
     public class AutomationSettings
@@ -99,10 +139,16 @@ namespace Upsanctionscreener.Classess.Utils
         public bool Automate { get; set; }
 
         [JsonPropertyName("frequency")]
-        public string Frequency { get; set; } = "";
+        public string Frequency { get; set; } = "daily";
+
+        [JsonPropertyName("interval_minutes")]
+        public int IntervalMinutes { get; set; }
+
+        [JsonPropertyName("interval_hours")]
+        public int IntervalHours { get; set; }
 
         [JsonPropertyName("start_time")]
-        public string StartTime { get; set; } = "";
+        public string StartTime { get; set; } = "02:00";
 
         [JsonPropertyName("weekday")]
         public int Weekday { get; set; }
@@ -112,33 +158,136 @@ namespace Upsanctionscreener.Classess.Utils
     }
 
     // ── Upsert request DTO from the client ───────────────────────────────────
-    // db_settings_changed = true  → build + encrypt new connection string
-    // db_settings_changed = false → keep existing encrypted connection string
-    //
-    // In both cases database_settings is sent so that data_settings can always
-    // be updated independently of the connection credentials.
     public class UpsertTargetRequest
     {
         [JsonPropertyName("id")]
         public int Id { get; set; }
 
         [JsonPropertyName("target_name")]
-        public string TargetName { get; set; } = "";
+        public string TargetName { get; set; } = string.Empty;
 
         [JsonPropertyName("target_type")]
-        public string TargetType { get; set; } = "";
+        public string TargetType { get; set; } = "database";
 
         [JsonPropertyName("db_settings_changed")]
         public bool DbSettingsChanged { get; set; }
 
-        // Always present — contains data_settings even when credentials unchanged.
-        // Contains full credentials + data_settings when db_settings_changed = true.
         [JsonPropertyName("database_settings")]
-        public DatabaseSettings? DatabaseSettings { get; set; }
+        public DatabaseSettingsRequest? DatabaseSettings { get; set; }
+
+        [JsonPropertyName("document_settings")]
+        public DocumentSettingsRequest? DocumentSettings { get; set; }
+
+        [JsonPropertyName("notification_settings")]
+        public NotificationSettingsRequest? NotificationSettings { get; set; }
 
         [JsonPropertyName("automation_settings")]
-        public AutomationSettings AutomationSettings { get; set; } = new();
+        public AutomationSettingsRequest? AutomationSettings { get; set; }
     }
+
+
+    public class AutomationSettingsRequest
+    {
+        [JsonPropertyName("automate")] public bool Automate { get; set; }
+
+        /// <summary>"minutely" | "hourly" | "daily" | "weekly" | "monthly"</summary>
+        [JsonPropertyName("frequency")] public string Frequency { get; set; } = "daily";
+
+        /// <summary>Used when frequency == "minutely". Number of minutes between runs.</summary>
+        [JsonPropertyName("interval_minutes")] public int IntervalMinutes { get; set; }
+
+        /// <summary>Used when frequency == "hourly". Number of hours between runs.</summary>
+        [JsonPropertyName("interval_hours")] public int IntervalHours { get; set; }
+
+        /// <summary>Used for daily / weekly / monthly schedules (HH:mm).</summary>
+        [JsonPropertyName("start_time")] public string StartTime { get; set; } = "02:00";
+
+        /// <summary>Day of week (0=Sunday … 6=Saturday). Used when frequency == "weekly".</summary>
+        [JsonPropertyName("weekday")] public int Weekday { get; set; }
+
+        /// <summary>Day of month (1–28). Used when frequency == "monthly".</summary>
+        [JsonPropertyName("day_of_month")] public int DayOfMonth { get; set; }
+    }
+
+
+
+    public class TargetSettingEntry
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("target_type")]
+        public string? TargetType { get; set; }
+
+        [JsonPropertyName("document_settings")]
+        public TargetDocumentSettingsEntry? DocumentSettings { get; set; }
+    }
+
+    public class TargetDocumentSettingsEntry
+    {
+        [JsonPropertyName("upload_path")]
+        public string? UploadPath { get; set; }
+
+        [JsonPropertyName("file_name")]
+        public string? FileName { get; set; }
+    }
+
+
+
+
+    public class DatabaseSettingsRequest
+    {
+        [JsonPropertyName("database_type")] public string? DatabaseType { get; set; }
+        [JsonPropertyName("host")] public string? Host { get; set; }
+        [JsonPropertyName("port")] public int? Port { get; set; }
+        [JsonPropertyName("database_name")] public string? DatabaseName { get; set; }
+        [JsonPropertyName("user_name")] public string? UserName { get; set; }
+        [JsonPropertyName("password")] public string? Password { get; set; }
+        [JsonPropertyName("data_settings")] public DataSettingsRequest? DataSettings { get; set; }
+    }
+
+    public class DocumentSettingsRequest
+    {
+        /// <summary>Human-readable file name (no extension, no timestamp).</summary>
+        [JsonPropertyName("file_name")] public string? FileName { get; set; }
+
+        /// <summary>Full path on disk where the file was saved.</summary>
+        [JsonPropertyName("upload_path")] public string? UploadPath { get; set; }
+
+        /// <summary>e.g. "xlsx" or "xls"</summary>
+        [JsonPropertyName("file_extension")] public string? FileExtension { get; set; }
+
+        [JsonPropertyName("id_column")] public string? IdColumn { get; set; }
+
+        [JsonPropertyName("other_fields")]
+        public List<FieldMappingRequest>? OtherFields { get; set; }
+    }
+
+    public class DataSettingsRequest
+    {
+        [JsonPropertyName("table_name")] public string? TableName { get; set; }
+        [JsonPropertyName("id_column")] public string? IdColumn { get; set; }
+        [JsonPropertyName("other_fields")] public List<FieldMappingRequest>? OtherFields { get; set; }
+    }
+
+    public class FieldMappingRequest
+    {
+        [JsonPropertyName("column_name")] public string ColumnName { get; set; } = string.Empty;
+        [JsonPropertyName("match_as")] public string MatchAs { get; set; } = string.Empty;
+    }
+
+    public class NotificationSettingsRequest
+    {
+        [JsonPropertyName("enabled")] public bool Enabled { get; set; }
+        [JsonPropertyName("recipients")] public List<string>? Recipients { get; set; }
+        [JsonPropertyName("notify_on_complete")] public bool NotifyOnComplete { get; set; }
+        [JsonPropertyName("notify_on_match")] public bool NotifyOnMatch { get; set; }
+        [JsonPropertyName("notify_on_error")] public bool NotifyOnError { get; set; }
+    }
+
+
+
+
 
     // ══════════════════════════════════════════════════════════════════════════
     // RESULT WRAPPER
@@ -194,28 +343,83 @@ namespace Upsanctionscreener.Classess.Utils
         }
 
         // ══════════════════════════════════════════════════════════════════════
+        // MAPPING HELPERS  (Request DTOs  →  internal stored models)
+        // ══════════════════════════════════════════════════════════════════════
+
+        private static AutomationSettings MapAutomation(AutomationSettingsRequest? req)
+        {
+            if (req is null) return new AutomationSettings();
+            return new AutomationSettings
+            {
+                Automate = req.Automate,
+                Frequency = req.Frequency ?? "daily",
+                IntervalMinutes = req.IntervalMinutes,
+                IntervalHours = req.IntervalHours,
+                StartTime = req.StartTime ?? "02:00",
+                Weekday = req.Weekday,
+                DayOfMonth = req.DayOfMonth
+            };
+        }
+
+        private static NotificationSettings MapNotification(NotificationSettingsRequest? req)
+        {
+            if (req is null) return new NotificationSettings();
+            return new NotificationSettings
+            {
+                Enabled = req.Enabled,
+                Recipients = req.Recipients ?? new List<string>(),
+                NotifyOnComplete = req.NotifyOnComplete,
+                NotifyOnMatch = req.NotifyOnMatch,
+                NotifyOnError = req.NotifyOnError
+            };
+        }
+
+        private static DataSettings MapDataSettings(DataSettingsRequest? req)
+        {
+            if (req is null) return new DataSettings();
+            return new DataSettings
+            {
+                TableName = req.TableName ?? "",
+                IdColumn = req.IdColumn ?? "",
+                OtherFields = req.OtherFields?
+                    .Select(f => new FieldMapping { ColumnName = f.ColumnName, MatchAs = f.MatchAs })
+                    .ToList() ?? new List<FieldMapping>()
+            };
+        }
+
+        private static DocumentSettings MapDocumentSettings(DocumentSettingsRequest? req)
+        {
+            if (req is null) return new DocumentSettings();
+            return new DocumentSettings
+            {
+                FileName = req.FileName,
+                UploadPath = req.UploadPath,
+                FileExtension = req.FileExtension,
+                IdColumn = req.IdColumn ?? "",
+                OtherFields = req.OtherFields?
+                    .Select(f => new FieldMapping { ColumnName = f.ColumnName, MatchAs = f.MatchAs })
+                    .ToList() ?? new List<FieldMapping>()
+            };
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
         // CONNECTION STRING HELPERS
         // ══════════════════════════════════════════════════════════════════════
 
-        /// <summary>
-        /// Builds a plain-text connection string for the given database type,
-        /// then encrypts it using <see cref="Cryptor"/> before returning.
-        /// The raw password is never stored anywhere after this call.
-        /// </summary>
-        private static string BuildAndEncryptConnectionString(DatabaseSettings db)
+        private static string BuildAndEncryptConnectionString(DatabaseSettingsRequest req)
         {
-            if (string.IsNullOrWhiteSpace(db.Password))
+            if (string.IsNullOrWhiteSpace(req.Password))
                 throw new InvalidOperationException("Password is required to build the connection string.");
 
-            string plain = db.DatabaseType switch
+            string plain = req.DatabaseType switch
             {
                 "PostgreSQL" =>
-                    $"Host={db.Host};Port={db.Port};Database={db.DatabaseName};Username={db.UserName};Password={db.Password};",
+                    $"Host={req.Host};Port={req.Port};Database={req.DatabaseName};Username={req.UserName};Password={req.Password};",
 
                 "Oracle" =>
-                    $"User Id={db.UserName};Password={db.Password};Data Source={db.Host}:{db.Port}/{db.DatabaseName};",
+                    $"User Id={req.UserName};Password={req.Password};Data Source={req.Host}:{req.Port}/{req.DatabaseName};",
 
-                _ => throw new InvalidOperationException($"Unsupported database type: '{db.DatabaseType}'.")
+                _ => throw new InvalidOperationException($"Unsupported database type: '{req.DatabaseType}'.")
             };
 
             return Cryptor.Encrypt(plain, useHashing: true);
@@ -357,23 +561,6 @@ namespace Upsanctionscreener.Classess.Utils
             }
         }
 
-        // ── Upsert a single target ────────────────────────────────────────────
-
-        /// <summary>
-        /// Inserts or updates a target from a client upsert request.
-        /// <para>
-        /// When <see cref="UpsertTargetRequest.DbSettingsChanged"/> is <c>true</c> the service
-        /// builds the appropriate connection string from the supplied credentials, encrypts it
-        /// with <see cref="Cryptor"/>, and stores only the encrypted value — the raw password
-        /// is discarded immediately after encryption.  The incoming <c>data_settings</c> are
-        /// also written as part of the new <see cref="DatabaseSettings"/> object.
-        /// </para>
-        /// <para>
-        /// When <see cref="UpsertTargetRequest.DbSettingsChanged"/> is <c>false</c> the existing
-        /// encrypted connection string is preserved untouched; only non-credential fields
-        /// (target name, automation settings, and data_settings) are updated.
-        /// </para>
-        /// </summary>
         public async Task<SettingsResult<bool>> UpsertTargetAsync(UpsertTargetRequest request)
         {
             var result = await GetTargetSettingsAsync();
@@ -391,36 +578,44 @@ namespace Upsanctionscreener.Classess.Utils
                     // ── Edit existing target ──────────────────────────────
                     target = targets[existing];
                     target.TargetName = request.TargetName;
-                    target.AutomationSettings = request.AutomationSettings;
+                    target.AutomationSettings = MapAutomation(request.AutomationSettings);
+                    target.NotificationSettings = MapNotification(request.NotificationSettings);
 
-                    if (request.DbSettingsChanged)
+                    if (request.TargetType == "document")
                     {
-                        // User explicitly changed DB credentials — build + encrypt new connection string
-                        if (request.DatabaseSettings is null)
-                            return SettingsResult<bool>.Fail("Database settings are required when db_settings_changed is true.");
-
-                        var encryptedConnStr = BuildAndEncryptConnectionString(request.DatabaseSettings);
-
-                        target.DatabaseSettings = new DatabaseSettings
-                        {
-                            DatabaseType = request.DatabaseSettings.DatabaseType,
-                            Host = request.DatabaseSettings.Host,
-                            Port = request.DatabaseSettings.Port,
-                            DatabaseName = request.DatabaseSettings.DatabaseName,
-                            UserName = request.DatabaseSettings.UserName,
-                            ConnectionString = encryptedConnStr,
-                            // Carry over data_settings from the request
-                            DataSettings = request.DatabaseSettings.DataSettings ?? new DataSettings()
-                            // Password intentionally NOT stored
-                        };
+                        target.TargetType = "document";
+                        target.DocumentSettings = MapDocumentSettings(request.DocumentSettings);
+                        target.DatabaseSettings = null;
                     }
                     else
                     {
-                        // Credentials unchanged — keep existing encrypted connection string.
-                        // Only update data_settings if the client sent them.
-                        if (request.DatabaseSettings?.DataSettings is not null)
+                        target.TargetType = "database";
+                        target.DocumentSettings = null;
+
+                        if (request.DbSettingsChanged)
                         {
-                            target.DatabaseSettings.DataSettings = request.DatabaseSettings.DataSettings;
+                            if (request.DatabaseSettings is null)
+                                return SettingsResult<bool>.Fail("Database settings are required when db_settings_changed is true.");
+
+                            target.DatabaseSettings = new DatabaseSettings
+                            {
+                                DatabaseType = request.DatabaseSettings.DatabaseType ?? "",
+                                Host = request.DatabaseSettings.Host ?? "",
+                                Port = request.DatabaseSettings.Port ?? 0,
+                                DatabaseName = request.DatabaseSettings.DatabaseName ?? "",
+                                UserName = request.DatabaseSettings.UserName ?? "",
+                                ConnectionString = BuildAndEncryptConnectionString(request.DatabaseSettings),
+                                DataSettings = MapDataSettings(request.DatabaseSettings.DataSettings)
+                            };
+                        }
+                        else
+                        {
+                            // Credentials unchanged — keep existing connection string, update data settings only
+                            if (target.DatabaseSettings is null)
+                                target.DatabaseSettings = new DatabaseSettings();
+
+                            if (request.DatabaseSettings?.DataSettings is not null)
+                                target.DatabaseSettings.DataSettings = MapDataSettings(request.DatabaseSettings.DataSettings);
                         }
                     }
 
@@ -429,29 +624,37 @@ namespace Upsanctionscreener.Classess.Utils
                 else
                 {
                     // ── New target ────────────────────────────────────────
-                    if (request.DatabaseSettings is null)
-                        return SettingsResult<bool>.Fail("Database settings are required for a new target.");
-
-                    var encryptedConnStr = BuildAndEncryptConnectionString(request.DatabaseSettings);
+                    int newId = targets.Count > 0 ? targets.Max(t => t.Id) + 1 : 1;
 
                     target = new TargetSetting
                     {
-                        Id = targets.Count > 0 ? targets.Max(t => t.Id) + 1 : 1,
+                        Id = newId,
                         TargetName = request.TargetName,
                         TargetType = request.TargetType,
-                        DatabaseSettings = new DatabaseSettings
-                        {
-                            DatabaseType = request.DatabaseSettings.DatabaseType,
-                            Host = request.DatabaseSettings.Host,
-                            Port = request.DatabaseSettings.Port,
-                            DatabaseName = request.DatabaseSettings.DatabaseName,
-                            UserName = request.DatabaseSettings.UserName,
-                            ConnectionString = encryptedConnStr,
-                            DataSettings = request.DatabaseSettings.DataSettings ?? new DataSettings()
-                            // Password intentionally NOT stored
-                        },
-                        AutomationSettings = request.AutomationSettings
+                        AutomationSettings = MapAutomation(request.AutomationSettings),
+                        NotificationSettings = MapNotification(request.NotificationSettings)
                     };
+
+                    if (request.TargetType == "document")
+                    {
+                        target.DocumentSettings = MapDocumentSettings(request.DocumentSettings);
+                    }
+                    else
+                    {
+                        if (request.DatabaseSettings is null)
+                            return SettingsResult<bool>.Fail("Database settings are required for a new database target.");
+
+                        target.DatabaseSettings = new DatabaseSettings
+                        {
+                            DatabaseType = request.DatabaseSettings.DatabaseType ?? "",
+                            Host = request.DatabaseSettings.Host ?? "",
+                            Port = request.DatabaseSettings.Port ?? 0,
+                            DatabaseName = request.DatabaseSettings.DatabaseName ?? "",
+                            UserName = request.DatabaseSettings.UserName ?? "",
+                            ConnectionString = BuildAndEncryptConnectionString(request.DatabaseSettings),
+                            DataSettings = MapDataSettings(request.DatabaseSettings.DataSettings)
+                        };
+                    }
 
                     targets.Add(target);
                 }
@@ -465,7 +668,6 @@ namespace Upsanctionscreener.Classess.Utils
         }
 
         // ── Delete a single target ────────────────────────────────────────────
-
         public async Task<SettingsResult<bool>> DeleteTargetAsync(int targetId)
         {
             var result = await GetTargetSettingsAsync();
