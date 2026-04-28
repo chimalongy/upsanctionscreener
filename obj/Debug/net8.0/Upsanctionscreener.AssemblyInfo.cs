@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Upsanctionscreener")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d2a04f15c5d506a3b0cfe7026336a07dca5100b6")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bc85abead862430e3dc073a4a7147a53724d41a7")]
 [assembly: System.Reflection.AssemblyProductAttribute("Upsanctionscreener")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Upsanctionscreener")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

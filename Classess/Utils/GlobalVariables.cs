@@ -12,5 +12,6 @@ namespace Upsanctionscreener.Classess.Utils
         public static string root_folder = Path.Combine(systemDrive, "UpSanctions");
         public static string nigerian_sanction_list_path = Path.Combine(root_folder, "Lists");
         public static bool refetching_sanction_database = false;
+        public static string base_sanction_db_path = Path.Combine(root_folder, "SanctionDatabase", "basesource", "UPSanctionDB.xlsx");
     }
 }

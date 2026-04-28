@@ -114,12 +114,91 @@
     .btn-start-screening:active { transform: translateY(0); }
     .btn-start-screening svg { width: 1rem; height: 1rem; }
 
-    /* ── Submit button loading state ── */
-    #submitBtn:disabled { opacity: 0.65; cursor: not-allowed; }
-    #submitBtn .btn-label  { transition: opacity 0.15s; }
-    #submitBtn .btn-spinner { display: none; }
-    #submitBtn.loading .btn-label  { opacity: 0; }
-    #submitBtn.loading .btn-spinner { display: flex; }
+    /* ── Action buttons layout ── */
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 0.75rem 1.25rem;
+        background: var(--color-accent-500, #6366f1);
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border-radius: 0.75rem;
+        border: none;
+        cursor: pointer;
+        transition: background 0.2s, opacity 0.15s;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 2.75rem;
+    }
+    .btn-submit:hover { background: var(--color-accent-600, #4f46e5); }
+    .btn-submit:disabled { opacity: 0.65; cursor: not-allowed; }
+    .btn-submit .btn-label  { transition: opacity 0.15s; display: flex; align-items: center; gap: 0.5rem; }
+    .btn-submit .btn-spinner { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; gap: 0.5rem; }
+    .btn-submit.loading .btn-label  { opacity: 0; }
+    .btn-submit.loading .btn-spinner { display: flex; }
+
+    .btn-secondary-action {
+        width: 100%;
+        padding: 0.7rem 1.25rem;
+        background: var(--color-surface, #f9fafb);
+        border: 1px solid var(--color-border, #e5e7eb);
+        border-radius: 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--color-text-secondary, #6b7280);
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        min-height: 2.75rem;
+    }
+    .btn-secondary-action:hover {
+        border-color: var(--color-brand-300, #a5b4fc);
+        color: var(--color-text-primary, #111827);
+        background: var(--color-surface-card, #fff);
+    }
+
+    .btn-row-secondary {
+        display: flex;
+        gap: 0.75rem;
+    }
+    .btn-row-secondary .btn-secondary-action {
+        flex: 1;
+    }
+
+    /* On larger screens, put submit + secondary row side by side */
+    @@media (min-width: 540px) {
+        .action-buttons {
+            flex-direction: row;
+            align-items: stretch;
+        }
+        .btn-submit {
+            flex: 1;
+            width: auto;
+        }
+        .btn-row-secondary {
+            flex-direction: row;
+        }
+        .btn-row-secondary .btn-secondary-action {
+            width: auto;
+            flex: none;
+            padding-left: 1.1rem;
+            padding-right: 1.1rem;
+        }
+    }
 
     /* ══════════════════════════════════════════════════════════════
        SHARED MODAL BASE
@@ -157,7 +236,6 @@
     .modal-icon-wrap.error   { background: #fef2f2; border: 1px solid #fecaca; }
     .modal-icon-wrap.warning { background: #fffbeb; border: 1px solid #fde68a; }
 
-    /* ── Shared button styles ── */
     .btn-modal-secondary {
         flex: 1; padding: 0.6rem 1rem;
         background: var(--color-surface, #f9fafb);
@@ -194,7 +272,6 @@
         display: inline-flex; align-items: center; gap: 0.4rem;
     }
 
-    /* ── Error modal specifics ── */
     .btn-modal-dismiss {
         width: 100%; padding: 0.6rem 1rem;
         background: var(--color-surface, #f9fafb);
@@ -234,7 +311,7 @@
     </div>
     <h1 class="font-display text-text-primary text-3xl font-semibold mb-2">Multi-Scan</h1>
     <p class="text-text-secondary text-sm max-w-md mx-auto">
-        Upload a CSV or Excel file, or paste names to screen multiple entities against global sanctions lists at once.
+        Upload a CSV or Excel file, or paste names to screen multiple entities against UP Sanctions lists at once.
     </p>
 </div>
 
@@ -396,33 +473,44 @@
     </div>
 
     @* ── Actions ── *@
-    <div class="flex gap-3 mt-5">
-        <button id="submitBtn" onclick="runMultiScan()"
-                class="flex-1 py-2.5 bg-accent-500 hover:bg-accent-600 text-white
-                       font-medium text-sm rounded-xl transition-colors shadow-sm
-                       relative flex items-center justify-center gap-2">
-            <span class="btn-label flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <div class="action-buttons">
+
+        @* Primary: Upload & Prepare *@
+        <button id="submitBtn" onclick="runMultiScan()" class="btn-submit">
+            <span class="btn-label">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                 </svg>
                 Upload &amp; Prepare Scan
             </span>
-            <span class="btn-spinner absolute inset-0 flex items-center justify-center gap-2">
-                <svg class="w-4 h-4 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <span class="btn-spinner">
+                <svg class="w-4 h-4 spinner flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                 </svg>
                 Uploading…
             </span>
         </button>
-        <a href="@Url.Action("Index", "Dashboard")"
-           class="px-5 py-2.5 bg-surface border border-border hover:border-brand-300
-                  text-text-secondary text-sm rounded-xl transition-colors flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-            Back
-        </a>
+
+        @* Secondary row: View All Scans + Back *@
+        <div class="btn-row-secondary">
+            <a href="@Url.Action("MultiScanTasks", "Dashboard")" class="btn-secondary-action">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                    <rect x="9" y="3" width="6" height="4" rx="1"/>
+                    <path d="M9 12h6M9 16h4"/>
+                </svg>
+                View All Scans
+            </a>
+            <a href="@Url.Action("Index", "Dashboard")" class="btn-secondary-action">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back
+            </a>
+        </div>
+
     </div>
+
 </div>
 
 @* ── Ready card ── *@
@@ -463,9 +551,7 @@
     </div>
 </div>
 
-@* ══════════════════════════════════════════════════════════════════
-   ERROR MODAL — replaces every alert() call
-══════════════════════════════════════════════════════════════════ *@
+@* ── Error Modal ── *@
 <div id="errorModal" class="modal-overlay" role="alertdialog" aria-modal="true" aria-labelledby="errorModalTitle">
     <div class="modal-box">
         <div class="modal-icon-wrap error">
@@ -480,9 +566,7 @@
     </div>
 </div>
 
-@* ══════════════════════════════════════════════════════════════════
-   DELETE-CONFIRM MODAL
-══════════════════════════════════════════════════════════════════ *@
+@* ── Delete-Confirm Modal ── *@
 <div id="deleteModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
     <div class="modal-box">
         <div class="modal-icon-wrap warning">
@@ -534,9 +618,7 @@ function getToken() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ERROR MODAL  ── central replacement for every alert() call
-   showError(title, message)
-   closeErrorModal()
+   ERROR MODAL
 ═══════════════════════════════════════════════════════════════════ */
 function showError(title, message) {
     document.getElementById('errorModalTitle').textContent  = title;
@@ -551,7 +633,7 @@ document.getElementById('errorModal').addEventListener('click', function (e) {
 });
 
 /* ═══════════════════════════════════════════════════════════════════
-   GLOBAL ESCAPE KEY  — closes whichever modal is open
+   GLOBAL ESCAPE KEY
 ═══════════════════════════════════════════════════════════════════ */
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { closeErrorModal(); closeDeleteModal(); }
@@ -639,8 +721,7 @@ function toggleAutoId() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   INLINE FIELD VALIDATION HELPERS
-   (named showFieldError / hideFieldError to avoid clash with showError)
+   VALIDATION
 ═══════════════════════════════════════════════════════════════════ */
 function showFieldError(id) { document.getElementById(id).classList.add('visible'); }
 function hideFieldError(id) { document.getElementById(id).classList.remove('visible'); }
@@ -696,7 +777,7 @@ async function runMultiScan() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   PATH A — non-document (JSON body)
+   PATH A — non-document
 ═══════════════════════════════════════════════════════════════════ */
 async function submitPasteList(names) {
     const btn = document.getElementById('submitBtn');
@@ -723,7 +804,7 @@ async function submitPasteList(names) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   PATH B — document (FormData multipart)
+   PATH B — document
 ═══════════════════════════════════════════════════════════════════ */
 async function submitDocument() {
     const btn = document.getElementById('submitBtn');
@@ -758,7 +839,7 @@ async function submitDocument() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   SHARED RESPONSE HANDLER
+   RESPONSE HANDLER
 ═══════════════════════════════════════════════════════════════════ */
 async function handleResponse(response, scanType) {
     let data;

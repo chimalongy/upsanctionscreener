@@ -15,48 +15,37 @@
     .fade-up-2 { animation-delay: 0.15s; }
     .fade-up-3 { animation-delay: 0.25s; }
 
-    /* ── Marquee / indeterminate progress bar ── */
     @@keyframes marquee {
         0%   { transform: translateX(-100%); }
         100% { transform: translateX(350%); }
     }
     .progress-track {
-        height: 4px;
-        background: var(--color-border, #e5e7eb);
-        border-radius: 9999px;
-        overflow: hidden;
-        position: relative;
+        height: 4px; background: var(--color-border, #e5e7eb);
+        border-radius: 9999px; overflow: hidden; position: relative;
     }
     .progress-fill-static {
-        height: 100%;
-        border-radius: 9999px;
+        height: 100%; border-radius: 9999px;
         background: linear-gradient(90deg, #6366f1, #4f46e5);
         transition: width 0.4s ease;
     }
     .progress-fill-marquee {
-        position: absolute;
-        top: 0; left: 0;
-        height: 100%;
-        width: 40%;
+        position: absolute; top: 0; left: 0; height: 100%; width: 40%;
         border-radius: 9999px;
         background: linear-gradient(90deg, transparent, #6366f1, #818cf8, transparent);
         animation: marquee 1.4s ease-in-out infinite;
     }
 
-    /* ── Status badge ── */
     .status-badge {
         display: inline-flex; align-items: center; gap: 0.3rem;
-        padding: 0.18rem 0.6rem;
-        border-radius: 9999px;
-        font-size: 0.67rem; font-weight: 700; letter-spacing: 0.04em;
-        white-space: nowrap;
+        padding: 0.18rem 0.6rem; border-radius: 9999px;
+        font-size: 0.67rem; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap;
     }
-    .s-pending   { background:#f3f4f6; border:1px solid #e5e7eb;   color:#6b7280; }
-    .s-scanning  { background:#eff6ff; border:1px solid #bfdbfe;   color:#1d4ed8; }
-    .s-completed { background:#f0fdf4; border:1px solid #bbf7d0;   color:#15803d; }
-    .s-failed    { background:#fef2f2; border:1px solid #fecaca;   color:#b91c1c; }
+    .s-pending    { background:#f3f4f6; border:1px solid #e5e7eb;   color:#6b7280; }
+    .s-scanning   { background:#eff6ff; border:1px solid #bfdbfe;   color:#1d4ed8; }
+    .s-completed  { background:#f0fdf4; border:1px solid #bbf7d0;   color:#15803d; }
+    .s-failed     { background:#fef2f2; border:1px solid #fecaca;   color:#b91c1c; }
+    .s-cancelled  { background:#fafaf9; border:1px solid #d4d4aa;   color:#78716c; }
 
-    /* ── Scan-type badge ── */
     .type-badge {
         display: inline-flex; align-items: center; gap: 0.25rem;
         padding: 0.15rem 0.5rem; border-radius: 9999px;
@@ -65,17 +54,15 @@
     .type-document { background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; }
     .type-list     { background:#f0fdf4; border:1px solid #bbf7d0; color:#15803d; }
 
-    /* ── Task card ── */
     .task-card {
         background: var(--color-surface-card, #fff);
         border: 1px solid var(--color-border, #e5e7eb);
-        border-radius: 1.125rem;
-        overflow: hidden;
-        transition: box-shadow 0.2s;
+        border-radius: 1.125rem; overflow: hidden; transition: box-shadow 0.2s;
     }
     .task-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.07); }
-    .task-card.is-active { border-color: #bfdbfe; }
-    .task-card.is-failed { border-color: #fecaca; }
+    .task-card.is-active    { border-color: #bfdbfe; }
+    .task-card.is-failed    { border-color: #fecaca; }
+    .task-card.is-cancelled { border-color: #d4d4aa; }
 
     .task-header {
         display: flex; align-items: flex-start; gap: 0.875rem;
@@ -86,17 +73,17 @@
         border-radius: 0.625rem;
         display: flex; align-items: center; justify-content: center;
     }
-    .task-icon-pending  { background:#f3f4f6; }
-    .task-icon-scanning { background:#eff6ff; }
-    .task-icon-completed{ background:#f0fdf4; }
-    .task-icon-failed   { background:#fef2f2; }
+    .task-icon-pending   { background:#f3f4f6; }
+    .task-icon-scanning  { background:#eff6ff; }
+    .task-icon-completed { background:#f0fdf4; }
+    .task-icon-failed    { background:#fef2f2; }
+    .task-icon-cancelled { background:#fafaf9; }
 
     .task-meta { flex: 1; min-width: 0; }
     .task-name {
         font-size: 0.875rem; font-weight: 600;
         color: var(--color-text-primary, #111827);
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        margin-bottom: 0.25rem;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.25rem;
     }
     .task-sub {
         display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
@@ -110,8 +97,7 @@
     .task-stat {
         background: var(--color-surface, #f9fafb);
         border: 1px solid var(--color-border, #f3f4f6);
-        border-radius: 0.625rem;
-        padding: 0.5rem 0.75rem;
+        border-radius: 0.625rem; padding: 0.5rem 0.75rem;
     }
     .task-stat-val {
         font-size: 1.1rem; font-weight: 700;
@@ -119,146 +105,160 @@
     }
     .task-stat-lbl {
         font-size: 0.62rem; font-weight: 600; text-transform: uppercase;
-        letter-spacing: 0.05em; color: var(--color-text-muted, #9ca3af);
-        margin-top: 0.2rem;
+        letter-spacing: 0.05em; color: var(--color-text-muted, #9ca3af); margin-top: 0.2rem;
     }
 
     .task-progress { padding: 0 1.25rem 1rem; }
     .task-progress-label {
         display: flex; justify-content: space-between;
-        font-size: 0.68rem; color: var(--color-text-muted, #9ca3af);
-        margin-bottom: 0.35rem;
+        font-size: 0.68rem; color: var(--color-text-muted, #9ca3af); margin-bottom: 0.35rem;
     }
 
-    /* ── Error banner ── */
     .task-error-banner {
-        margin: 0 1.25rem 1rem;
-        background: #fff5f5;
-        border: 1px solid #fecaca;
-        border-radius: 0.625rem;
-        padding: 0.65rem 0.875rem;
-        display: flex;
-        align-items: flex-start;
-        gap: 0.625rem;
+        margin: 0 1.25rem 1rem; background: #fff5f5;
+        border: 1px solid #fecaca; border-radius: 0.625rem;
+        padding: 0.65rem 0.875rem; display: flex; align-items: flex-start; gap: 0.625rem;
     }
-    .task-error-banner-icon {
-        flex-shrink: 0;
-        width: 1.25rem; height: 1.25rem;
-        color: #ef4444;
-        margin-top: 0.05rem;
-    }
-    .task-error-banner-body {}
-    .task-error-banner-title {
-        font-size: 0.72rem; font-weight: 700;
-        color: #b91c1c;
-        margin-bottom: 0.2rem;
-        letter-spacing: 0.01em;
-    }
-    .task-error-banner-msg {
-        font-size: 0.7rem;
-        color: #dc2626;
-        font-family: monospace;
-        word-break: break-word;
-        line-height: 1.5;
-    }
+    .task-error-banner-icon { flex-shrink: 0; width: 1.25rem; height: 1.25rem; color: #ef4444; margin-top: 0.05rem; }
+    .task-error-banner-title { font-size: 0.72rem; font-weight: 700; color: #b91c1c; margin-bottom: 0.2rem; letter-spacing: 0.01em; }
+    .task-error-banner-msg { font-size: 0.7rem; color: #dc2626; font-family: monospace; word-break: break-word; line-height: 1.5; }
 
-    /* ── Download button ── */
     .btn-download {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
+        display: inline-flex; align-items: center; gap: 0.4rem;
         padding: 0.45rem 0.9rem;
         background: linear-gradient(135deg, #22c55e, #16a34a);
-        color: #fff;
-        font-size: 0.72rem;
-        font-weight: 600;
-        border-radius: 0.5rem;
-        border: none;
-        cursor: pointer;
-        text-decoration: none;
-        transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
-        box-shadow: 0 1px 6px rgba(34,197,94,0.3);
+        color: #fff; font-size: 0.72rem; font-weight: 600;
+        border-radius: 0.5rem; border: none; cursor: pointer;
+        text-decoration: none; transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+        box-shadow: 0 1px 6px rgba(34,197,94,0.3); letter-spacing: 0.01em;
+    }
+    .btn-download:hover { opacity: 0.92; box-shadow: 0 2px 10px rgba(34,197,94,0.4); transform: translateY(-1px); }
+    .btn-download:active { transform: translateY(0); opacity: 1; }
+
+    .btn-cancel {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.45rem 0.9rem;
+        background: #fff; color: #b91c1c;
+        font-size: 0.72rem; font-weight: 600;
+        border-radius: 0.5rem; border: 1px solid #fecaca; cursor: pointer;
+        text-decoration: none; transition: background 0.15s, box-shadow 0.15s;
         letter-spacing: 0.01em;
     }
-    .btn-download:hover {
-        opacity: 0.92;
-        box-shadow: 0 2px 10px rgba(34,197,94,0.4);
-        transform: translateY(-1px);
-    }
-    .btn-download:active { transform: translateY(0); opacity: 1; }
-    .btn-download svg { flex-shrink: 0; }
+    .btn-cancel:hover { background: #fef2f2; box-shadow: 0 1px 6px rgba(239,68,68,0.15); }
+    .btn-cancel:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* ── Action bar (sits at same level as expand toggle) ── */
+    .btn-delete-task {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        padding: 0.45rem 0.9rem;
+        background: #fff; color: #6b7280;
+        font-size: 0.72rem; font-weight: 600;
+        border-radius: 0.5rem; border: 1px solid #e5e7eb; cursor: pointer;
+        text-decoration: none; transition: background 0.15s, border-color 0.15s;
+        letter-spacing: 0.01em;
+    }
+    .btn-delete-task:hover { background: #f9fafb; border-color: #d1d5db; }
+
     .task-actions-bar {
         padding: 0.75rem 1.25rem 0.875rem;
         border-top: 1px solid var(--color-border, #f3f4f6);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        flex-wrap: wrap;
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 0.75rem; flex-wrap: wrap;
     }
 
-    /* ── Detail expand section ── */
     .task-detail {
         border-top: 1px solid var(--color-border, #f3f4f6);
-        padding: 0.875rem 1.25rem;
-        display: none;
+        padding: 0.875rem 1.25rem; display: none;
     }
     .task-detail.open { display: block; }
-    .detail-grid {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem;
-        font-size: 0.75rem;
-    }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; font-size: 0.75rem; }
     .detail-row-item { display: flex; flex-direction: column; gap: 0.1rem; }
     .detail-row-item .lbl {
         font-size: 0.62rem; font-weight: 600; text-transform: uppercase;
         letter-spacing: 0.05em; color: var(--color-text-muted, #9ca3af);
     }
-    .detail-row-item .val {
-        color: var(--color-text-primary, #111827);
-        font-weight: 500; word-break: break-all;
-    }
+    .detail-row-item .val { color: var(--color-text-primary, #111827); font-weight: 500; word-break: break-all; }
     .detail-row-item .val.mono { font-family: monospace; font-size: 0.7rem; }
 
-    /* ── Expand toggle ── */
     .btn-expand {
         display: inline-flex; align-items: center; gap: 0.3rem;
         font-size: 0.7rem; font-weight: 500;
         color: var(--color-text-muted, #9ca3af);
-        cursor: pointer; border: none; background: none; padding: 0;
-        transition: color 0.15s;
+        cursor: pointer; border: none; background: none; padding: 0; transition: color 0.15s;
     }
     .btn-expand:hover { color: var(--color-brand-500, #6366f1); }
     .btn-expand svg { transition: transform 0.2s; }
     .btn-expand.open svg { transform: rotate(180deg); }
 
-    /* ── Empty state ── */
-    .empty-state {
-        text-align: center; padding: 4rem 1rem;
-        color: var(--color-text-muted, #9ca3af);
-    }
+    .empty-state { text-align: center; padding: 4rem 1rem; color: var(--color-text-muted, #9ca3af); }
 
-    /* ── Last-updated pulse ── */
     @@keyframes ping {
         0%   { transform: scale(1); opacity: 0.8; }
         75%  { transform: scale(1.8); opacity: 0; }
         100% { transform: scale(1.8); opacity: 0; }
     }
-    .ping-dot {
-        position: relative; display: inline-block;
-        width: 0.5rem; height: 0.5rem;
-    }
+    .ping-dot { position: relative; display: inline-block; width: 0.5rem; height: 0.5rem; }
     .ping-dot::before {
         content: ''; position: absolute; inset: 0;
-        background: #22c55e; border-radius: 50%;
-        animation: ping 1.5s ease-out infinite;
+        background: #22c55e; border-radius: 50%; animation: ping 1.5s ease-out infinite;
     }
-    .ping-dot::after {
-        content: ''; position: absolute; inset: 0;
-        background: #22c55e; border-radius: 50%;
+    .ping-dot::after { content: ''; position: absolute; inset: 0; background: #22c55e; border-radius: 50%; }
+
+    /* ── Modal ── */
+    .modal-backdrop {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,0.45); z-index: 9999;
+        align-items: center; justify-content: center;
     }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+        background: #fff; border-radius: 1rem;
+        padding: 1.75rem 2rem; max-width: 420px; width: 90%;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+        animation: fadeUp 0.2s ease forwards;
+    }
+    .modal-icon-wrap {
+        width: 2.75rem; height: 2.75rem; border-radius: 0.75rem;
+        display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;
+    }
+    .modal-icon-danger  { background: #fef2f2; }
+    .modal-icon-neutral { background: #f3f4f6; }
+    .modal-title { font-size: 1rem; font-weight: 700; color: #111827; margin-bottom: 0.35rem; }
+    .modal-desc  { font-size: 0.8rem; color: #6b7280; line-height: 1.55; margin-bottom: 1.5rem; }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+    .modal-btn-ghost {
+        padding: 0.5rem 1.1rem; font-size: 0.8rem; font-weight: 600;
+        border-radius: 0.5rem; border: 1px solid #e5e7eb; background: #fff;
+        color: #374151; cursor: pointer; transition: background 0.15s;
+    }
+    .modal-btn-ghost:hover { background: #f9fafb; }
+    .modal-btn-danger {
+        padding: 0.5rem 1.1rem; font-size: 0.8rem; font-weight: 600;
+        border-radius: 0.5rem; border: none;
+        background: #ef4444; color: #fff; cursor: pointer; transition: opacity 0.15s;
+    }
+    .modal-btn-danger:hover { opacity: 0.88; }
+    .modal-btn-neutral {
+        padding: 0.5rem 1.1rem; font-size: 0.8rem; font-weight: 600;
+        border-radius: 0.5rem; border: none;
+        background: #6366f1; color: #fff; cursor: pointer; transition: opacity 0.15s;
+    }
+    .modal-btn-neutral:hover { opacity: 0.88; }
 </style>
+
+@* ── Confirmation Modal ── *@
+<div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+        <div class="modal-icon-wrap" id="modalIconWrap">
+            <svg id="modalIcon" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"></svg>
+        </div>
+        <div class="modal-title" id="modalTitle"></div>
+        <div class="modal-desc"  id="modalDesc"></div>
+        <div class="modal-actions">
+            <button class="modal-btn-ghost" onclick="closeModal()">Cancel</button>
+            <button id="modalConfirmBtn" onclick="modalConfirm()"></button>
+        </div>
+    </div>
+</div>
 
 @* ── Hero ── *@
 <div class="text-center mb-6 pt-6 fade-up fade-up-1">
@@ -305,18 +305,132 @@
 
 @section Scripts {
 <script>
-/* ══════════════════════════════════════════════════════════════════════════
-   STATE
-══════════════════════════════════════════════════════════════════════════ */
-let expandedIds = new Set();   // track which task cards are expanded
+let expandedIds = new Set();
 let pollTimer   = null;
+let _modalCallback = null;
 
 /* ══════════════════════════════════════════════════════════════════════════
-   ANTIFORGERY
+   MODAL
 ══════════════════════════════════════════════════════════════════════════ */
-function getToken() {
-    const el = document.querySelector('input[name="__RequestVerificationToken"]');
-    return el ? el.value : '';
+function openModal({ title, desc, confirmLabel, isDanger, onConfirm }) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalDesc').textContent  = desc;
+
+    const btn = document.getElementById('modalConfirmBtn');
+    btn.textContent = confirmLabel;
+    btn.className   = isDanger ? 'modal-btn-danger' : 'modal-btn-neutral';
+
+    const wrap = document.getElementById('modalIconWrap');
+    wrap.className = 'modal-icon-wrap ' + (isDanger ? 'modal-icon-danger' : 'modal-icon-neutral');
+
+    const icon = document.getElementById('modalIcon');
+    if (isDanger) {
+        icon.innerHTML = `<circle cx="12" cy="12" r="10" stroke="#ef4444" stroke-width="2" fill="none"/><path d="M12 8v4M12 16h.01" stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>`;
+    } else {
+        icon.innerHTML = `<polyline points="3 6 5 6 21 6" stroke="#6b7280" stroke-width="2" fill="none"/><path d="M19 6l-1 14H6L5 6" stroke="#6b7280" stroke-width="2" fill="none"/><path d="M10 11v6M14 11v6" stroke="#6b7280" stroke-width="2" fill="none"/><path d="M9 6V4h6v2" stroke="#6b7280" stroke-width="2" fill="none"/>`;
+    }
+
+    _modalCallback = onConfirm;
+    document.getElementById('confirmModal').classList.add('open');
+}
+
+function closeModal() {
+    document.getElementById('confirmModal').classList.remove('open');
+    _modalCallback = null;
+}
+
+function modalConfirm() {
+    const cb = _modalCallback;
+    closeModal();
+    if (cb) cb();
+}
+
+document.getElementById('confirmModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BUTTON CLICK HANDLERS  (read from data-* — no inline JS args)
+══════════════════════════════════════════════════════════════════════════ */
+function handleCancelClick(el) {
+    const taskId   = parseInt(el.getAttribute('data-task-id'), 10);
+    const fileName = el.getAttribute('data-file-name') || '';
+    confirmCancelTask(taskId, fileName);
+}
+
+function handleDeleteClick(el) {
+    const taskId   = parseInt(el.getAttribute('data-task-id'), 10);
+    const fileName = el.getAttribute('data-file-name') || '';
+    confirmDeleteTask(taskId, fileName);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CANCEL TASK
+══════════════════════════════════════════════════════════════════════════ */
+function confirmCancelTask(taskId, fileName) {
+    openModal({
+        title: 'Cancel scan task?',
+        desc: `"${fileName}" is currently scanning. Cancelling will stop processing — the upload file will be kept until you delete the task.`,
+        confirmLabel: 'Yes, cancel',
+        isDanger: true,
+        onConfirm: () => doCancelTask(taskId)
+    });
+}
+
+async function doCancelTask(taskId) {
+    try {
+        const resp = await fetch(`/Dashboard/MultiScan/CancelTask/${taskId}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.message || 'Unknown error');
+        poll();
+    } catch (ex) {
+        openModal({
+            title: 'Cancel failed',
+            desc: ex.message || 'An unexpected error occurred.',
+            confirmLabel: 'OK',
+            isDanger: true,
+            onConfirm: () => {}
+        });
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DELETE TASK
+══════════════════════════════════════════════════════════════════════════ */
+function confirmDeleteTask(taskId, fileName) {
+    openModal({
+        title: 'Delete task and files?',
+        desc: `This will permanently remove task #${taskId} ("${fileName}") along with its upload file and result (if any). This cannot be undone.`,
+        confirmLabel: 'Delete',
+        isDanger: false,
+        onConfirm: () => doDeleteTask(taskId)
+    });
+}
+
+async function doDeleteTask(taskId) {
+    try {
+        const resp = await fetch(`/Dashboard/MultiScan/DeleteTask/${taskId}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.message || 'Unknown error');
+        const card = document.getElementById(`task-card-${taskId}`);
+        if (card) card.remove();
+        expandedIds.delete(taskId);
+        poll();
+    } catch (ex) {
+        openModal({
+            title: 'Delete failed',
+            desc: ex.message || 'An unexpected error occurred.',
+            confirmLabel: 'OK',
+            isDanger: true,
+            onConfirm: () => {}
+        });
+    }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -340,8 +454,8 @@ async function poll() {
 }
 
 function startPolling() {
-    poll();                                   // immediate first fetch
-    pollTimer = setInterval(poll, 5000);      // then every 5 s
+    poll();
+    pollTimer = setInterval(poll, 5000);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -366,7 +480,6 @@ function renderTasks(tasks) {
         return;
     }
 
-    // Sort: active first, then by id desc
     const sorted = [...tasks].sort((a, b) => {
         const activeA = isActive(a.status);
         const activeB = isActive(b.status);
@@ -376,7 +489,6 @@ function renderTasks(tasks) {
 
     container.innerHTML = sorted.map(t => taskCardHtml(t)).join('');
 
-    // Re-apply expanded state
     expandedIds.forEach(id => {
         const det = document.getElementById(`detail-${id}`);
         const btn = document.getElementById(`expand-btn-${id}`);
@@ -389,58 +501,68 @@ function isActive(status) {
     return s === 'pending' || s === 'scanning';
 }
 
-function taskCardHtml(t) {
-    const status   = (t.status || 'Pending').toLowerCase();
-    const active   = status === 'pending' || status === 'scanning';
-    const rowCount = parseInt(t.rowCount) || 0;
-    const scanType = (t.scanType || 'document').toLowerCase();
-    const isDoc    = scanType === 'document';
+function isCancelled(status) {
+    return (status || '').toLowerCase() === 'cancelled';
+}
 
-    // ── Status badge ─────────────────────────────────────────────────
+/* ══════════════════════════════════════════════════════════════════════════
+   TASK CARD HTML
+══════════════════════════════════════════════════════════════════════════ */
+function taskCardHtml(t) {
+    const status    = (t.status || 'Pending').toLowerCase();
+    const active    = isActive(t.status);
+    const cancelled = isCancelled(t.status);
+    const rowCount  = parseInt(t.rowCount) || 0;
+    const scanType  = (t.scanType || 'document').toLowerCase();
+    const isDoc     = scanType === 'document';
+
     const badgeClass = {
         pending  : 's-pending',
         scanning : 's-scanning',
         completed: 's-completed',
-        failed   : 's-failed'
+        failed   : 's-failed',
+        cancelled: 's-cancelled'
     }[status] || 's-pending';
 
     const badgeLabel = {
         pending  : 'Pending',
         scanning : 'Scanning…',
         completed: 'Completed',
-        failed   : 'Failed'
+        failed   : 'Failed',
+        cancelled: 'Cancelled'
     }[status] || t.status;
 
     const badgeDot = {
         pending  : '#9ca3af',
         scanning : '#3b82f6',
         completed: '#22c55e',
-        failed   : '#ef4444'
+        failed   : '#ef4444',
+        cancelled: '#a8a29e'
     }[status] || '#9ca3af';
 
-    // ── Icon colour ───────────────────────────────────────────────────
     const iconClass = {
         pending  : 'task-icon-pending',
         scanning : 'task-icon-scanning',
         completed: 'task-icon-completed',
-        failed   : 'task-icon-failed'
+        failed   : 'task-icon-failed',
+        cancelled: 'task-icon-cancelled'
     }[status] || 'task-icon-pending';
 
     const iconColor = {
         pending  : '#9ca3af',
         scanning : '#3b82f6',
         completed: '#22c55e',
-        failed   : '#ef4444'
+        failed   : '#ef4444',
+        cancelled: '#a8a29e'
     }[status] || '#9ca3af';
 
-    // ── Progress bar ──────────────────────────────────────────────────
+    /* ── Progress bar ── */
     let progressHtml = '';
     if (active) {
         progressHtml = `
         <div class="task-progress">
             <div class="task-progress-label">
-                <span>${badgeLabel}</span>
-                <span>${rowCount} records</span>
+                <span>${badgeLabel}</span><span>${rowCount} records</span>
             </div>
             <div class="progress-track">
                 <div class="progress-fill-marquee"></div>
@@ -450,8 +572,7 @@ function taskCardHtml(t) {
         progressHtml = `
         <div class="task-progress">
             <div class="task-progress-label">
-                <span>Complete</span>
-                <span>${rowCount} records</span>
+                <span>Complete</span><span>${rowCount} records</span>
             </div>
             <div class="progress-track">
                 <div class="progress-fill-static" style="width:100%"></div>
@@ -460,23 +581,28 @@ function taskCardHtml(t) {
     } else if (status === 'failed') {
         progressHtml = `
         <div class="task-progress">
-            <div class="task-progress-label" style="color:#b91c1c">
-                <span>Failed</span>
-            </div>
+            <div class="task-progress-label" style="color:#b91c1c"><span>Failed</span></div>
             <div class="progress-track">
                 <div class="progress-fill-static" style="width:100%;background:#ef4444"></div>
             </div>
         </div>`;
+    } else if (cancelled) {
+        progressHtml = `
+        <div class="task-progress">
+            <div class="task-progress-label" style="color:#78716c"><span>Cancelled</span></div>
+            <div class="progress-track">
+                <div class="progress-fill-static" style="width:100%;background:#a8a29e"></div>
+            </div>
+        </div>`;
     }
 
-    // ── Error banner (only shown when failed and message exists) ─────
+    /* ── Error banner ── */
     let errorBannerHtml = '';
     if (status === 'failed' && t.errorMessage && t.errorMessage.trim() !== '') {
         errorBannerHtml = `
         <div class="task-error-banner">
             <svg class="task-error-banner-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 8v4M12 16h.01"/>
+                <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
             </svg>
             <div class="task-error-banner-body">
                 <div class="task-error-banner-title">Error Details</div>
@@ -485,25 +611,47 @@ function taskCardHtml(t) {
         </div>`;
     }
 
-    // ── Timestamps ────────────────────────────────────────────────────
     const startFmt = formatTs(t.startTime);
     const endFmt   = formatTs(t.completionTIme);
 
-    // ── Actions bar (expand toggle + optional download button) ────────
-    let downloadBtnHtml = '';
-    if (status === 'completed') {
-        // Derive a download URL from the task id — adjust the route to match your actual download endpoint
+    /* ── Right-side action buttons ── */
+    let rightActionsHtml = '';
+
+    if (status === 'completed' && t.resultFileName) {
         const downloadUrl = `/Dashboard/MultiScan/DownloadResult/${t.id}`;
-        downloadBtnHtml = `
+        rightActionsHtml = `
         <a href="${escHtml(downloadUrl)}"
            class="btn-download"
            title="Download scan results for task #${t.id}">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                <path d="M12 5v10M8 15l4 4 4-4"/>
-                <path d="M4 20h16"/>
+                <path d="M12 5v10M8 15l4 4 4-4"/><path d="M4 20h16"/>
             </svg>
             Download Results
         </a>`;
+    } else if (status === 'scanning' || status === 'pending') {
+        rightActionsHtml = `
+        <button id="cancel-btn-${t.id}"
+                class="btn-cancel"
+                data-task-id="${t.id}"
+                data-file-name="${escHtml(t.fileName || '')}"
+                onclick="handleCancelClick(this)">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/>
+            </svg>
+            Cancel Scan
+        </button>`;
+    } else if (cancelled || status === 'failed') {
+        rightActionsHtml = `
+        <button class="btn-delete-task"
+                data-task-id="${t.id}"
+                data-file-name="${escHtml(t.fileName || '')}"
+                onclick="handleDeleteClick(this)">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+            Delete Task
+        </button>`;
     }
 
     const actionsBarHtml = `
@@ -514,10 +662,11 @@ function taskCardHtml(t) {
             </svg>
             View details
         </button>
-        ${downloadBtnHtml}
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+            ${rightActionsHtml}
+        </div>
     </div>`;
 
-    // ── Detail section ────────────────────────────────────────────────
     const detailHtml = `
     <div class="task-detail" id="detail-${t.id}">
         <div class="detail-grid">
@@ -539,7 +688,7 @@ function taskCardHtml(t) {
             </div>
             <div class="detail-row-item">
                 <span class="lbl">Started</span>
-                <span class="val">${startFmt}</span>
+                <span class="val">${startFmt || '—'}</span>
             </div>
             <div class="detail-row-item">
                 <span class="lbl">Completed</span>
@@ -552,8 +701,15 @@ function taskCardHtml(t) {
         </div>
     </div>`;
 
+    const cardClass = [
+        'task-card',
+        active              ? 'is-active'    : '',
+        status === 'failed' ? 'is-failed'    : '',
+        cancelled           ? 'is-cancelled' : ''
+    ].filter(Boolean).join(' ');
+
     return `
-    <div class="task-card ${active ? 'is-active' : ''} ${status === 'failed' ? 'is-failed' : ''}" id="task-card-${t.id}">
+    <div class="${cardClass}" id="task-card-${t.id}">
         <div class="task-header">
             <div class="task-icon ${iconClass}">
                 <svg width="18" height="18" fill="none" stroke="${iconColor}" stroke-width="2" viewBox="0 0 24 24">
@@ -623,8 +779,7 @@ function formatTs(ts) {
         const d = new Date(ts);
         if (isNaN(d)) return ts;
         return d.toLocaleString(undefined, {
-            month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit'
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
         });
     } catch { return ts; }
 }
@@ -632,13 +787,13 @@ function formatTs(ts) {
 function escHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
-/* ══════════════════════════════════════════════════════════════════════════
-   BOOT
-══════════════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', startPolling);
 </script>
 }

@@ -24,11 +24,13 @@ namespace Upsanctionscreener.Models
        public  int Id { get; set; }  
         public string FileName { get; set; }
         public string FilePath { get; set; }
+        public string ResultFileName { get; set; }
+        public string ResultPath { get; set; }
         public string ScanType { get; set; }
         public string RowCount { get; set; }
         public string AutoGenerateId { get; set; }
         public string IdColumn { get; set; }
-
+        
         public string ScanColumn { get; set; }
         public string Status { get; set; }
         public string StartTime { get; set; }
