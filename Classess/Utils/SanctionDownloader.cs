@@ -10,7 +10,7 @@ using Upsanctionscreener.Classess.Interfaces;
 using Upsanctionscreener.Classess.Parsers;
 using Upsanctionscreener.Classess.Utils;
 using Upsanctionscreener.Models;
-using static Upsanctionscreener.Classess.Search.BKTree;
+
 
 namespace Upsanctionscreener.Classess
 {
@@ -18,7 +18,7 @@ namespace Upsanctionscreener.Classess
     {
         private readonly HttpClient _httpClient;
         private readonly SanctionExcelExporter _exporter;
-        private readonly SanctionBKTree _tree;
+       
         private readonly UpSanctionSettingsService _settingsService;
 
         private readonly List<ISanctionParser> _parsers = new()
@@ -116,13 +116,13 @@ namespace Upsanctionscreener.Classess
                 return;
             }
 
-            double threshold = settingsResult.Data.ScanThreshold / 100.0;
+            //double threshold = settingsResult.Data.ScanThreshold / 100.0;
 
-            SanctionBKTree.Instance.Reset();
-            SanctionBKTree.Instance.Configure(threshold, caseSensitive: false);
-            SanctionBKTree.Instance.Load(entries);
+            //SanctionBKTree.Instance.Reset();
+            //SanctionBKTree.Instance.Configure(threshold, caseSensitive: false);
+            //SanctionBKTree.Instance.Load(entries);
 
-            Console.WriteLine($"BK-Tree reloaded with {SanctionBKTree.Instance.NodeCount} nodes.");
+            //Console.WriteLine($"BK-Tree reloaded with {SanctionBKTree.Instance.NodeCount} nodes.");
 
         }
 

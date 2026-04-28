@@ -1,9 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Protocols;
+using System.Data;
 using System.Text.Json;
-using Upsanctionscreener.Data;
-using Upsanctionscreener.Models;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
+using Upsanctionscreener.Data;
+using Upsanctionscreener.Models;
 
 namespace Upsanctionscreener.Classess.Utils
 {
@@ -215,13 +218,217 @@ namespace Upsanctionscreener.Classess.Utils
             }
         }
 
+        public static string NormalizeString(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return string.Empty;
+
+            // Trim and uppercase
+            name = name.Trim().ToUpperInvariant();
+
+            // Normalize spaces
+            name = Regex.Replace(name, @"\s+", " ");
+
+            // Remove unwanted characters
+            name = Regex.Replace(name, @"[^A-Z0-9\s]", "");
+
+            // Split safely for older .NET versions
+            var parts = name
+                .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .OrderBy(x => x)
+                .ToArray();
+
+            return string.Join(" ", parts);
+        }
+        public static DataTable NormaLizeNamesinColumn(DataTable dataTable, string columnname)
+        {
+            if (dataTable == null)
+                throw new ArgumentNullException(nameof(dataTable));
+
+            if (string.IsNullOrWhiteSpace(columnname))
+                throw new ArgumentException("Column name cannot be empty.", nameof(columnname));
+
+            if (!dataTable.Columns.Contains(columnname))
+                throw new ArgumentException($"Column '{columnname}' does not exist in the DataTable.");
+
+            foreach (DataRow row in dataTable.Rows)
+            {
+                if (row[columnname] != DBNull.Value)
+                {
+                    string original = row[columnname]?.ToString();
+
+                    row[columnname] = NormalizeString(original);
+                }
+                else
+                {
+                    row[columnname] = string.Empty;
+                }
+            }
+
+            return dataTable;
+        }
+
+        public static List<SanctionEntry> NormalizeSanctionListNames(List<SanctionEntry> sanctionList)
+        {
+            if (sanctionList == null || sanctionList.Count == 0)
+                return sanctionList;
+
+            foreach (var entry in sanctionList)
+            {
+                if (entry.Names == null || entry.Names.Count == 0)
+                    continue;
+
+                entry.Names = entry.Names
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .Select(n => NormalizeString(n))
+                    .ToList();
+            }
+
+            return sanctionList;
+        }
+
+
+        public static string GetFileFileExtension(string fileName)
+        {
+            string extension = Path.GetExtension(fileName).ToLower();
+
+            return extension switch
+            {
+                ".csv" => "csv",
+                ".txt" => "txt",
+                ".xls" or ".xlsx" => "excel",
+                _ => "unknown"
+            };
+        }
 
 
 
+        public static TaskFileReadResult ReadTaskFile(
+        string file_extension,
+        string autoGenerateId,
+        string file_path,
+        string idColumnName,
+        string ColumnToScan)
+        {
+            TaskFileReadResult result = new TaskFileReadResult
+            {
+                Success = false,
+                Data = null,
+                Error = null
+            };
 
+            // Normalize string -> bool (safe parsing)
+            bool generateId = string.Equals(autoGenerateId, "true", StringComparison.OrdinalIgnoreCase);
 
+            try
+            {
+                switch (file_extension.ToLower())
+                {
+                    case "csv":
+                        {
+                            CsvFileReader csv_reader = new CsvFileReader();
+                            CsvScanResult csv_result =
+                                csv_reader.ReadCsvFileFromPath(file_path, idColumnName, ColumnToScan, generateId);
 
+                            if (csv_result.Success && csv_result.Data != null)
+                            {
+                                result.Success = true;
+                                result.Data = csv_result.Data;
+                            }
+                            else
+                            {
+                                result.Error = csv_result.Error ?? "Failed to read CSV file.";
+                            }
 
+                            break;
+                        }
+
+                   
+                    case "excel":
+                        {
+                            ExcelMultiSheetReader excel_reader = new ExcelMultiSheetReader();
+                            ExcelReadResult excel_result =
+                                excel_reader.ReadExcelFromPath(file_path, idColumnName, ColumnToScan, generateId);
+
+                            if (excel_result.Success && excel_result.Data != null)
+                            {
+                                result.Success = true;
+                                result.Data = excel_result.Data;
+                            }
+                            else
+                            {
+                                result.Error = excel_result.Error ?? "Failed to read Excel file.";
+                            }
+
+                            break;
+                        }
+
+                    case "txt":
+                        {
+                            DataTable table = new DataTable();
+
+                            table.Columns.Add("ID", typeof(int));
+                            table.Columns.Add("ScanItems", typeof(string));
+
+                            if (!File.Exists(file_path))
+                            {
+                                result.Error = "File not found.";
+                                return result;
+                            }
+
+                            var lines = File.ReadAllLines(file_path);
+                            int id = 1;
+
+                            foreach (var line in lines)
+                            {
+                                if (!string.IsNullOrWhiteSpace(line))
+                                {
+                                    DataRow row = table.NewRow();
+
+                                    row["ID"] = id++; // TXT still auto-generates always (your current logic)
+                                    row["ScanItems"] = line.Trim();
+
+                                    table.Rows.Add(row);
+                                }
+                            }
+
+                            result.Success = true;
+                            result.Data = table;
+
+                            break;
+                        }
+
+                    default:
+                        result.Error = $"Unsupported file type: {file_extension}";
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Error = ex.Message;
+            }
+
+            return result;
+        }
+
+        public static DataTable DeduplicateDatatbaleById(DataTable table, string idColumnName)
+        {
+            if (table == null)
+                throw new ArgumentNullException(nameof(table));
+
+            if (!table.Columns.Contains(idColumnName))
+                throw new ArgumentException($"Column '{idColumnName}' does not exist.");
+
+            var distinctRows = table.AsEnumerable()
+                                    .GroupBy(r => r[idColumnName])
+                                    .Select(g => g.First());
+
+            if (!distinctRows.Any())
+                return table.Clone(); // empty structure
+
+            return distinctRows.CopyToDataTable();
+        }
 
 
     }

@@ -1,15 +1,50 @@
-﻿using System.Text.Json;
+﻿using DocumentFormat.OpenXml.Drawing;
+using DocumentFormat.OpenXml.Office2021.DocumentTasks;
+using DocumentFormat.OpenXml.Spreadsheet;
+using Microsoft.AspNetCore.Http.HttpResults;
+using System.Collections.Concurrent;
+using System.Data;
+using System.Reflection;
+using System.Text.Json;
+using Upsanctionscreener.Classess.Search.ScanExporters;
 using Upsanctionscreener.Classess.Utils;
+using Upsanctionscreener.Data;
 using Upsanctionscreener.Models;
+using System.IO;
+using static Upsanctionscreener.Classess.Search.SanctionNamesBKTree;
+
 
 namespace Upsanctionscreener.Classess.Search
 {
+
+    public class NameScanResult
+    {
+        public string RowId { get; }
+        public string ScannedValue { get; }
+        public List<SanctionNamesBKTree.BKSearchResult> Hits { get; }
+        public bool IsMatch => Hits.Count > 0;
+
+        public NameScanResult(string rowId, string scannedValue, List<SanctionNamesBKTree.BKSearchResult> hits)
+        {
+            RowId = rowId;
+            ScannedValue = scannedValue;
+            Hits = hits;
+        }
+    }
+
+
+
+
+
+
+
+
     public static class Scanner
     {
         internal static readonly object _multiscantaskFileLock = new object();
 
         private static string TasksFilePath =>
-     Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanDB", "multiscantasks.json");
+          System.IO.Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanDB", "multiscantasks.json");
 
 
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
@@ -44,7 +79,7 @@ namespace Upsanctionscreener.Classess.Search
         private static void WriteTasks(List<MultiScanTask> tasks)
         {
             var path = TasksFilePath;
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path)!);
 
             // FileShare.None — exclusive write, no other process can touch it
             using var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -78,6 +113,16 @@ namespace Upsanctionscreener.Classess.Search
             }
         }
 
+        // ── Public: Delete task ────────────────────────────────────────────
+        public static void DeleteMultiScanTask(int taskId)
+        {
+            lock (_multiscantaskFileLock)
+            {
+                var tasks = ReadTasks();
+                tasks = tasks.Where(t => t.Id != taskId).ToList();
+                WriteTasks(tasks);
+            }
+        }
         // ── Public: update task status ────────────────────────────────────────
         public static void UpdateMultiScanTask(int taskId, string newStatus, string? errorMessage = null)
         {
@@ -110,20 +155,312 @@ namespace Upsanctionscreener.Classess.Search
             }
         }
 
+        public static void UpdateMultiScanTaskField(int taskId, string fieldName, object? newValue)
+        {
+            lock (_multiscantaskFileLock)
+            {
+                try
+                {
+                    var tasks = ReadTasks();
+
+                    var task = tasks.FirstOrDefault(t => t.Id == taskId);
+                    if (task == null) return;
+
+                    // Find property (case-insensitive)
+                    var prop = typeof(MultiScanTask).GetProperty(
+                        fieldName,
+                        BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase
+                    );
+
+                    if (prop == null || !prop.CanWrite)
+                        return;
+
+                    // Convert value to correct type
+                    object? convertedValue = newValue;
+
+                    if (newValue != null && prop.PropertyType != newValue.GetType())
+                    {
+                        convertedValue = Convert.ChangeType(newValue, prop.PropertyType);
+                    }
+
+                    // Set value
+                    prop.SetValue(task, convertedValue);
+
+                    WriteTasks(tasks);
+                }
+                catch
+                {
+                    // optionally log
+                }
+            }
+        }
+
+
+
+
+
+
+        public static async Task<object> SingleScanScreener(
+      double Threshold,
+      string SearchTerm,
+      string field,
+      IServiceScopeFactory scopeFactory)
+        {
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var sanctionMatches = new List<(string EntryId, string Matched, double Similarity, int EditDistance)>();
+
+            try
+            {
+                if (!File.Exists(GlobalVariables.base_sanction_db_path))
+                    throw new FileNotFoundException("Base up sanction DB file not found.", GlobalVariables.base_sanction_db_path);
+
+                var sanction_entries = SanctionExcelReader.LoadFromExcel(GlobalVariables.base_sanction_db_path);
+                var normalized_sanction_entries = GlobalFunctions.NormalizeSanctionListNames(sanction_entries);
+
+                if (field == "name")
+                {
+                    SearchTerm = GlobalFunctions.NormalizeString(SearchTerm);
+                    var tree = new SanctionNamesBKTree(threshold: Threshold, caseSensitive: false);
+                    tree.Load(normalized_sanction_entries);
+
+                    var results = tree.Search(SearchTerm);
+                    foreach (var r in results)
+                        sanctionMatches.Add((r.EntryId, r.MatchedName, r.Similarity, r.EditDistance));
+                }
+                else if (field == "email")
+                {
+                    var tree = new SanctionEmailsBKTree();
+                    tree.Load(normalized_sanction_entries);
+
+                    foreach (var r in tree.Search(SearchTerm, Threshold))
+                        sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
+                }
+                else if (field == "phone")
+                {
+                    var tree = new SanctionPhoneNumberBKTree();
+                    tree.Load(sanction_entries);
+
+                    foreach (var r in tree.Search(SearchTerm, Threshold))
+                        sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
+                }
+                else if (field == "address")
+                {
+                    var tree = new SanctionAddressesBKTree();
+                    tree.Load(sanction_entries);
+
+                    foreach (var r in tree.Search(SearchTerm, Threshold))
+                        sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
+                }
+                else
+                {
+                    return new
+                    {
+                        success = false,
+                        data = sanctionMatches,
+                        message = "Invalid field provided"
+                    };
+                }
+
+                return new
+                {
+                    success = true,
+                    data = sanctionMatches,
+                    message = sanctionMatches.Count > 0 ? "Matches found" : "No matches found"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    success = false,
+                    data = sanctionMatches,
+                    message = ex.Message
+                };
+            }
+        }
+
+
+
+
+
+
+
         // ── Background scan ───────────────────────────────────────────────────
-        public static async Task MultiScanScreener(MultiScanTask task)
+        public static async System.Threading.Tasks.Task MultiScanScreener(MultiScanTask task, IServiceScopeFactory scopeFactory)
         {
             UpdateMultiScanTask(task.Id, "Scanning", null);
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            await Task.Delay(TimeSpan.FromMinutes(2));
+            try
+            {
+                if (!File.Exists(GlobalVariables.base_sanction_db_path))
+                    throw new FileNotFoundException("Base up sanction DB file not found.", GlobalVariables.base_sanction_db_path);
 
-            var random = new Random();
-            var status = random.Next(0, 2) == 0 ? "Completed" : "Failed";
+                var sanction_entries = SanctionExcelReader.LoadFromExcel(GlobalVariables.base_sanction_db_path);
+                var normalized_sanction_entries = GlobalFunctions.NormalizeSanctionListNames(sanction_entries);
 
-            if (status == "Completed")
+                string file_extension = GlobalFunctions.GetFileFileExtension(task.FileName);
+
+                TaskFileReadResult file_read_result = new TaskFileReadResult();
+
+                if (file_extension == "txt")
+                {
+                    file_read_result = GlobalFunctions.ReadTaskFile(file_extension, task.AutoGenerateId, task.FilePath, "", "");
+                }
+                else
+                {
+                    file_read_result = GlobalFunctions.ReadTaskFile(file_extension, task.AutoGenerateId, task.FilePath, task.IdColumn, task.ScanColumn);
+                }
+
+                if (!file_read_result.Success)
+                {
+                    throw new Exception($"Failed to read task file: {file_read_result.Error}");
+                }
+
+                DataTable data_to_scan = file_read_result.Data;
+                if (file_extension == "txt")
+                {
+                    data_to_scan = GlobalFunctions.DeduplicateDatatbaleById(data_to_scan, "ID");
+                    data_to_scan = GlobalFunctions.NormaLizeNamesinColumn(data_to_scan, "ScanItems");
+                }
+                else
+                {
+                    data_to_scan = GlobalFunctions.DeduplicateDatatbaleById(data_to_scan, task.IdColumn);
+                    data_to_scan = GlobalFunctions.NormaLizeNamesinColumn(data_to_scan, task.ScanColumn);
+                }
+
+                var svc = new UpSanctionSettingsService(db);
+                SettingsResult<ScanSettings> scan_settings_result = await svc.GetScanSettingsAsync();
+
+                if (!scan_settings_result.Success)
+                {
+                    throw new Exception($"Failed to load scan setttings: {scan_settings_result.Error}");
+                }
+
+                int default_threshold = scan_settings_result.Data.ScanThreshold;
+                var tree = new SanctionNamesBKTree(default_threshold / 100.00, caseSensitive: false);
+                tree.Load(normalized_sanction_entries);
+
+                List<NameScanResult> scan_results = new List<NameScanResult>();
+
+                if (file_extension== "txt")
+                {
+                    scan_results = ParallelNameScan(tree, data_to_scan, "ID", "ScanItems");
+                }
+                else
+                {
+                    scan_results = ParallelNameScan(tree, data_to_scan, task.IdColumn, task.ScanColumn);
+                }
+
+                var sanctionLookup =sanction_entries.ToDictionary(e => e.ID, e => e);
+
+                string result_export_folder = System.IO.Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanResult");
+                Directory.CreateDirectory(result_export_folder);
+                string nameWithoutExtension = System.IO.Path.GetFileNameWithoutExtension(task.FileName);
+                string result_file_name = nameWithoutExtension+ "_result.xlsx";
+                var result_export_path = System.IO.Path.Combine(result_export_folder,result_file_name);
+                NameScanResultExporter.ExportToExcel(
+                scan_results,
+                sanctionLookup,
+                scannedColumnName: task.ScanColumn,
+                scanType: "Multi-Scan",
+                outputPath: result_export_path);
+
+                UpdateMultiScanTaskField(task.Id, "ResultFileName", result_file_name);
+                UpdateMultiScanTaskField(task.Id, "ResultPath", result_export_path);
+
                 UpdateMultiScanTask(task.Id, "Completed", "");
-            else
-                UpdateMultiScanTask(task.Id, "Failed", "test error message");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                UpdateMultiScanTask(task.Id, "Failed", ex.Message);
+            }
         }
+
+
+
+        public static List<NameScanResult> ParallelNameScan(
+            SanctionNamesBKTree sanctionTree,
+            DataTable data_to_scan,
+            string taskIdColumn,
+            string taskScanColumn)
+        {
+            if (sanctionTree == null) throw new ArgumentNullException(nameof(sanctionTree));
+            if (data_to_scan == null) throw new ArgumentNullException(nameof(data_to_scan));
+
+            if (!data_to_scan.Columns.Contains(taskIdColumn))
+                throw new ArgumentException($"Column '{taskIdColumn}' not found in DataTable.", nameof(taskIdColumn));
+
+            if (!data_to_scan.Columns.Contains(taskScanColumn))
+                throw new ArgumentException($"Column '{taskScanColumn}' not found in DataTable.", nameof(taskScanColumn));
+
+            // Pre-size the results array to match data_to_scan length exactly
+            var rows = data_to_scan.Rows.Cast<DataRow>().ToArray();
+            var results = new NameScanResult[rows.Length];
+
+            Parallel.ForEach(
+                rows.Select((row, index) => (row, index)),
+                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                item =>
+                {
+                    var rowId = item.row[taskIdColumn]?.ToString()?.Trim() ?? string.Empty;
+                    var valueToScan = item.row[taskScanColumn]?.ToString()?.Trim() ?? string.Empty;
+
+                    var hits = string.IsNullOrWhiteSpace(valueToScan)
+                        ? new List<SanctionNamesBKTree.BKSearchResult>()
+                        : sanctionTree.Search(valueToScan);
+
+                    results[item.index] = new NameScanResult(rowId, valueToScan, hits);
+                });
+
+            return results.ToList();
+        }
+
+
+
+
+
+
+
+
+
+
+
     }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

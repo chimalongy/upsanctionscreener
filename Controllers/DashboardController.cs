@@ -13,7 +13,7 @@ using Upsanctionscreener.Data;
 using Upsanctionscreener.Models;
 using Upsanctionscreener.Models.ViewModels;
 using Upsanctionscreener.Services;
-using static Upsanctionscreener.Classess.Search.BKTree;
+
 using static Upsanctionscreener.Classess.Search.PEPBKTree;
 
 namespace Upsanctionscreener.Controllers
@@ -23,15 +23,17 @@ namespace Upsanctionscreener.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IConfiguration _config;
-        private readonly SanctionBKTree _sanction_tree;
+       
         private readonly UpSanctionSettingsService _settingsService;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public DashboardController(AppDbContext db, IConfiguration config, SanctionBKTree tree, UpSanctionSettingsService settingsService)
+        public DashboardController(AppDbContext db, IConfiguration config,  UpSanctionSettingsService settingsService, IServiceScopeFactory scopeFactory    )
         {
             _db = db;
             _config = config;
-            _sanction_tree = tree;
+        
             _settingsService = settingsService;
+            _scopeFactory = scopeFactory;
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -782,30 +784,11 @@ namespace Upsanctionscreener.Controllers
             var sanctionMatches = new List<(string EntryId, string Matched, double Similarity, int EditDistance)>();
 
             var field = (req.SearchField ?? "name").ToLowerInvariant();
-            if (field == "name")
-            {
-                foreach (var c in _sanction_tree.Search(req.SearchTerm, req.Threshold))
-                    sanctionMatches.Add((c.EntryId, c.MatchedName, c.Similarity, c.EditDistance));
-            }
-            else if (field == "email")
-            {
-                var tree = new SanctionEmailsBKTree(); tree.Load(sanctionList);
-                foreach (var r in tree.Search(req.SearchTerm, req.Threshold))
-                    sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
-            }
-            else if (field == "phone")
-            {
-                var tree = new SanctionPhoneNumberBKTree(); tree.Load(sanctionList);
-                foreach (var r in tree.Search(req.SearchTerm, req.Threshold))
-                    sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
-            }
-            else if (field == "address")
-            {
-                var tree = new SanctionAddressesBKTree(); tree.Load(sanctionList);
-                foreach (var r in tree.Search(req.SearchTerm, req.Threshold))
-                    sanctionMatches.Add((r.EntryId, r.Matched, r.Similarity, r.EditDistance));
-            }
 
+            var result = await Scanner.SingleScanScreener(req.Threshold??0.9,req.SearchTerm, req.SearchField, _scopeFactory);
+
+            dynamic response = result;
+            sanctionMatches = response.data;
             var completeSanctionList = sanctionMatches
                 .Select(c => new { entry = sanctionList.FirstOrDefault(x => x.ID == c.EntryId), c.Similarity })
                 .Where(x => x.entry is not null)
@@ -829,6 +812,17 @@ namespace Upsanctionscreener.Controllers
                 }).ToList();
 
             var adverseMediaResults = await GoogleNewsRssService.SearchAsync(req.SearchTerm);
+            var adverseMediaSettings = await _settingsService.GetAdverseMediaFilterAsync();
+            List<string> adverseMediaFilters = adverseMediaSettings.Data;
+
+            var filteredAdverseMedia = adverseMediaResults.Where(item =>
+                !adverseMediaFilters.Any(filter =>
+                    item.Title.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                    item.Summary.Contains(filter, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+
+
 
             return Json(new
             {
@@ -837,13 +831,16 @@ namespace Upsanctionscreener.Controllers
                 searchField = req.SearchField,
                 sanctions = completeSanctionList,
                 peps = completePepList,
-                adverseMedia = adverseMediaResults
+                adverseMedia = filteredAdverseMedia
             });
         }
 
         // ══════════════════════════════════════════════════════════════════════
         // MULTI-SCAN API
         // ══════════════════════════════════════════════════════════════════════
+        [Route("Dashboard/MultiScan/Tasks")]
+        public IActionResult MultiScanTasks() =>
+            View("~/Views/Dashboard/MultiScanScreen.cshtml");
 
         [HttpPost]
         [IgnoreAntiforgeryToken]
@@ -1014,7 +1011,7 @@ namespace Upsanctionscreener.Controllers
             };
 
             int newId = Scanner.AddMultiScanTask(newTask);
-            Task.Run(() => Scanner.MultiScanScreener(newTask));
+            Task.Run(() => Scanner.MultiScanScreener(newTask, _scopeFactory));
 
             ViewData["TaskId"] = newId;
             ViewData["FilePath"] = filePath;
@@ -1056,31 +1053,95 @@ namespace Upsanctionscreener.Controllers
             if (!task.Status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
                 return BadRequest(new { success = false, message = "Task has not completed successfully." });
 
-            var resultsDir = Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanResults");
-            var filePath = Path.Combine(resultsDir, $"result_{id}.xlsx");
-
-            if (!System.IO.File.Exists(filePath))
+            if (string.IsNullOrWhiteSpace(task.ResultPath) || !System.IO.File.Exists(task.ResultPath))
                 return NotFound(new { success = false, message = "Result file not found." });
 
-            var safeDir = Path.GetFullPath(resultsDir);
-            var safePath = Path.GetFullPath(filePath);
-
-            if (!safePath.StartsWith(safeDir, StringComparison.OrdinalIgnoreCase))
-                return BadRequest(new { success = false, message = "Invalid file path." });
-
-            var bytes = System.IO.File.ReadAllBytes(safePath);
-            var fileName = $"ScanResult_{id}_{Path.GetFileName(task.FileName ?? "scan")}.xlsx";
+            var bytes = System.IO.File.ReadAllBytes(task.ResultPath);
+            var fileName = task.ResultFileName; // already includes .xlsx
 
             return File(bytes,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 fileName);
         }
 
-        // ══════════════════════════════════════════════════════════════════════
-        // INNER CLASSES / REQUEST MODELS
-        // ══════════════════════════════════════════════════════════════════════
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        [Route("Dashboard/MultiScan/CancelTask/{id:int}")]
+        public IActionResult MultiScanCancelTask(int id)
+        {
+            try
+            {
+                var tasks = Scanner.GetAllTasks();
+                var task = tasks.FirstOrDefault(t => t.Id == id);
 
-        
+                if (task is null)
+                    return NotFound(new { success = false, message = "Task not found." });
+
+                if (!task.Status.Equals("Scanning", StringComparison.OrdinalIgnoreCase) &&
+                    !task.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                    return BadRequest(new { success = false, message = "Only Pending or Scanning tasks can be cancelled." });
+
+                Scanner.UpdateMultiScanTask(id, "Cancelled", "Cancelled by user.");
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        [Route("Dashboard/MultiScan/DeleteTask/{id:int}")]
+        public IActionResult MultiScanDeleteTask(int id)
+        {
+            try
+            {
+                var tasks = Scanner.GetAllTasks();
+                var task = tasks.FirstOrDefault(t => t.Id == id);
+
+                if (task is null)
+                    return NotFound(new { success = false, message = "Task not found." });
+
+                // Only allow deletion of terminal states
+                var terminalStatuses = new[] { "Completed", "Failed", "Cancelled" };
+                if (!terminalStatuses.Contains(task.Status, StringComparer.OrdinalIgnoreCase))
+                    return BadRequest(new { success = false, message = "Only completed, failed, or cancelled tasks can be deleted." });
+
+                // Delete the upload file if it exists and is in the safe upload dir
+                if (!string.IsNullOrWhiteSpace(task.FilePath))
+                {
+                    var uploadDir = Path.GetFullPath(Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanUploads"));
+                    var targetPath = Path.GetFullPath(task.FilePath);
+                    if (targetPath.StartsWith(uploadDir, StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(targetPath))
+                        System.IO.File.Delete(targetPath);
+                }
+
+                // Delete the result file if it exists
+                if (!string.IsNullOrWhiteSpace(task.ResultPath) && System.IO.File.Exists(task.ResultPath))
+                {
+                    var resultDir = Path.GetFullPath(Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanResult"));
+                    var resultPath = Path.GetFullPath(task.ResultPath);
+                    if (resultPath.StartsWith(resultDir, StringComparison.OrdinalIgnoreCase))
+                        System.IO.File.Delete(resultPath);
+                }
+
+                // Remove from tasks list
+                lock (Scanner._multiscantaskFileLock)
+                {
+                    // Re-use internal method via a public helper — or inline the logic:
+                }
+                Scanner.DeleteMultiScanTask(id);
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+
     }
 
   
