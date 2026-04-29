@@ -11,10 +11,12 @@ namespace Upsanctionscreener.Services
     public class SanctionListRefreshService : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly SanctionDownloader _downloader;
 
-        public SanctionListRefreshService(IServiceScopeFactory scopeFactory)
+        public SanctionListRefreshService(IServiceScopeFactory scopeFactory, SanctionDownloader downloader)
         {
             _scopeFactory = scopeFactory;
+            _downloader = downloader;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -49,8 +51,8 @@ namespace Upsanctionscreener.Services
                 var settingsService = scope.ServiceProvider
                     .GetRequiredService<UpSanctionSettingsService>();
 
-                var downloader = new SanctionDownloader();
-                await downloader.DownloadParseAndExportAsync(settingsService);
+              
+                await _downloader.DownloadParseAndExportAsync(settingsService);
 
                 Console.WriteLine("Sanction list refresh completed successfully.");
             }

@@ -1,6 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CsvHelper;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -36,45 +38,129 @@ namespace Upsanctionscreener.Classess
             ["OFAC"] = "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML",
         };
 
-        public SanctionDownloader()
+        public SanctionDownloader(HttpClient httpClient)
         {
-            _httpClient = new HttpClient();
+            _httpClient = httpClient;
             _exporter = new SanctionExcelExporter();
-            
         }
 
-        public async Task<List<SanctionEntry>> DownloadAndParseAsync()
+
+
+
+
+
+
+
+        public async Task<object> DownloadAndParseAsync()
         {
             var allEntries = new List<SanctionEntry>();
+            bool hasFailure = false;
 
-            // Download UN, EU, OFAC in parallel
-            var parallelTasks = _sourceUrls.Select(async kvp =>
+            string folderName = Path.Combine(GlobalVariables.root_folder, "Logs", "UPDatabaseDownloadLogs");
+            string today = DateTime.Now.ToString("dd-MM-yyyy");
+            string fileName = "SanctionListDownload" + "_" + today;
+
+            Logger.LogToFile(folderName, fileName,
+                $"START: Download and parse process initiated at {DateTime.UtcNow:O}");
+
+            try
             {
-                var xml = await DownloadStringAsync(kvp.Value);
+                // ───────────────────────────────
+                // SEQUENTIAL DOWNLOADS
+                // ───────────────────────────────
 
-                var parser = _parsers.FirstOrDefault(p => p.Source == kvp.Key);
-                if (parser == null)
-                    throw new Exception($"No parser found for source: {kvp.Key}");
+                foreach (var kvp in _sourceUrls)
+                {
+                    try
+                    {
+                        var xml = await DownloadStringAsync(kvp.Value);
 
-                return parser.Parse(xml);
-            });
+                        var parser = _parsers.FirstOrDefault(p => p.Source == kvp.Key);
+                        if (parser == null)
+                            throw new Exception($"No parser found for source: {kvp.Key}");
 
-            var results = await Task.WhenAll(parallelTasks);
+                        var parsed = parser.Parse(xml);
 
-            foreach (var list in results)
-                allEntries.AddRange(list);
+                        Logger.LogToFile(folderName, fileName,
+                            $"SUCCESS: {kvp.Key} downloaded and parsed successfully. Entries: {parsed.Count}");
 
-            // UK requires dynamic URL extraction
-            var ukXml = await DownloadUkXmlAsync();
-            var ukParser = _parsers.FirstOrDefault(p => p.Source == "UK");
+                        allEntries.AddRange(parsed);
+                    }
+                    catch (Exception ex)
+                    {
+                        hasFailure = true;
 
-            if (ukParser == null)
-                throw new Exception("No parser found for UK source.");
+                        Logger.LogToFile(folderName, fileName,
+                            $"FAILED: {kvp.Key} download/parse failed. Error: {ex.Message}");
+                    }
+                }
 
-            allEntries.AddRange(ukParser.Parse(ukXml));
+                // ───────────────────────────────
+                // UK SOURCE (SEPARATE STEP)
+                // ───────────────────────────────
 
-            return allEntries;
+                try
+                {
+                    var ukXml = await DownloadUkXmlAsync();
+
+                    var ukParser = _parsers.FirstOrDefault(p => p.Source == "UK");
+                    if (ukParser == null)
+                        throw new Exception("No parser found for UK source.");
+
+                    var ukParsed = ukParser.Parse(ukXml);
+
+                    Logger.LogToFile(folderName, fileName,
+                        $"SUCCESS: UK downloaded and parsed successfully. Entries: {ukParsed.Count}");
+
+                    allEntries.AddRange(ukParsed);
+                }
+                catch (Exception ex)
+                {
+                    hasFailure = true;
+
+                    Logger.LogToFile(folderName, fileName,
+                        $"FAILED: UK download/parse failed. Error: {ex.Message}");
+                }
+
+                Logger.LogToFile(folderName, fileName,
+                    $"COMPLETED: Total entries collected: {allEntries.Count}");
+
+                dynamic response = new ExpandoObject();
+                response.data = allEntries;
+                response.status = hasFailure ? "some" : "all";
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogToFile(folderName, fileName,
+                    $"FATAL ERROR in DownloadAndParseAsync: {ex.Message}");
+
+                dynamic response = new ExpandoObject();
+                response.data = new List<SanctionEntry>();
+                response.status = "some";
+
+                return response;
+            }
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         public async Task ExportToExcelAsync(List<SanctionEntry> entries, string outputPath)
         {
@@ -87,7 +173,12 @@ namespace Upsanctionscreener.Classess
             var outputDir = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase");
             Directory.CreateDirectory(outputDir);
 
-            List<SanctionEntry> entries = await DownloadAndParseAsync();
+            var result = await DownloadAndParseAsync();
+            dynamic response = result;
+            List<SanctionEntry> entries = response.data;
+            var status = response.status;
+
+
             List<SanctionEntry> nigerianEntries = await NigerianSanctionListReader.LoadFromFileAsync(Path.Combine(GlobalVariables.nigerian_sanction_list_path, "NIGERIANSANCTIONLIST.json"));
             entries.AddRange(nigerianEntries);
 
@@ -100,29 +191,20 @@ namespace Upsanctionscreener.Classess
             Console.WriteLine($"Exported {entries.Count} entries to {excelPath}");
 
             // ── 3. Overwrite base source file ────────────────────────────────────
-            var baseSourcePath = Path.Combine(
-                GlobalVariables.root_folder,
-                "SanctionDatabase", "basesource",
-                "UPSanctionDB.xlsx");
-
-            await ExportToExcelAsync(entries, baseSourcePath);
-            Console.WriteLine($"Base source file updated: {baseSourcePath}");
-
-            // ── 4. Reload BK-Tree directly via singleton ─────────────────────────
-            var settingsResult = await settingsService.GetScanSettingsAsync();
-            if (!settingsResult.Success)
+            if (status == "all")
             {
-                Console.WriteLine($"Tree not reloaded — failed to get settings: {settingsResult.Error}");
-                return;
+                var baseSourcePath = Path.Combine(
+               GlobalVariables.root_folder,
+               "SanctionDatabase", "basesource",
+               "UPSanctionDB.xlsx");
+
+                await ExportToExcelAsync(entries, baseSourcePath);
+                Console.WriteLine($"Base source file updated: {baseSourcePath}");
             }
+           
 
-            //double threshold = settingsResult.Data.ScanThreshold / 100.0;
 
-            //SanctionBKTree.Instance.Reset();
-            //SanctionBKTree.Instance.Configure(threshold, caseSensitive: false);
-            //SanctionBKTree.Instance.Load(entries);
-
-            //Console.WriteLine($"BK-Tree reloaded with {SanctionBKTree.Instance.NodeCount} nodes.");
+           
 
         }
 
