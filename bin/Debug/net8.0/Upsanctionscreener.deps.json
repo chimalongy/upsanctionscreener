@@ -18,6 +18,9 @@
           "Microsoft.EntityFrameworkCore.Design": "8.0.26",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "8.0.11",
           "Oracle.ManagedDataAccess.Core": "23.26.200",
+          "Quartz": "3.18.1",
+          "Quartz.AspNetCore": "3.18.1",
+          "Quartz.Extensions.DependencyInjection": "3.18.1",
           "System.Configuration.ConfigurationManager": "10.0.6",
           "System.IdentityModel.Tokens.Jwt": "8.17.0",
           "System.ServiceModel.Syndication": "10.0.7"
@@ -593,6 +596,52 @@
           }
         }
       },
+      "Quartz/3.18.1": {
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.2"
+        },
+        "runtime": {
+          "lib/net8.0/Quartz.dll": {
+            "assemblyVersion": "3.18.1.0",
+            "fileVersion": "3.18.1.0"
+          }
+        }
+      },
+      "Quartz.AspNetCore/3.18.1": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
+          "Quartz.Extensions.Hosting": "3.18.1"
+        },
+        "runtime": {
+          "lib/net8.0/Quartz.AspNetCore.dll": {
+            "assemblyVersion": "3.18.1.0",
+            "fileVersion": "3.18.1.0"
+          }
+        }
+      },
+      "Quartz.Extensions.DependencyInjection/3.18.1": {
+        "dependencies": {
+          "Microsoft.Extensions.Options": "8.0.2",
+          "Quartz": "3.18.1"
+        },
+        "runtime": {
+          "lib/net8.0/Quartz.Extensions.DependencyInjection.dll": {
+            "assemblyVersion": "3.18.1.0",
+            "fileVersion": "3.18.1.0"
+          }
+        }
+      },
+      "Quartz.Extensions.Hosting/3.18.1": {
+        "dependencies": {
+          "Quartz.Extensions.DependencyInjection": "3.18.1"
+        },
+        "runtime": {
+          "lib/net8.0/Quartz.Extensions.Hosting.dll": {
+            "assemblyVersion": "3.18.1.0",
+            "fileVersion": "3.18.1.0"
+          }
+        }
+      },
       "RBush.Signed/4.0.0": {
         "runtime": {
           "lib/net8.0/RBush.dll": {
@@ -1084,6 +1133,34 @@
       "sha512": "sha512-l+k3UOpWfv7g2F4/FnenQlwMMvVk8LLlVgAn1qdl3Seyna2kkyogSHS0ceBGMKNT7KjC79rpIyFmt8Q0QveB3A==",
       "path": "oracle.manageddataaccess.core/23.26.200",
       "hashPath": "oracle.manageddataaccess.core.23.26.200.nupkg.sha512"
+    },
+    "Quartz/3.18.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-q/n/gKLcApDlTk90BRNvj6P8HKR+vbtZEQxo5BAbeEoN5e/8/aqRuG6yH7tVg02CeAXAD40boS74s9hVnh4XDw==",
+      "path": "quartz/3.18.1",
+      "hashPath": "quartz.3.18.1.nupkg.sha512"
+    },
+    "Quartz.AspNetCore/3.18.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ov6wR05hvxFeusryqnmBTZJEnEWC8pHFKC55td7C6F5Y2MrkdlSg9IR4GVkFGeZFmnjtTL3LlsHCAM9cYwMk6A==",
+      "path": "quartz.aspnetcore/3.18.1",
+      "hashPath": "quartz.aspnetcore.3.18.1.nupkg.sha512"
+    },
+    "Quartz.Extensions.DependencyInjection/3.18.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ct+sIqr7n961jvo695GnqHjB+dhK6b/Y9LSXxK6n9EJ6JzMXpwcusd5u2lCqVqqNHaiGBLXp37E75hpPXHQkzA==",
+      "path": "quartz.extensions.dependencyinjection/3.18.1",
+      "hashPath": "quartz.extensions.dependencyinjection.3.18.1.nupkg.sha512"
+    },
+    "Quartz.Extensions.Hosting/3.18.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-kZ7ufndI5vygLpI0kCeukVKlzpRFtGjfoU3BoWZ6u6QKoRF2Z3KV1dSpv+VpMqRekz3SrObfN0iLZKWldoZLZw==",
+      "path": "quartz.extensions.hosting/3.18.1",
+      "hashPath": "quartz.extensions.hosting.3.18.1.nupkg.sha512"
     },
     "RBush.Signed/4.0.0": {
       "type": "package",

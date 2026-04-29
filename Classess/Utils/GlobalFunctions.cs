@@ -412,6 +412,94 @@ namespace Upsanctionscreener.Classess.Utils
             return result;
         }
 
+
+        public static TaskFileReadResult ReadTargetFile(
+     string file_path,
+     string idColumnName,
+     List<FieldMapping> otherFields)
+        {
+            TaskFileReadResult result = new TaskFileReadResult
+            {
+                Success = false,
+                Data = null,
+                Error = null
+            };
+
+            
+
+            try
+            {
+                if (otherFields == null || otherFields.Count == 0)
+                {
+                    result.Error = "No field mappings provided.";
+                    return result;
+                }
+
+                ExcelMultiSheetReader excel_reader = new ExcelMultiSheetReader();
+                ExcelReadResult excel_result = excel_reader.ReadExcelFromPath(file_path, idColumnName: idColumnName, scanColumnName: "");
+
+                if (!excel_result.Success || excel_result.Data == null)
+                {
+                    result.Error = excel_result.Error ?? "Failed to read Excel file.";
+                    return result;
+                }
+
+                DataTable source = excel_result.Data;
+
+                // Validate all mapped column names exist in the source before building output
+                foreach (var field in otherFields)
+                {
+                    if (!source.Columns.Contains(field.ColumnName))
+                    {
+                        result.Error = $"Mapped column '{field.ColumnName}' was not found in the Excel file.";
+                        return result;
+                    }
+                }
+
+                // Build output DataTable: ID + only the mapped fields (name, address, email, phone)
+                DataTable mapped = new DataTable();
+                mapped.Columns.Add("ID", typeof(string));
+
+                var validMatchAs = new HashSet<string>(
+                    new[] { "name", "address", "email", "phone" },
+                    StringComparer.OrdinalIgnoreCase);
+
+                foreach (var field in otherFields)
+                {
+                    if (validMatchAs.Contains(field.MatchAs))
+                        mapped.Columns.Add(field.MatchAs, typeof(string));
+                }
+
+                int autoId = 1;
+                foreach (DataRow sourceRow in source.Rows)
+                {
+                    DataRow mappedRow = mapped.NewRow();
+
+                    mappedRow["ID"] = sourceRow[idColumnName];
+
+
+
+                    foreach (var field in otherFields)
+                    {
+                        if (validMatchAs.Contains(field.MatchAs))
+                            mappedRow[field.MatchAs] = sourceRow[field.ColumnName]?.ToString() ?? "";
+                    }
+
+                    mapped.Rows.Add(mappedRow);
+                }
+
+                result.Success = true;
+                result.Data = mapped;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Error = ex.Message;
+            }
+
+            return result;
+        }
+
         public static DataTable DeduplicateDatatbaleById(DataTable table, string idColumnName)
         {
             if (table == null)

@@ -75,8 +75,7 @@ namespace Upsanctionscreener.Classess.Utils
             string scanColumnName,
             bool generateId)
         {
-            if (string.IsNullOrWhiteSpace(scanColumnName))
-                return new ExcelReadResult { Success = false, Error = "Scan column name is required." };
+            bool fetchAllColumns = string.IsNullOrWhiteSpace(scanColumnName);
 
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
@@ -93,8 +92,8 @@ namespace Upsanctionscreener.Classess.Utils
             if (dataSet == null || dataSet.Tables.Count == 0)
                 return new ExcelReadResult { Success = false, Error = "Excel file contains no sheets." };
 
-            DataTable combinedTable = CreateCombinedTable(idColumnName, scanColumnName, generateId);
-
+            // We'll build the combined table after we inspect the first valid sheet
+            DataTable? combinedTable = null;
             bool foundValidSheet = false;
             int autoId = 1;
 
@@ -103,23 +102,49 @@ namespace Upsanctionscreener.Classess.Utils
                 if (sheet.Columns.Count == 0)
                     continue;
 
-                bool hasScanColumn = sheet.Columns.Contains(scanColumnName);
-                bool hasIdColumn = sheet.Columns.Contains(idColumnName);
+                bool hasIdColumn = !generateId && sheet.Columns.Contains(idColumnName);
 
-                if (!hasScanColumn)
-                    continue;
-
+                // Always enforce ID column presence when not auto-generating
                 if (!generateId && !hasIdColumn)
                     continue;
+
+                // When a specific scan column is requested, enforce its existence too
+                if (!fetchAllColumns && !sheet.Columns.Contains(scanColumnName))
+                    continue;
+
+                // First valid sheet — build the combined table schema
+                if (combinedTable == null)
+                {
+                    combinedTable = fetchAllColumns
+                        ? CreateCombinedTableAllColumns(idColumnName, sheet, generateId)
+                        : CreateCombinedTable(idColumnName, scanColumnName, generateId);
+                }
 
                 foundValidSheet = true;
 
                 foreach (DataRow row in sheet.Rows)
                 {
-                    var scanValue = row[scanColumnName]?.ToString()?.Trim();
-
-                    if (string.IsNullOrWhiteSpace(scanValue))
-                        continue;
+                    // When fetching a specific column, skip rows where that column is empty
+                    if (!fetchAllColumns)
+                    {
+                        var scanValue = row[scanColumnName]?.ToString()?.Trim();
+                        if (string.IsNullOrWhiteSpace(scanValue))
+                            continue;
+                    }
+                    else
+                    {
+                        // For all-columns mode, skip rows that are entirely empty
+                        bool rowIsEmpty = true;
+                        foreach (DataColumn col in sheet.Columns)
+                        {
+                            if (!string.IsNullOrWhiteSpace(row[col]?.ToString()))
+                            {
+                                rowIsEmpty = false;
+                                break;
+                            }
+                        }
+                        if (rowIsEmpty) continue;
+                    }
 
                     DataRow newRow = combinedTable.NewRow();
                     newRow["SheetName"] = sheet.TableName;
@@ -130,36 +155,50 @@ namespace Upsanctionscreener.Classess.Utils
                     }
                     else
                     {
-                        var idValue = row[idColumnName]?.ToString()?.Trim();
-                        newRow[idColumnName] = idValue;
+                        newRow[idColumnName] = row[idColumnName]?.ToString()?.Trim();
                     }
 
-                    newRow[scanColumnName] = scanValue;
+                    if (fetchAllColumns)
+                    {
+                        // Copy every column except the ID (already handled above)
+                        foreach (DataColumn col in sheet.Columns)
+                        {
+                            if (!generateId && col.ColumnName == idColumnName)
+                                continue;
+
+                            if (combinedTable.Columns.Contains(col.ColumnName))
+                                newRow[col.ColumnName] = row[col]?.ToString()?.Trim();
+                        }
+                    }
+                    else
+                    {
+                        newRow[scanColumnName] = row[scanColumnName]?.ToString()?.Trim();
+                    }
 
                     combinedTable.Rows.Add(newRow);
                 }
             }
 
-            if (!foundValidSheet)
+            if (!foundValidSheet || combinedTable == null)
             {
                 return new ExcelReadResult
                 {
                     Success = false,
                     Error = generateId
-                        ? $"No sheet contains column '{scanColumnName}'."
-                        : $"No sheet contains both columns '{idColumnName}' and '{scanColumnName}'."
+                        ? fetchAllColumns
+                            ? "No valid sheet found with data."
+                            : $"No sheet contains column '{scanColumnName}'."
+                        : fetchAllColumns
+                            ? $"No sheet contains the required ID column '{idColumnName}'."
+                            : $"No sheet contains both columns '{idColumnName}' and '{scanColumnName}'."
                 };
             }
 
-            return new ExcelReadResult
-            {
-                Success = true,
-                Data = combinedTable
-            };
+            return new ExcelReadResult { Success = true, Data = combinedTable };
         }
 
         // =========================
-        // TABLE CREATION
+        // TABLE CREATION — specific scan column
         // =========================
         private DataTable CreateCombinedTable(
             string idColumnName,
@@ -169,17 +208,33 @@ namespace Upsanctionscreener.Classess.Utils
             DataTable dt = new DataTable("ScanData");
 
             dt.Columns.Add("SheetName", typeof(string));
-
-            if (generateId)
-            {
-                dt.Columns.Add("ID", typeof(int));
-            }
-            else
-            {
-                dt.Columns.Add(idColumnName, typeof(string));
-            }
-
+            dt.Columns.Add(generateId ? "ID" : idColumnName, generateId ? typeof(int) : typeof(string));
             dt.Columns.Add(scanColumnName, typeof(string));
+
+            return dt;
+        }
+
+        // =========================
+        // TABLE CREATION — all columns mode
+        // =========================
+        private DataTable CreateCombinedTableAllColumns(
+            string idColumnName,
+            DataTable sourceSheet,
+            bool generateId)
+        {
+            DataTable dt = new DataTable("ScanData");
+
+            dt.Columns.Add("SheetName", typeof(string));
+            dt.Columns.Add(generateId ? "ID" : idColumnName, generateId ? typeof(int) : typeof(string));
+
+            foreach (DataColumn col in sourceSheet.Columns)
+            {
+                // ID column is already added above — skip to avoid duplicates
+                if (!generateId && col.ColumnName == idColumnName)
+                    continue;
+
+                dt.Columns.Add(col.ColumnName, typeof(string));
+            }
 
             return dt;
         }

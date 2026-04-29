@@ -304,3 +304,7 @@ C:\Users\dell\source\repos\upsanctionscreener\obj\Debug\net8.0\refint\Upsanction
 C:\Users\dell\source\repos\upsanctionscreener\obj\Debug\net8.0\Upsanctionscreener.pdb
 C:\Users\dell\source\repos\upsanctionscreener\obj\Debug\net8.0\Upsanctionscreener.genruntimeconfig.cache
 C:\Users\dell\source\repos\upsanctionscreener\obj\Debug\net8.0\ref\Upsanctionscreener.dll
+C:\Users\dell\source\repos\upsanctionscreener\bin\Debug\net8.0\Quartz.dll
+C:\Users\dell\source\repos\upsanctionscreener\bin\Debug\net8.0\Quartz.AspNetCore.dll
+C:\Users\dell\source\repos\upsanctionscreener\bin\Debug\net8.0\Quartz.Extensions.DependencyInjection.dll
+C:\Users\dell\source\repos\upsanctionscreener\bin\Debug\net8.0\Quartz.Extensions.Hosting.dll

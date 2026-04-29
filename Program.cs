@@ -1,17 +1,57 @@
+using DocumentFormat.OpenXml.Office2010.CustomUI;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Quartz;
 using System.Text;
+using Upsanctionscreener.Classess;
 using Upsanctionscreener.Classess.Search;
 using Upsanctionscreener.Classess.Utils;
 using Upsanctionscreener.Data;
+using Upsanctionscreener.Jobs;
+using Upsanctionscreener.Services;
 using Upsanctionscreener.Services;
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
+//List<Merchant> merchants = MerchantGenerator.GenerateMerchants(500);
+//await MerchantGenerator.InsertMerchantsAsync(
+//DatabaseType.Postgres,
+//target.DatabaseSettings.ConnectionString,
+//merchants);
+
+
+
+
 var builder = WebApplication.CreateBuilder(args);
+
+// ── Quartz ────────────────────────────────────────────────────────────────────
+builder.Services.AddQuartz(q =>
+{
+    q.UseMicrosoftDependencyInjectionJobFactory();
+
+    // In-memory store — jobs survive restarts via SchedulerStartupService
+    q.UseInMemoryStore();
+
+    // Up to 10 target scans can run at the same time
+    q.UseDefaultThreadPool(tp =>
+    {
+        tp.MaxConcurrency = 10;
+    });
+});
+
+builder.Services.AddQuartzHostedService(opt =>
+{
+    // Wait for any running jobs to finish before the app shuts down
+    opt.WaitForJobsToComplete = true;
+});
+
+// ── Scheduler services ────────────────────────────────────────────────────────
+builder.Services.AddScoped<TargetSchedulerService>();
+builder.Services.AddHostedService<SchedulerStartupService>();
+
 
 builder.Services.AddHostedService<SanctionListRefreshService>();
 
@@ -60,50 +100,19 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddHttpClient<SanctionDownloader>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5);
+});
+
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<UpSanctionSettingsService>();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var settingsService = scope.ServiceProvider.GetRequiredService<UpSanctionSettingsService>();
 
-    var result = await settingsService.GetScanSettingsAsync();
 
-    if (result.Success)
-    {
-        Console.WriteLine($"Scan Settings Retrieved");
-        var scanSettings = result.Data;
-        double ScanSettingsThreshold = scanSettings.ScanThreshold / 100.0;
-
-        var filePath = Path.Combine(
-            GlobalVariables.root_folder,
-            "SanctionDatabase", "basesource",
-            "UPSanctionDB.xlsx"
-        );
-
-        if (!File.Exists(filePath))
-        {
-            Console.WriteLine("Could not Read base UPSanctionDatabase: " + filePath);
-            return;
-        }
-
-        //var sanction_entries = await Task.Run(() =>
-        //    SanctionExcelReader.LoadFromExcel(filePath)
-        //);
-        //Console.WriteLine($"Sanction Entries Retrieved");
-
-        //SanctionNamesBKTree.Configure(ScanSettingsThreshold, caseSensitive: false);
-        //SanctionNamesBKTree.Load(sanction_entries);
-
-        //Console.WriteLine($"Tree loaded with {SanctionNamesBKTree.NodeCount} nodes.");
-    }
-    else
-    {
-        Console.WriteLine($"Failed to load ScanSettings: {result.Error}");
-    }
-}
 
 if (!app.Environment.IsDevelopment())
 {

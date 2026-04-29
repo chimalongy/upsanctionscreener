@@ -2,6 +2,7 @@
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Quartz.Logging;
 using System.Data;
 using System.Diagnostics;
 using System.Text.Json;
@@ -26,14 +27,17 @@ namespace Upsanctionscreener.Controllers
        
         private readonly UpSanctionSettingsService _settingsService;
         private readonly IServiceScopeFactory _scopeFactory;
-
-        public DashboardController(AppDbContext db, IConfiguration config,  UpSanctionSettingsService settingsService, IServiceScopeFactory scopeFactory    )
+        private readonly SanctionDownloader _downloader;
+        private readonly TargetSchedulerService _targetScheduler;
+        public DashboardController(AppDbContext db, IConfiguration config,  UpSanctionSettingsService settingsService, IServiceScopeFactory scopeFactory, SanctionDownloader downloader, TargetSchedulerService targetScheduler)  
         {
             _db = db;
             _config = config;
         
             _settingsService = settingsService;
             _scopeFactory = scopeFactory;
+            _downloader = downloader;
+            _targetScheduler = targetScheduler;
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -185,22 +189,46 @@ namespace Upsanctionscreener.Controllers
             return Json(new { success = true, data = result.Data });
         }
 
-        /// <summary>
-        /// POST create or update a target (database OR document type).
-        /// The payload shape differs by target_type:
-        ///   - "database" : includes database_settings (connection + data_settings)
-        ///   - "document" : includes document_settings (file metadata + data_settings)
-        /// Both include notification_settings and automation_settings.
-        /// </summary>
+
+        //[HttpPost]
+        //[Route("Dashboard/Settings/TargetSettings/Upsert")]
+        //public async Task<IActionResult> TargetSettingsUpsert([FromBody] UpsertTargetRequest target)
+        //{
+        //    // Basic guard: target_type must be known
+        //    if (target.TargetType != "database" && target.TargetType != "document")
+        //        return BadRequest(new { success = false, message = "target_type must be 'database' or 'document'." });
+
+        //    // Document-specific guard: upload_path must point inside the designated folder
+        //    if (target.TargetType == "document" && target.DocumentSettings is not null)
+        //    {
+        //        var uploadRoot = Path.GetFullPath(
+        //            Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
+
+        //        if (!string.IsNullOrWhiteSpace(target.DocumentSettings.UploadPath))
+        //        {
+        //            var resolvedPath = Path.GetFullPath(target.DocumentSettings.UploadPath);
+        //            if (!resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
+        //                return BadRequest(new { success = false, message = "Invalid document upload path." });
+        //        }
+        //    }
+
+        //    var svc = new UpSanctionSettingsService(_db);
+        //    var result = await svc.UpsertTargetAsync(target);
+        //    if (!result.Success)
+        //        return BadRequest(new { success = false, message = result.Error });
+        //    return Json(new { success = true });
+        //}
+
+
         [HttpPost]
         [Route("Dashboard/Settings/TargetSettings/Upsert")]
         public async Task<IActionResult> TargetSettingsUpsert([FromBody] UpsertTargetRequest target)
         {
-            // Basic guard: target_type must be known
+            // ── Guard: target_type ────────────────────────────────────────────────
             if (target.TargetType != "database" && target.TargetType != "document")
                 return BadRequest(new { success = false, message = "target_type must be 'database' or 'document'." });
 
-            // Document-specific guard: upload_path must point inside the designated folder
+            // ── Guard: document upload path ───────────────────────────────────────
             if (target.TargetType == "document" && target.DocumentSettings is not null)
             {
                 var uploadRoot = Path.GetFullPath(
@@ -215,60 +243,163 @@ namespace Upsanctionscreener.Controllers
             }
 
             var svc = new UpSanctionSettingsService(_db);
+
+            // ── Resolve the ID that the service will assign ───────────────────────
+            // UpsertTargetAsync returns bool, not the saved entity, so we compute
+            // the new ID the same way the service does — before the save.
+            int resolvedId = target.Id;
+            if (target.Id == 0)
+            {
+                var existing = await svc.GetTargetSettingsAsync();
+                if (existing.Success && existing.Data is not null)
+                    resolvedId = existing.Data.Count > 0
+                        ? existing.Data.Max(t => t.Id) + 1
+                        : 1;
+            }
+
+            // ── Save to database ──────────────────────────────────────────────────
             var result = await svc.UpsertTargetAsync(target);
             if (!result.Success)
                 return BadRequest(new { success = false, message = result.Error });
+
+            // ── Schedule / reschedule the Quartz job ──────────────────────────────
+            if (target.AutomationSettings is not null)
+            {
+                var automation = new AutomationSettings
+                {
+                    Automate = target.AutomationSettings.Automate,
+                    Frequency = target.AutomationSettings.Frequency,
+                    StartTime = target.AutomationSettings.StartTime,
+                    Weekday = target.AutomationSettings.Weekday,
+                    DayOfMonth = target.AutomationSettings.DayOfMonth,
+                    IntervalMinutes = target.AutomationSettings.IntervalMinutes,
+                    IntervalHours = target.AutomationSettings.IntervalHours
+                };
+
+                await _targetScheduler.ScheduleOrUpdateTargetAsync(
+                    resolvedId,
+                    target.TargetName,
+                    target.TargetType,
+                    target.AutomationSettings.Frequency,
+                    automation);
+            }
+
             return Json(new { success = true });
         }
 
-        /// <summary>
-        /// POST delete a target by ID.
-        /// If the target is a document type, also deletes the uploaded file.
-        /// </summary>
+
+
+
+
+
+        //[HttpPost]
+        //[Route("Dashboard/Settings/TargetSettings/Delete/{id:int}")]
+        //public async Task<IActionResult> TargetSettingsDelete(int id)
+        //{
+        //    var svc = new UpSanctionSettingsService(_db);
+
+        //    // Fetch the target first so we can clean up any uploaded document
+        //    var getAllResult = await svc.GetTargetSettingsAsync();
+        //    if (getAllResult.Success && getAllResult.Data is not null)
+        //    {
+        //        // Data is a list of raw JSON / dynamic objects from the service.
+        //        // We try to find a document target whose upload file we should remove.
+        //        try
+        //        {
+        //            var json = JsonSerializer.Serialize(getAllResult.Data);
+        //            var targets = JsonSerializer.Deserialize<List<TargetSettingEntry>>(json,
+        //                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        //            var target = targets?.FirstOrDefault(t => t.Id == id);
+        //            if (target?.TargetType == "document")
+        //            {
+        //                var uploadPath = target.DocumentSettings?.UploadPath;
+        //                if (!string.IsNullOrWhiteSpace(uploadPath) && System.IO.File.Exists(uploadPath))
+        //                {
+        //                    // Safety check: must be inside the designated upload folder
+        //                    var uploadRoot = Path.GetFullPath(
+        //                        Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
+        //                    var resolvedPath = Path.GetFullPath(uploadPath);
+        //                    if (resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
+        //                        System.IO.File.Delete(uploadPath);
+        //                }
+        //            }
+        //        }
+        //        catch
+        //        {
+        //            // Non-fatal — proceed with DB deletion even if file cleanup fails
+        //        }
+        //    }
+
+        //    var result = await svc.DeleteTargetAsync(id);
+        //    if (!result.Success)
+        //        return BadRequest(new { success = false, message = result.Error });
+        //    return Json(new { success = true });
+        //}
+
         [HttpPost]
         [Route("Dashboard/Settings/TargetSettings/Delete/{id:int}")]
         public async Task<IActionResult> TargetSettingsDelete(int id)
         {
             var svc = new UpSanctionSettingsService(_db);
 
-            // Fetch the target first so we can clean up any uploaded document
+            // ── Clean up uploaded document file if applicable ─────────────────────
             var getAllResult = await svc.GetTargetSettingsAsync();
             if (getAllResult.Success && getAllResult.Data is not null)
             {
-                // Data is a list of raw JSON / dynamic objects from the service.
-                // We try to find a document target whose upload file we should remove.
-                try
+                var target = getAllResult.Data.FirstOrDefault(t => t.Id == id);
+                if (target?.TargetType == "document")
                 {
-                    var json = JsonSerializer.Serialize(getAllResult.Data);
-                    var targets = JsonSerializer.Deserialize<List<TargetSettingEntry>>(json,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                    var target = targets?.FirstOrDefault(t => t.Id == id);
-                    if (target?.TargetType == "document")
+                    var uploadPath = target.DocumentSettings?.UploadPath;
+                    if (!string.IsNullOrWhiteSpace(uploadPath) && System.IO.File.Exists(uploadPath))
                     {
-                        var uploadPath = target.DocumentSettings?.UploadPath;
-                        if (!string.IsNullOrWhiteSpace(uploadPath) && System.IO.File.Exists(uploadPath))
+                        var uploadRoot = Path.GetFullPath(
+                            Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
+                        var resolvedPath = Path.GetFullPath(uploadPath);
+
+                        if (resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
                         {
-                            // Safety check: must be inside the designated upload folder
-                            var uploadRoot = Path.GetFullPath(
-                                Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
-                            var resolvedPath = Path.GetFullPath(uploadPath);
-                            if (resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
-                                System.IO.File.Delete(uploadPath);
+                            try { System.IO.File.Delete(uploadPath); }
+                            catch (Exception ex)
+                            {
+                                // Non-fatal — log and continue
+                             Console.WriteLine($"{ex}- \\n[TargetDelete] Could not delete uploaded file for target .");
+                            }
                         }
                     }
                 }
-                catch
-                {
-                    // Non-fatal — proceed with DB deletion even if file cleanup fails
-                }
             }
 
+            // ── Delete from database ──────────────────────────────────────────────
             var result = await svc.DeleteTargetAsync(id);
             if (!result.Success)
                 return BadRequest(new { success = false, message = result.Error });
+
+            // ── Remove the Quartz job ─────────────────────────────────────────────
+            await _targetScheduler.RemoveTargetScheduleAsync(id);
+
             return Json(new { success = true });
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         /// <summary>
         /// POST test a database connection (database targets only).
@@ -418,8 +549,8 @@ namespace Upsanctionscreener.Controllers
         [Route("Dashboard/Settings/SourceSettings/RefetchDatabase")]
         public async Task<IActionResult> SourceSettingsRefetch()
         {
-            var downloader = new SanctionDownloader();
-            await downloader.DownloadParseAndExportAsync(_settingsService);
+           
+            await _downloader.DownloadParseAndExportAsync(_settingsService);
             GlobalVariables.refetching_sanction_database = true;
             return Json(new { success = true, message = "Sanction database updated successfully." });
         }

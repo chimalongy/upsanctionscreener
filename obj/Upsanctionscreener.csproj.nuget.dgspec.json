@@ -94,6 +94,18 @@
               "target": "Package",
               "version": "[23.26.200, )"
             },
+            "Quartz": {
+              "target": "Package",
+              "version": "[3.18.1, )"
+            },
+            "Quartz.AspNetCore": {
+              "target": "Package",
+              "version": "[3.18.1, )"
+            },
+            "Quartz.Extensions.DependencyInjection": {
+              "target": "Package",
+              "version": "[3.18.1, )"
+            },
             "System.Configuration.ConfigurationManager": {
               "target": "Package",
               "version": "[10.0.6, )"

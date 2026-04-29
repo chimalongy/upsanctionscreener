@@ -480,7 +480,7 @@ namespace Upsanctionscreener.Classess.Utils
             }
         }
 
-        public async Task<SettingsResult<(List<string> AdverseMedia, List<TargetSetting> Targets, ScanSettings Scan)>>
+        public async Task<SettingsResult<(List<string> AdverseMedia, List<TargetSetting> Targets, ScanSettings ScanSettings)>>
             GetAllAsync()
         {
             var (row, error) = await GetRowAsync();
