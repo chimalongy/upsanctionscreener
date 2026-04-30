@@ -41,7 +41,7 @@ namespace Upsanctionscreener.Classess.Search
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public List<SanctionNamesBKTree.BKSearchResult> Hits { get; set; } = new();
-        public List<DataRow> ResolvedSanctionEntries { get; set; } = new();
+        public List<SanctionEntry> ResolvedSanctionEntries { get; set; } = new();  // ← changed
     }
 
 
@@ -435,88 +435,125 @@ namespace Upsanctionscreener.Classess.Search
         public static async System.Threading.Tasks.Task TargetScanScreener(
      int targetID, string targetName, object targetfrequency, IServiceScopeFactory scopeFactory)
         {
-           
+            string log_folder = string.Empty;   
+            string log_file = string.Empty;
+
             try
             {
-              
+
                 using var scope = scopeFactory.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-               
 
-                   
 
-                    string folderName = System.IO.Path.Combine(
-                        GlobalVariables.root_folder, "Logs", "TargetScanLogs");
 
-                    // Each trigger gets a uniquely named log file
-                    string fileName = BuildLogFileName(targetName, targetfrequency.ToString());
 
-                    // Ensure folder exists
-                    Directory.CreateDirectory(folderName);
-                    string fullPath = System.IO.Path.Combine(folderName, fileName + ".log");
+                string folderName = System.IO.Path.Combine(
+                    GlobalVariables.root_folder, "Logs", "TargetScanLogs");
+                log_folder = folderName;
+
+                // Each trigger gets a uniquely named log file
+                string fileName = BuildLogFileName(targetName, targetfrequency.ToString());
+                log_file = fileName;
+
+                // Ensure folder exists
+                Directory.CreateDirectory(folderName);
+                string fullPath = System.IO.Path.Combine(folderName, fileName + ".log");
 
                 // Write opening entry
                 Logger.LogToFile(folderName, fileName, $"[START] Target: {targetName} (ID: {targetID}) | Frequency: {targetfrequency} | {DateTime.Now:O}{Environment.NewLine}");
-                Logger.LogToFile(folderName, fileName, $"[STEP 1]: GET SACTION PORTAL SETTINGS AND TARGET DETAILS");
+                Logger.LogToFile(folderName, fileName, $"[STEP 1]: GET SANCTION PORTAL SETTINGS AND TARGET DETAILS");
                 var svc = new UpSanctionSettingsService(db);
                 var allSanctionSettings = await svc.GetAllAsync();
 
-                if (!allSanctionSettings.Success )
+                if (!allSanctionSettings.Success)
                 {
                     throw new Exception($"Error fetching sanction portal settings:\n\n {allSanctionSettings.Error} ");
                 }
 
                 var targets = allSanctionSettings.Data.Targets;
 
-                    var target = targets.FirstOrDefault(t => t.Id == targetID);
+                var target = targets.FirstOrDefault(t => t.Id == targetID);
                 if (target is null)
                 {
                     throw new Exception($"Could not find target ");
                 }
 
                 var scansettings = allSanctionSettings.Data.ScanSettings;
-                if (scansettings is null) {
+                if (scansettings is null)
+                {
                     throw new Exception($"Could not find scan settings ");
                 }
+                Logger.LogToFile(folderName, fileName, $"[STEP 1 - COMPLETED]: PORTAL SETTINGS AND TARGET DETAILS RETRIEVED. ");
 
                 Logger.LogToFile(folderName, fileName, $"[STEP 2]: FETCH DATA TO SCAN");
-                    TaskFileReadResult file_read_result = new TaskFileReadResult();
-                    DatabaseReadResult database_read_result = new DatabaseReadResult();
-                    DataTable data_to_scan = new DataTable();
+                TaskFileReadResult file_read_result = new TaskFileReadResult();
+                DatabaseReadResult database_read_result = new DatabaseReadResult();
+                DataTable data_to_scan = new DataTable();
 
-                    if (target.TargetType == "document")
+                if (target.TargetType == "document")
+                {
+                    file_read_result = GlobalFunctions.ReadTargetFile(target.DocumentSettings.UploadPath, target.DocumentSettings.IdColumn, target.DocumentSettings.OtherFields);
+                    if (!file_read_result.Success)
                     {
-                        file_read_result = GlobalFunctions.ReadTargetFile(target.DocumentSettings.UploadPath, target.DocumentSettings.IdColumn, target.DocumentSettings.OtherFields);
-                        if (!file_read_result.Success)
-                        {
-                            throw new Exception(file_read_result.Error);
-                        }
-                        data_to_scan = file_read_result.Data;
+                        throw new Exception(file_read_result.Error);
                     }
-                    else
+                    data_to_scan = file_read_result.Data;
+                }
+                else
+                {
+                    string Query = DatabaseDataReader.DatabaseQueryBuilder.BuildSelectQuery(target.DatabaseSettings.DataSettings);
+                    database_read_result = await DatabaseDataReader.ReadDatabaseRecords(Query, target.DatabaseSettings);
+                    if (!database_read_result.Successful)
                     {
-                        string Query = DatabaseDataReader.DatabaseQueryBuilder.BuildSelectQuery(target.DatabaseSettings.DataSettings);
-                        database_read_result = await DatabaseDataReader.ReadDatabaseRecords(Query, target.DatabaseSettings);
-                        if (!database_read_result.Successful)
-                        {
-                            throw new Exception(database_read_result.Message);
-                        }
-                        data_to_scan = database_read_result.Data;
+                        throw new Exception(database_read_result.Message);
+                    }
+                    data_to_scan = database_read_result.Data;
                 }
 
                 DataTable unique_items = GlobalFunctions.DeduplicateDatatbaleById(data_to_scan, "ID");
                 DataTable NormalizedDataToScan = GlobalFunctions.NormaLizeNamesinColumn(unique_items, "Name");
                 data_to_scan = NormalizedDataToScan;
-               
 
-                Logger.LogToFile(folderName, fileName, $"[STEP 2- COMPLETED]:  {data_to_scan.Rows.Count} Items Fetched, {unique_items.Rows.Count} Unique Items, normalized by ID");
-                Logger.LogToFile(folderName, fileName, $"[STEP 2- COMPLETED]:  {data_to_scan.Rows.Count} Items Fetched, {unique_items.Rows.Count}Unique Items by ID");
 
+                Logger.LogToFile(folderName, fileName, $"[STEP 2 - COMPLETED]:  {data_to_scan.Rows.Count} Items Fetched, {unique_items.Rows.Count} Unique Items, normalized by ID");
+                Logger.LogToFile(folderName, fileName, $"[STEP 3]: LOAD SANCTION ENTRIES AND SEARCH TREE");
+
+                List<SanctionEntry> sanction_entries = SanctionExcelReader.LoadFromExcel(GlobalVariables.base_sanction_db_path);
+                var normalized_sanction_entries = GlobalFunctions.NormalizeSanctionListNames(sanction_entries);
+                var tree = new SanctionNamesBKTree(threshold: (scansettings.ScanThreshold / 100.00), caseSensitive: false);
+                tree.Load(normalized_sanction_entries);
+                Logger.LogToFile(folderName, fileName, $"[STEP 3 - COMPLETED]: SEARCH TREE LOADED");
                 unique_items = null;
                 NormalizedDataToScan = null;
+                Logger.LogToFile(folderName, fileName, $"[STEP 4]: BEGIN SCAN");
+
+                List<TargetScanResult> TargetScreenResults = ParallelTargetScan(tree, data_to_scan, sanction_entries, folderName, fileName);
+                Logger.LogToFile(folderName, fileName, $"[STEP 4 - COMPLETED]: SCAN COMPLETED");
+
+                //  Build output path ─────────────────────────────────────────────────────
+                Logger.LogToFile(folderName, fileName, $"[STEP 5]: EXPORTING SCAN RESULT");
+                string outputDir = System.IO.Path.Combine(GlobalVariables.root_folder, "Targets", "TargetReports");
+                Directory.CreateDirectory(outputDir);
+
+                string outputPath = System.IO.Path.Combine(outputDir, $"{fileName}.xlsx");
+               
+
+                TargetScanResultExporter.ExportToExcel(
+                    TargetScreenResults,
+                    scanType: "Target Scan",
+                    outputPath: outputPath);
+
+                Logger.LogToFile(folderName, fileName, $"[STEP 5 - COMPLETED]: SCAN RESULTS EXPORTED TO: {outputPath}");
 
 
+                if (target.NotificationSettings.Enabled)
+                {
+                    Logger.LogToFile(folderName, fileName, $"[STEP 6]: SENDING EMAIL NOTIFICATION");
+                    // CALL EMAIL SENDING SERVICE HERE...
+
+                    Logger.LogToFile(folderName, fileName, $"[STEP 6 - COMPLETED]: EMAIL NOTIFICATION SENT");
+                }
 
 
 
@@ -525,20 +562,28 @@ namespace Upsanctionscreener.Classess.Search
                 // ──────────────────────────────────────────────────────────────
                 Logger.LogToFile(folderName, fileName, $"[END]   Target: {targetName} (ID: {targetID}) | {DateTime.Now:O}{Environment.NewLine}");
 
-                  
-                        
-                
+
+
+
             }
             catch (Exception ex)
             {
-                // Optionally write a fallback error log here
-                string errorFolder = System.IO.Path.Combine(
-                    GlobalVariables.root_folder, "Logs", "TargetScanLogs", "_errors");
-                Directory.CreateDirectory(errorFolder);
-                string errorFile = System.IO.Path.Combine(errorFolder,
-                    $"{targetName}_ERROR_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.log");
-                await File.AppendAllTextAsync(errorFile,
-                    $"[EXCEPTION] {ex.Message}{Environment.NewLine}{ex.StackTrace}{Environment.NewLine}");
+
+                if (ex is AggregateException agg)
+                {
+                    foreach (var inner in agg.InnerExceptions)
+                    {
+                        Logger.LogToFile(log_folder, log_file, $"[ERROR] -  {inner.Message}");
+                    }
+                        
+                }
+                else
+                {
+                    Logger.LogToFile(log_folder, log_file, $"[ERROR] -  {ex.Message}");
+                }
+              
+
+
             }
         }
 
@@ -572,31 +617,36 @@ namespace Upsanctionscreener.Classess.Search
 
 
         public static List<TargetScanResult> ParallelTargetScan(
-     SanctionNamesBKTree sanctionTree,
-     DataTable data_to_scan,
-     DataTable sanction_entries)
+            SanctionNamesBKTree sanctionTree,
+            DataTable data_to_scan,
+            List<SanctionEntry> sanction_entries,
+             string folderName, string fileName
+
+
+
+            )  // ← changed
+
+
         {
             if (sanctionTree == null) throw new ArgumentNullException(nameof(sanctionTree));
             if (data_to_scan == null) throw new ArgumentNullException(nameof(data_to_scan));
             if (sanction_entries == null) throw new ArgumentNullException(nameof(sanction_entries));
 
-            if (!data_to_scan.Columns.Contains("ID"))
-                throw new ArgumentException("DataTable must contain an 'ID' column.");
+            if (!data_to_scan.Columns.Contains("ID")) { 
+             Logger.LogToFile(folderName, fileName, $"");
+            throw new ArgumentException("DataTable must contain an 'ID' column.");
+            }
 
-            // Detect which optional fields are present
             bool hasName = data_to_scan.Columns.Contains("name");
             bool hasAddress = data_to_scan.Columns.Contains("address");
-            //bool hasEmail = data_to_scan.Columns.Contains("email");
-            //bool hasPhone = data_to_scan.Columns.Contains("phone");
 
             var rows = data_to_scan.Rows.Cast<DataRow>().ToArray();
             var results = new TargetScanResult[rows.Length];
 
-            // Index sanction_entries by EntryID for fast O(1) lookup
-            var sanctionLookup = sanction_entries.Rows
-                .Cast<DataRow>()
-                .Where(r => r["ID"] != DBNull.Value)
-                .ToDictionary(r => r["ID"].ToString()!, r => r);
+            // ← Dictionary<string, SanctionEntry> instead of Dictionary<string, DataRow>
+            var sanctionLookup = sanction_entries
+                .Where(e => !string.IsNullOrEmpty(e.ID))
+                .ToDictionary(e => e.ID, e => e);
 
             Parallel.ForEach(
                 rows.Select((row, index) => (row, index)),
@@ -605,11 +655,9 @@ namespace Upsanctionscreener.Classess.Search
                 {
                     var rowId = item.row["ID"].ToString()?.Trim();
 
-                    // --- Search by name ---
                     List<SanctionNamesBKTree.BKSearchResult> nameHits = new();
-                    // --- Resolve full sanction entries from hits ---
                     var resolvedHits = new List<SanctionNamesBKTree.BKSearchResult>();
-                    var resolvedEntries = new List<DataRow>();
+                    var resolvedEntries = new List<SanctionEntry>();  // ← SanctionEntry, not DataRow
 
                     if (hasName)
                     {
@@ -618,71 +666,53 @@ namespace Upsanctionscreener.Classess.Search
                             nameHits = sanctionTree.Search(nameValue);
                     }
 
-                   
-
                     foreach (var hit in nameHits)
                     {
-                        if (!sanctionLookup.TryGetValue(hit.EntryId, out var sanctionRow))
+                        if (!sanctionLookup.TryGetValue(hit.EntryId, out var sanctionEntry))  // ← SanctionEntry
                             continue;
 
                         if (hasAddress)
                         {
-                            string scan_item_address = item.row["address"]?.ToString()?.Trim() ?? string.Empty;
-                            string saction_entry_address = sanctionRow["Addresses"].ToString().Trim();
-                            if (!string.IsNullOrEmpty(scan_item_address) && !string.IsNullOrEmpty(saction_entry_address))
-                            {
-                                //check for addresss match at this point
-                                string[] sanction_addresses = saction_entry_address.Split('|', StringSplitOptions.RemoveEmptyEntries)
-                                .Select(x => x.Trim())
-                                .ToArray();
+                            string scanAddress = item.row["address"]?.ToString()?.Trim() ?? string.Empty;
 
-                                var words = scan_item_address.Split(new[] { ' ', ',', '.', '-' }, StringSplitOptions.RemoveEmptyEntries);
+                            // ← Addresses is already List<string>, no Split needed
+                            if (!string.IsNullOrEmpty(scanAddress) && sanctionEntry.Addresses.Count > 0)
+                            {
+                                var words = scanAddress.Split(
+                                    new[] { ' ', ',', '.', '-' },
+                                    StringSplitOptions.RemoveEmptyEntries);
 
                                 bool matchFound = words.Any(word =>
-                                    sanction_addresses.Any(addr =>
-                                        addr.Contains(word, StringComparison.OrdinalIgnoreCase)
-                                    )
-                                );
+                                    sanctionEntry.Addresses.Any(addr =>
+                                        addr.Contains(word, StringComparison.OrdinalIgnoreCase)));
 
                                 if (matchFound)
                                 {
                                     resolvedHits.Add(hit);
-                                    resolvedEntries.Add(sanctionRow);
+                                    resolvedEntries.Add(sanctionEntry);
                                 }
                             }
                             else
                             {
+                                // No address to compare — include the hit as-is
                                 resolvedHits.Add(hit);
-                                resolvedEntries.Add(sanctionRow);
+                                resolvedEntries.Add(sanctionEntry);
                             }
-
-
-
                         }
                         else
                         {
                             resolvedHits.Add(hit);
-                            resolvedEntries.Add(sanctionRow);
+                            resolvedEntries.Add(sanctionEntry);
                         }
-
-
-
-
-
-
-
                     }
 
-                    // --- Build result row ---
                     results[item.index] = new TargetScanResult
                     {
                         RowId = rowId,
                         Name = hasName ? item.row["name"]?.ToString()?.Trim() : null,
                         Address = hasAddress ? item.row["address"]?.ToString()?.Trim() : null,
-                        //Email = hasEmail ? item.row["email"]?.ToString()?.Trim() : null,
-                        //Phone = hasPhone ? item.row["phone"]?.ToString()?.Trim() : null,
                         Hits = resolvedHits,
-                        ResolvedSanctionEntries = resolvedEntries
+                        ResolvedSanctionEntries = resolvedEntries  // ← now List<SanctionEntry>
                     };
                 });
 

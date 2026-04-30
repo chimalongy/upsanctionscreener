@@ -94,21 +94,20 @@
         </p>
         <div class="grid grid-cols-3 gap-1 mb-4">
 
-            @* Merchant Scan Reports *@
-            <a href="/Dashboard/Reports/MerchantScanReports"
-                   class="nav-tile @(ViewData["ActivePage"]?.ToString() == "MerchantScanReports" ? "active" : "")">
+            @* Target Scan Reports *@
+            <a href="/Dashboard/Reports/TargetScanReports"
+                   class="nav-tile @(ViewData["ActivePage"]?.ToString() == "TargetScanReports" ? "active" : "")">
                 <svg class="w-6 h-6 text-text-muted" fill="none" stroke="currentColor"
                      stroke-width="2" viewBox="0 0 24 24">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" />
                 </svg>
-                <span class="text-[10px] text-text-muted">Merchants</span>
+                <span class="text-[10px] text-text-muted">Target Scans</span>
             </a>
 
             @* Customer Reports *@
-            <a href="/Dashboard/Reports/CustomerReports"
+            @* <a href="/Dashboard/Reports/CustomerReports"
                    class="nav-tile @(ViewData["ActivePage"]?.ToString() == "CustomerReports" ? "active" : "")">
                 <svg class="w-6 h-6 text-text-muted" fill="none" stroke="currentColor"
                      stroke-width="2" viewBox="0 0 24 24">
@@ -116,7 +115,7 @@
                     <circle cx="12" cy="7" r="4" />
                 </svg>
                 <span class="text-[10px] text-text-muted">Customers</span>
-            </a>
+            </a> *@
 
         </div>
 

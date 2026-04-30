@@ -1,5 +1,5 @@
 ﻿using ClosedXML.Excel;
-using System.Data;
+using Upsanctionscreener.Models;
 
 namespace Upsanctionscreener.Classess.Search.ScanExporters
 {
@@ -124,9 +124,9 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
                 double similarityPct = Math.Round(item.TopHit.Similarity * 100, 2);
                 int candidatesCount = item.Result.Hits.Count;
 
-                // Get the resolved sanction DataRow at the same index as the TopHit
+                // Get the resolved SanctionEntry at the same index as the TopHit
                 int topHitIndex = item.Result.Hits.IndexOf(item.TopHit);
-                DataRow? sanctionRow = (topHitIndex >= 0 && topHitIndex < item.Result.ResolvedSanctionEntries.Count)
+                SanctionEntry? entry = (topHitIndex >= 0 && topHitIndex < item.Result.ResolvedSanctionEntries.Count)
                     ? item.Result.ResolvedSanctionEntries[topHitIndex]
                     : null;
 
@@ -141,26 +141,28 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
                 ws.Cell(row, 8).Style.NumberFormat.Format = "0.00";
                 ws.Cell(row, 9).Value = candidatesCount;
 
-                if (sanctionRow != null)
+                if (entry != null)
                 {
-                    ws.Cell(row, 10).Value = sanctionRow["ID"]?.ToString();
-                    ws.Cell(row, 11).Value = sanctionRow["SubjectType"]?.ToString();
-                    ws.Cell(row, 12).Value = sanctionRow["Source"]?.ToString();
-                    ws.Cell(row, 13).Value = sanctionRow["ReferenceNumber"]?.ToString();
-                    ws.Cell(row, 14).Value = sanctionRow["DateDesignated"]?.ToString();
-                    ws.Cell(row, 15).Value = sanctionRow["SanctionImposed"]?.ToString();
-                    ws.Cell(row, 16).Value = sanctionRow["Comments"]?.ToString();
-                    ws.Cell(row, 17).Value = sanctionRow["CallSign"]?.ToString();
-                    ws.Cell(row, 18).Value = sanctionRow["VesselType"]?.ToString();
-                    ws.Cell(row, 19).Value = sanctionRow["VesselFlag"]?.ToString();
-                    ws.Cell(row, 20).Value = sanctionRow["VesselOwner"]?.ToString();
-                    ws.Cell(row, 21).Value = sanctionRow["GrossRegisteredTonnage"]?.ToString();
-                    ws.Cell(row, 22).Value = sanctionRow["Names"]?.ToString();
-                    ws.Cell(row, 23).Value = sanctionRow["Addresses"]?.ToString();
-                    ws.Cell(row, 24).Value = sanctionRow["PhoneNumbers"]?.ToString();
-                    ws.Cell(row, 25).Value = sanctionRow["EmailAddresses"]?.ToString();
-                    ws.Cell(row, 26).Value = sanctionRow["Positions"]?.ToString();
-                    ws.Cell(row, 27).Value = sanctionRow["IdList"]?.ToString();
+                    ws.Cell(row, 10).Value = entry.ID;
+                    ws.Cell(row, 11).Value = entry.SubjectType;
+                    ws.Cell(row, 12).Value = entry.Source;
+                    ws.Cell(row, 13).Value = entry.ReferenceNumber;
+                    ws.Cell(row, 14).Value = entry.DateDesignated;
+                    ws.Cell(row, 15).Value = entry.SanctionImposed;
+                    ws.Cell(row, 16).Value = entry.Comments;
+                    ws.Cell(row, 17).Value = entry.CallSign ?? string.Empty;
+                    ws.Cell(row, 18).Value = entry.VesselType ?? string.Empty;
+                    ws.Cell(row, 19).Value = entry.VesselFlag ?? string.Empty;
+                    ws.Cell(row, 20).Value = entry.VesselOwner ?? string.Empty;
+                    ws.Cell(row, 21).Value = entry.GrossRegisteredTonnage ?? string.Empty;
+
+                    // List<string> fields — join with " | " for readability in Excel
+                    ws.Cell(row, 22).Value = string.Join(" | ", entry.Names);
+                    ws.Cell(row, 23).Value = string.Join(" | ", entry.Addresses);
+                    ws.Cell(row, 24).Value = string.Join(" | ", entry.PhoneNumbers);
+                    ws.Cell(row, 25).Value = string.Join(" | ", entry.EmailAddresses);
+                    ws.Cell(row, 26).Value = string.Join(" | ", entry.Positions);
+                    ws.Cell(row, 27).Value = string.Join(" | ", entry.IdList);
                 }
 
                 ws.Cell(row, 8).Style.Fill.BackgroundColor = XLColor.FromHtml("#C6EFCE");
@@ -240,14 +242,14 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
 
             for (int i = 0; i < summaryData.Length; i++)
             {
-                int row = i + 1;
+                int r = i + 1;
 
-                var labelCell = ws.Cell(row, 1);
+                var labelCell = ws.Cell(r, 1);
                 labelCell.Value = summaryData[i].Label;
                 labelCell.Style.Font.Bold = true;
                 labelCell.Style.Font.FontName = "Arial";
 
-                var valueCell = ws.Cell(row, 2);
+                var valueCell = ws.Cell(r, 2);
                 valueCell.Value = summaryData[i].Value.ToString();
                 valueCell.Style.Font.FontName = "Arial";
             }

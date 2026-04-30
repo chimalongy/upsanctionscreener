@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// UpSanctionSettingsService.cs  — full replacement
+using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Upsanctionscreener.Controllers;
@@ -11,13 +13,50 @@ namespace Upsanctionscreener.Classess.Utils
     // TYPED MODELS
     // ══════════════════════════════════════════════════════════════════════════
 
+    // ── API Key ───────────────────────────────────────────────────────────────
+    public class ApiKey
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("client_id")]
+        public string ClientId { get; set; } = string.Empty;
+
+        [JsonPropertyName("key")]
+        public string Key { get; set; } = string.Empty;
+
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = "active";
+    }
+
+    // ── Scan Settings — now includes api_keys; handles legacy typo on read ───
     public class ScanSettings
     {
+        // Canonical spelling going forward
         [JsonPropertyName("scan_threshold")]
         public int ScanThreshold { get; set; }
 
-        [JsonPropertyName("email_recipents")]
+        // Written as "email_recipients" (correct spelling)
+        [JsonPropertyName("email_recipients")]
         public List<string> EmailRecipients { get; set; } = new();
+
+        // Legacy typo field — populated by a custom converter so old rows still
+        // deserialise correctly; always null when we serialise (WhenWritingNull).
+        [JsonPropertyName("email_recipents")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string>? EmailRecipientsLegacy { get; set; }
+
+        [JsonPropertyName("api_keys")]
+        public List<ApiKey> ApiKeys { get; set; } = new();
+
+        // ── Merge helper ──────────────────────────────────────────────────────
+        // After deserialisation, migrate the legacy field into the canonical one.
+        public void NormaliseLegacyFields()
+        {
+            if (EmailRecipientsLegacy is { Count: > 0 } && EmailRecipients.Count == 0)
+                EmailRecipients = EmailRecipientsLegacy;
+            EmailRecipientsLegacy = null;
+        }
     }
 
     public class TargetSetting
@@ -44,7 +83,6 @@ namespace Upsanctionscreener.Classess.Utils
         public AutomationSettings AutomationSettings { get; set; } = new();
     }
 
-    // ── Field mapping: one column → one scan field ───────────────────────────
     public class FieldMapping
     {
         [JsonPropertyName("column_name")]
@@ -54,7 +92,6 @@ namespace Upsanctionscreener.Classess.Utils
         public string MatchAs { get; set; } = "";
     }
 
-    // ── Data settings: table + id column + field mappings ───────────────────
     public class DataSettings
     {
         [JsonPropertyName("table_name")]
@@ -95,7 +132,6 @@ namespace Upsanctionscreener.Classess.Utils
         public DataSettings DataSettings { get; set; } = new();
     }
 
-    // ── Document settings ────────────────────────────────────────────────────
     public class DocumentSettings
     {
         [JsonPropertyName("file_name")]
@@ -114,7 +150,6 @@ namespace Upsanctionscreener.Classess.Utils
         public List<FieldMapping> OtherFields { get; set; } = new();
     }
 
-    // ── Notification settings ────────────────────────────────────────────────
     public class NotificationSettings
     {
         [JsonPropertyName("enabled")]
@@ -157,7 +192,6 @@ namespace Upsanctionscreener.Classess.Utils
         public int DayOfMonth { get; set; }
     }
 
-    // ── Upsert request DTO from the client ───────────────────────────────────
     public class UpsertTargetRequest
     {
         [JsonPropertyName("id")]
@@ -185,31 +219,16 @@ namespace Upsanctionscreener.Classess.Utils
         public AutomationSettingsRequest? AutomationSettings { get; set; }
     }
 
-
     public class AutomationSettingsRequest
     {
         [JsonPropertyName("automate")] public bool Automate { get; set; }
-
-        /// <summary>"minutely" | "hourly" | "daily" | "weekly" | "monthly"</summary>
         [JsonPropertyName("frequency")] public string Frequency { get; set; } = "daily";
-
-        /// <summary>Used when frequency == "minutely". Number of minutes between runs.</summary>
         [JsonPropertyName("interval_minutes")] public int IntervalMinutes { get; set; }
-
-        /// <summary>Used when frequency == "hourly". Number of hours between runs.</summary>
         [JsonPropertyName("interval_hours")] public int IntervalHours { get; set; }
-
-        /// <summary>Used for daily / weekly / monthly schedules (HH:mm).</summary>
         [JsonPropertyName("start_time")] public string StartTime { get; set; } = "02:00";
-
-        /// <summary>Day of week (0=Sunday … 6=Saturday). Used when frequency == "weekly".</summary>
         [JsonPropertyName("weekday")] public int Weekday { get; set; }
-
-        /// <summary>Day of month (1–28). Used when frequency == "monthly".</summary>
         [JsonPropertyName("day_of_month")] public int DayOfMonth { get; set; }
     }
-
-
 
     public class TargetSettingEntry
     {
@@ -232,9 +251,6 @@ namespace Upsanctionscreener.Classess.Utils
         public string? FileName { get; set; }
     }
 
-
-
-
     public class DatabaseSettingsRequest
     {
         [JsonPropertyName("database_type")] public string? DatabaseType { get; set; }
@@ -248,19 +264,11 @@ namespace Upsanctionscreener.Classess.Utils
 
     public class DocumentSettingsRequest
     {
-        /// <summary>Human-readable file name (no extension, no timestamp).</summary>
         [JsonPropertyName("file_name")] public string? FileName { get; set; }
-
-        /// <summary>Full path on disk where the file was saved.</summary>
         [JsonPropertyName("upload_path")] public string? UploadPath { get; set; }
-
-        /// <summary>e.g. "xlsx" or "xls"</summary>
         [JsonPropertyName("file_extension")] public string? FileExtension { get; set; }
-
         [JsonPropertyName("id_column")] public string? IdColumn { get; set; }
-
-        [JsonPropertyName("other_fields")]
-        public List<FieldMappingRequest>? OtherFields { get; set; }
+        [JsonPropertyName("other_fields")] public List<FieldMappingRequest>? OtherFields { get; set; }
     }
 
     public class DataSettingsRequest
@@ -285,9 +293,18 @@ namespace Upsanctionscreener.Classess.Utils
         [JsonPropertyName("notify_on_error")] public bool NotifyOnError { get; set; }
     }
 
+    // ── API Key request DTOs ──────────────────────────────────────────────────
+    public class CreateApiKeyRequest
+    {
+        [JsonPropertyName("client_id")]
+        public string ClientId { get; set; } = string.Empty;
+    }
 
-
-
+    public class UpdateApiKeyStatusRequest
+    {
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = string.Empty;
+    }
 
     // ══════════════════════════════════════════════════════════════════════════
     // RESULT WRAPPER
@@ -342,8 +359,15 @@ namespace Upsanctionscreener.Classess.Utils
             }
         }
 
+        // ── Generate a cryptographically random API key ───────────────────────
+        private static string GenerateRawApiKey()
+        {
+            var bytes = RandomNumberGenerator.GetBytes(32); // 256-bit
+            return Convert.ToHexString(bytes).ToLowerInvariant(); // 64-char hex string
+        }
+
         // ══════════════════════════════════════════════════════════════════════
-        // MAPPING HELPERS  (Request DTOs  →  internal stored models)
+        // MAPPING HELPERS
         // ══════════════════════════════════════════════════════════════════════
 
         private static AutomationSettings MapAutomation(AutomationSettingsRequest? req)
@@ -415,10 +439,8 @@ namespace Upsanctionscreener.Classess.Utils
             {
                 "PostgreSQL" =>
                     $"Host={req.Host};Port={req.Port};Database={req.DatabaseName};Username={req.UserName};Password={req.Password};",
-
                 "Oracle" =>
                     $"User Id={req.UserName};Password={req.Password};Data Source={req.Host}:{req.Port}/{req.DatabaseName};",
-
                 _ => throw new InvalidOperationException($"Unsupported database type: '{req.DatabaseType}'.")
             };
 
@@ -472,6 +494,10 @@ namespace Upsanctionscreener.Classess.Utils
             {
                 var data = JsonSerializer.Deserialize<ScanSettings>(row.ScanSettings, _json)
                            ?? new ScanSettings();
+
+                // Migrate old typo field if present
+                data.NormaliseLegacyFields();
+
                 return SettingsResult<ScanSettings>.Ok(data);
             }
             catch (Exception ex)
@@ -492,9 +518,10 @@ namespace Upsanctionscreener.Classess.Utils
                 var adverseMedia = JsonSerializer.Deserialize<List<string>>(row.AdverseMediaFilter, _json)
                                    ?? new List<string>();
                 var targets = JsonSerializer.Deserialize<List<TargetSetting>>(row.TargetSettings, _json)
-                                   ?? new List<TargetSetting>();
+                              ?? new List<TargetSetting>();
                 var scan = JsonSerializer.Deserialize<ScanSettings>(row.ScanSettings, _json)
-                                   ?? new ScanSettings();
+                           ?? new ScanSettings();
+                scan.NormaliseLegacyFields();
 
                 return SettingsResult<(List<string>, List<TargetSetting>, ScanSettings)>
                     .Ok((adverseMedia, targets, scan));
@@ -534,6 +561,8 @@ namespace Upsanctionscreener.Classess.Utils
 
             try
             {
+                // Guarantee the legacy field is never written back
+                scan.EmailRecipientsLegacy = null;
                 row.ScanSettings = JsonSerializer.Serialize(scan, _json);
                 await _db.SaveChangesAsync();
                 return SettingsResult<bool>.Ok(true);
@@ -543,6 +572,104 @@ namespace Upsanctionscreener.Classess.Utils
                 return SettingsResult<bool>.Fail($"Failed to update scan settings: {ex.Message}");
             }
         }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // API KEY CRUD
+        // ══════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Creates a new API key for <paramref name="clientId"/>.
+        /// Returns the full updated <see cref="ScanSettings"/> on success so the
+        /// caller can push the fresh state back to the frontend in one response.
+        /// </summary>
+        public async Task<SettingsResult<ScanSettings>> CreateApiKeyAsync(string clientId)
+        {
+            if (string.IsNullOrWhiteSpace(clientId))
+                return SettingsResult<ScanSettings>.Fail("Client ID is required.");
+
+            var scanResult = await GetScanSettingsAsync();
+            if (!scanResult.Success) return SettingsResult<ScanSettings>.Fail(scanResult.Error!);
+
+            var settings = scanResult.Data!;
+
+            // Duplicate client_id guard
+            if (settings.ApiKeys.Any(k => k.ClientId.Equals(clientId, StringComparison.OrdinalIgnoreCase)))
+                return SettingsResult<ScanSettings>.Fail($"An API key for client '{clientId}' already exists.");
+
+            // Generate and encrypt a raw key
+            var rawKey = GenerateRawApiKey();
+            var encKey = Cryptor.Encrypt(rawKey, useHashing: true);
+
+            int newId = settings.ApiKeys.Count > 0 ? settings.ApiKeys.Max(k => k.Id) + 1 : 1;
+
+            settings.ApiKeys.Add(new ApiKey
+            {
+                Id = newId,
+                ClientId = clientId,
+                Key = encKey,
+                Status = "active"
+            });
+
+            var saveResult = await UpdateScanSettingsAsync(settings);
+            if (!saveResult.Success) return SettingsResult<ScanSettings>.Fail(saveResult.Error!);
+
+            return SettingsResult<ScanSettings>.Ok(settings);
+        }
+
+        /// <summary>
+        /// Deletes the API key with the given <paramref name="keyId"/>.
+        /// Returns the full updated <see cref="ScanSettings"/> on success.
+        /// </summary>
+        public async Task<SettingsResult<ScanSettings>> DeleteApiKeyAsync(int keyId)
+        {
+            var scanResult = await GetScanSettingsAsync();
+            if (!scanResult.Success) return SettingsResult<ScanSettings>.Fail(scanResult.Error!);
+
+            var settings = scanResult.Data!;
+
+            var existing = settings.ApiKeys.FirstOrDefault(k => k.Id == keyId);
+            if (existing is null)
+                return SettingsResult<ScanSettings>.Fail($"API key with ID {keyId} was not found.");
+
+            settings.ApiKeys.Remove(existing);
+
+            var saveResult = await UpdateScanSettingsAsync(settings);
+            if (!saveResult.Success) return SettingsResult<ScanSettings>.Fail(saveResult.Error!);
+
+            return SettingsResult<ScanSettings>.Ok(settings);
+        }
+
+        /// <summary>
+        /// Updates the status of the API key with the given <paramref name="keyId"/>
+        /// to either <c>"active"</c> or <c>"inactive"</c>.
+        /// Returns the full updated <see cref="ScanSettings"/> on success.
+        /// </summary>
+        public async Task<SettingsResult<ScanSettings>> UpdateApiKeyStatusAsync(int keyId, string newStatus)
+        {
+            var allowed = new[] { "active", "inactive" };
+            if (!allowed.Contains(newStatus, StringComparer.OrdinalIgnoreCase))
+                return SettingsResult<ScanSettings>.Fail("Status must be 'active' or 'inactive'.");
+
+            var scanResult = await GetScanSettingsAsync();
+            if (!scanResult.Success) return SettingsResult<ScanSettings>.Fail(scanResult.Error!);
+
+            var settings = scanResult.Data!;
+
+            var key = settings.ApiKeys.FirstOrDefault(k => k.Id == keyId);
+            if (key is null)
+                return SettingsResult<ScanSettings>.Fail($"API key with ID {keyId} was not found.");
+
+            key.Status = newStatus.ToLowerInvariant();
+
+            var saveResult = await UpdateScanSettingsAsync(settings);
+            if (!saveResult.Success) return SettingsResult<ScanSettings>.Fail(saveResult.Error!);
+
+            return SettingsResult<ScanSettings>.Ok(settings);
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // TARGET SETTINGS CRUD  (unchanged)
+        // ══════════════════════════════════════════════════════════════════════
 
         public async Task<SettingsResult<bool>> UpdateTargetSettingsAsync(List<TargetSetting> targets)
         {
@@ -575,7 +702,6 @@ namespace Upsanctionscreener.Classess.Utils
 
                 if (existing >= 0)
                 {
-                    // ── Edit existing target ──────────────────────────────
                     target = targets[existing];
                     target.TargetName = request.TargetName;
                     target.AutomationSettings = MapAutomation(request.AutomationSettings);
@@ -610,7 +736,6 @@ namespace Upsanctionscreener.Classess.Utils
                         }
                         else
                         {
-                            // Credentials unchanged — keep existing connection string, update data settings only
                             if (target.DatabaseSettings is null)
                                 target.DatabaseSettings = new DatabaseSettings();
 
@@ -623,7 +748,6 @@ namespace Upsanctionscreener.Classess.Utils
                 }
                 else
                 {
-                    // ── New target ────────────────────────────────────────
                     int newId = targets.Count > 0 ? targets.Max(t => t.Id) + 1 : 1;
 
                     target = new TargetSetting
@@ -667,7 +791,6 @@ namespace Upsanctionscreener.Classess.Utils
             }
         }
 
-        // ── Delete a single target ────────────────────────────────────────────
         public async Task<SettingsResult<bool>> DeleteTargetAsync(int targetId)
         {
             var result = await GetTargetSettingsAsync();

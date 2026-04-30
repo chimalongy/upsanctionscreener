@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Quartz.Logging;
 using System.Data;
 using System.Diagnostics;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Upsanctionscreener.Classess;
@@ -74,9 +75,9 @@ namespace Upsanctionscreener.Controllers
         public IActionResult NigerianSanctionList() =>
             View("~/Views/Dashboard/List/NigerianSanctionList.cshtml");
 
-        [Route("Dashboard/Reports/MerchantScanReports")]
-        public IActionResult MerchantScanReports() =>
-            View("~/Views/Dashboard/Reports/MerchantScanReports.cshtml");
+        [Route("Dashboard/Reports/TargetScanReports")]
+        public IActionResult TargetScanReports() =>
+        View("~/Views/Dashboard/Reports/TargetScanReports.cshtml");
 
         [Route("Dashboard/Reports/CustomerReports")]
         public IActionResult CustomerReports() =>
@@ -101,6 +102,10 @@ namespace Upsanctionscreener.Controllers
         [Route("Dashboard/Settings/AuditLogs")]
         public IActionResult AuditLogs() =>
             View("~/Views/Dashboard/Settings/AuditLogs.cshtml");
+
+        [Route("Dashboard/MultiScan/Tasks")]
+        public IActionResult MultiScanTasks() =>
+           View("~/Views/Dashboard/MultiScanScreen.cshtml");
 
         // ══════════════════════════════════════════════════════════════════════
         // AUDIT LOGS API
@@ -139,7 +144,20 @@ namespace Upsanctionscreener.Controllers
                 return Conflict(new { message = "A user with this email already exists." });
 
             if (error is not null)
-                return BadRequest(new { message = error });
+            {
+return BadRequest(new { message = error });
+            }
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var email = User.FindFirstValue(ClaimTypes.Email);
+
+            // e.g. log who fetched the audit logs
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{email} - CREATED USER WITH EMAIL - {req.Email}",
+                userId: userId,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
 
             return Json(result);
         }
@@ -153,6 +171,18 @@ namespace Upsanctionscreener.Controllers
             if (error == "NOT_FOUND")
                 return NotFound(new { message = "User not found." });
 
+
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var email = User.FindFirstValue(ClaimTypes.Email);
+
+            // e.g. log who fetched the audit logs
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{email} - DELETED USER WITH USER ID: ${id}",
+                userId: userId,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
             return Json(new { message = "User deleted." });
         }
 
@@ -167,6 +197,19 @@ namespace Upsanctionscreener.Controllers
 
             if (error is not null)
                 return BadRequest(new { message = error });
+
+
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var email = User.FindFirstValue(ClaimTypes.Email);
+
+            // e.g. log who fetched the audit logs
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{email} - UPDATED USER WITH USER ID: {id} - STATUS TO {req.ProfileStatus}",
+                userId: userId,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
 
             return Json(result);
         }
@@ -190,34 +233,7 @@ namespace Upsanctionscreener.Controllers
         }
 
 
-        //[HttpPost]
-        //[Route("Dashboard/Settings/TargetSettings/Upsert")]
-        //public async Task<IActionResult> TargetSettingsUpsert([FromBody] UpsertTargetRequest target)
-        //{
-        //    // Basic guard: target_type must be known
-        //    if (target.TargetType != "database" && target.TargetType != "document")
-        //        return BadRequest(new { success = false, message = "target_type must be 'database' or 'document'." });
-
-        //    // Document-specific guard: upload_path must point inside the designated folder
-        //    if (target.TargetType == "document" && target.DocumentSettings is not null)
-        //    {
-        //        var uploadRoot = Path.GetFullPath(
-        //            Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
-
-        //        if (!string.IsNullOrWhiteSpace(target.DocumentSettings.UploadPath))
-        //        {
-        //            var resolvedPath = Path.GetFullPath(target.DocumentSettings.UploadPath);
-        //            if (!resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
-        //                return BadRequest(new { success = false, message = "Invalid document upload path." });
-        //        }
-        //    }
-
-        //    var svc = new UpSanctionSettingsService(_db);
-        //    var result = await svc.UpsertTargetAsync(target);
-        //    if (!result.Success)
-        //        return BadRequest(new { success = false, message = result.Error });
-        //    return Json(new { success = true });
-        //}
+      
 
 
         [HttpPost]
@@ -284,6 +300,18 @@ namespace Upsanctionscreener.Controllers
                     automation);
             }
 
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var email = User.FindFirstValue(ClaimTypes.Email);
+
+            // e.g. log who fetched the audit logs
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{email} - UPSERTED TARGET SETTINGS {target.TargetName}",
+                userId: userId,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
+
             return Json(new { success = true });
         }
 
@@ -292,50 +320,6 @@ namespace Upsanctionscreener.Controllers
 
 
 
-        //[HttpPost]
-        //[Route("Dashboard/Settings/TargetSettings/Delete/{id:int}")]
-        //public async Task<IActionResult> TargetSettingsDelete(int id)
-        //{
-        //    var svc = new UpSanctionSettingsService(_db);
-
-        //    // Fetch the target first so we can clean up any uploaded document
-        //    var getAllResult = await svc.GetTargetSettingsAsync();
-        //    if (getAllResult.Success && getAllResult.Data is not null)
-        //    {
-        //        // Data is a list of raw JSON / dynamic objects from the service.
-        //        // We try to find a document target whose upload file we should remove.
-        //        try
-        //        {
-        //            var json = JsonSerializer.Serialize(getAllResult.Data);
-        //            var targets = JsonSerializer.Deserialize<List<TargetSettingEntry>>(json,
-        //                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-        //            var target = targets?.FirstOrDefault(t => t.Id == id);
-        //            if (target?.TargetType == "document")
-        //            {
-        //                var uploadPath = target.DocumentSettings?.UploadPath;
-        //                if (!string.IsNullOrWhiteSpace(uploadPath) && System.IO.File.Exists(uploadPath))
-        //                {
-        //                    // Safety check: must be inside the designated upload folder
-        //                    var uploadRoot = Path.GetFullPath(
-        //                        Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
-        //                    var resolvedPath = Path.GetFullPath(uploadPath);
-        //                    if (resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
-        //                        System.IO.File.Delete(uploadPath);
-        //                }
-        //            }
-        //        }
-        //        catch
-        //        {
-        //            // Non-fatal — proceed with DB deletion even if file cleanup fails
-        //        }
-        //    }
-
-        //    var result = await svc.DeleteTargetAsync(id);
-        //    if (!result.Success)
-        //        return BadRequest(new { success = false, message = result.Error });
-        //    return Json(new { success = true });
-        //}
 
         [HttpPost]
         [Route("Dashboard/Settings/TargetSettings/Delete/{id:int}")]
@@ -377,6 +361,18 @@ namespace Upsanctionscreener.Controllers
 
             // ── Remove the Quartz job ─────────────────────────────────────────────
             await _targetScheduler.RemoveTargetScheduleAsync(id);
+
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var email = User.FindFirstValue(ClaimTypes.Email);
+
+            // e.g. log who fetched the audit logs
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{email} - DELETED TARGET {id}",
+                userId: userId,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
 
             return Json(new { success = true });
         }
@@ -480,6 +476,17 @@ namespace Upsanctionscreener.Controllers
                     await file.CopyToAsync(stream);
                 }
 
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var email = User.FindFirstValue(ClaimTypes.Email);
+
+                // e.g. log who fetched the audit logs
+                await AuditLogger.LogAsync(
+                    db: _db,
+                    eventName: $"{email} - UPLOADED DOCUMENT {safeFileName}",
+                    userId: userId,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    pageUrl: HttpContext.Request.Path
+                );
                 return Json(new
                 {
                     success = true,
@@ -494,6 +501,251 @@ namespace Upsanctionscreener.Controllers
                 return BadRequest(new { success = false, message = $"Upload failed: {ex.Message}" });
             }
         }
+
+
+
+        // ══════════════════════════════════════════════════════════════════════
+        // TARGET SCAN REPORTS — controller methods for DashboardController.cs
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── Private helper ────────────────────────────────────────────────────────────
+        // Matches a filename against the list of known target names by checking whether
+        // the filename's base-name STARTS WITH a target name (case-insensitive),
+        // followed immediately by '_', '-', ' ', or end-of-string.
+        //
+        // Targets are sorted longest-name-first so "UBO List Extended" is tested before
+        // "UBO List", preventing partial matches.
+        //
+        // Examples
+        //   "MerchantScan_2026-04-30_11-58.xlsx"  → ("MerchantScan", 1)
+        //   "UBO List_2026-04-30_11-58.xlsx"       → ("UBO List",     2)
+        //   "unknown_file.xlsx"                    → (null, null)
+        private static (string? targetName, string? targetId) MatchTargetByFileName(
+            string fileName,
+            List<TargetSetting> targets)
+        {
+            var bare = Path.GetFileNameWithoutExtension(fileName); // strips .xlsx etc.
+
+            foreach (var t in targets.OrderByDescending(x => x.TargetName.Length))
+            {
+                if (string.IsNullOrWhiteSpace(t.TargetName)) continue;
+
+                if (!bare.StartsWith(t.TargetName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                // Require a word-boundary character right after the target name,
+                // or the filename is exactly the target name (no suffix).
+                int afterIdx = t.TargetName.Length;
+                if (afterIdx == bare.Length
+                    || bare[afterIdx] == '_'
+                    || bare[afterIdx] == '-'
+                    || bare[afterIdx] == ' ')
+                {
+                    return (t.TargetName, t.Id.ToString());
+                }
+            }
+
+            return (null, null);
+        }
+
+        // ── GET /Dashboard/Reports/TargetScanReports/GetAll ───────────────────────────
+        // Returns every .xlsx / .xls / .csv in Targets/TargetReports with the
+        // resolved target name attached.
+        // Response shape: { reports: [ { fileName, targetName, targetId, fileSizeKb, createdAt } ] }
+        [HttpGet]
+        [Route("Dashboard/Reports/TargetScanReports/GetAll")]
+        public async Task<IActionResult> TargetScanReportsGetAll()
+        {
+            try
+            {
+                var reportsDir = Path.Combine(GlobalVariables.root_folder, "Targets", "TargetReports");
+
+                if (!Directory.Exists(reportsDir))
+                    return Json(new { reports = Array.Empty<object>() });
+
+                // Fetch targets from DB — TargetName is mapped from JSON "target_name"
+                var svc = new UpSanctionSettingsService(_db);
+                var targetsResult = await svc.GetTargetSettingsAsync();
+                var targets = (targetsResult.Success && targetsResult.Data is not null)
+                    ? targetsResult.Data
+                    : new List<TargetSetting>();
+
+                var files = Directory
+                    .EnumerateFiles(reportsDir, "*.*", SearchOption.TopDirectoryOnly)
+                    .Where(f =>
+                    {
+                        var ext = Path.GetExtension(f).ToLowerInvariant();
+                        return ext == ".xlsx" || ext == ".xls" || ext == ".csv";
+                    })
+                    .OrderByDescending(System.IO.File.GetLastWriteTimeUtc)
+                    .Select(f =>
+                    {
+                        var info = new FileInfo(f);
+                        var (targetName, targetId) = MatchTargetByFileName(info.Name, targets);
+
+                        return new
+                        {
+                            fileName = info.Name,
+                            targetName,
+                            targetId,
+                            fileSizeKb = (int)Math.Ceiling(info.Length / 1024.0),
+                            createdAt = info.LastWriteTimeUtc
+                        };
+                    })
+                    .ToList();
+
+                return Json(new { reports = files });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        // ── GET /Dashboard/Reports/TargetScanReports/GetLogs ─────────────────────────
+        // Returns every .log file in Logs/TargetScanLogs with the resolved target name.
+        // Response shape: { logs: [ { fileName, targetName, targetId, fileSizeKb, createdAt } ] }
+        [HttpGet]
+        [Route("Dashboard/Reports/TargetScanReports/GetLogs")]
+        public async Task<IActionResult> TargetScanReportsGetLogs()
+        {
+            try
+            {
+                var logsDir = Path.Combine(GlobalVariables.root_folder, "Logs", "TargetScanLogs");
+
+                if (!Directory.Exists(logsDir))
+                    return Json(new { logs = Array.Empty<object>() });
+
+                var svc = new UpSanctionSettingsService(_db);
+                var targetsResult = await svc.GetTargetSettingsAsync();
+                var targets = (targetsResult.Success && targetsResult.Data is not null)
+                    ? targetsResult.Data
+                    : new List<TargetSetting>();
+
+                // Search for *.log AND *.txt so nothing is missed
+                var logFiles = Directory
+                    .EnumerateFiles(logsDir, "*.*", SearchOption.TopDirectoryOnly)
+                    .Where(f =>
+                    {
+                        var ext = Path.GetExtension(f).ToLowerInvariant();
+                        return ext == ".log" || ext == ".logs";
+                    })
+                    .OrderByDescending(System.IO.File.GetLastWriteTimeUtc)
+                    .Select(f =>
+                    {
+                        var info = new FileInfo(f);
+                        var (targetName, targetId) = MatchTargetByFileName(info.Name, targets);
+
+                        return new
+                        {
+                            fileName = info.Name,
+                            targetName,
+                            targetId,
+                            fileSizeKb = (int)Math.Ceiling(info.Length / 1024.0),
+                            createdAt = info.LastWriteTimeUtc
+                        };
+                    })
+                    .ToList();
+
+                return Json(new { logs = logFiles });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        // ── GET /Dashboard/Reports/TargetScanReports/Download?fileName=... ────────────
+        // Streams a file from Targets/TargetReports as a browser download.
+        // Only a plain filename is accepted — no path separators allowed.
+        [HttpGet]
+        [Route("Dashboard/Reports/TargetScanReports/Download")]
+        public IActionResult TargetScanReportsDownload([FromQuery] string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return BadRequest(new { success = false, message = "fileName is required." });
+
+            // Reject anything that looks like a path traversal attempt
+            if (fileName.IndexOfAny(new[] { '/', '\\' }) >= 0 || fileName.Contains(".."))
+                return BadRequest(new { success = false, message = "Invalid file name." });
+
+            var reportsDir = Path.GetFullPath(Path.Combine(GlobalVariables.root_folder, "Targets", "TargetReports"));
+            var resolvedPath = Path.GetFullPath(Path.Combine(reportsDir, fileName));
+
+            // Belt-and-suspenders path traversal guard
+            if (!resolvedPath.StartsWith(reportsDir, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { success = false, message = "Invalid file path." });
+
+            if (!System.IO.File.Exists(resolvedPath))
+                return NotFound(new { success = false, message = $"File not found: {fileName}" });
+
+            var contentType = Path.GetExtension(resolvedPath).ToLowerInvariant() switch
+            {
+                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ".xls" => "application/vnd.ms-excel",
+                ".csv" => "text/csv",
+                _ => "application/octet-stream"
+            };
+
+            // PhysicalFile streams directly from disk — no memory allocation for the whole file
+            return PhysicalFile(resolvedPath, contentType, fileName);
+        }
+
+        // ── GET /Dashboard/Reports/TargetScanReports/ReadLog?fileName=... ─────────────
+        // Returns the full text of a .log or .txt file from Logs/TargetScanLogs.
+        // Response: { content: "..." }
+        [HttpGet]
+        [Route("Dashboard/Reports/TargetScanReports/ReadLog")]
+        public async Task<IActionResult> TargetScanReportsReadLog([FromQuery] string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return BadRequest(new { success = false, message = "fileName is required." });
+
+            var ext = Path.GetExtension(fileName).ToLowerInvariant();
+            if (ext != ".log" && ext != ".logs")
+                return BadRequest(new { success = false, message = "Only .log and .logs files may be read." });
+
+            if (fileName.IndexOfAny(new[] { '/', '\\' }) >= 0 || fileName.Contains(".."))
+                return BadRequest(new { success = false, message = "Invalid file name." });
+
+            var logsDir = Path.GetFullPath(Path.Combine(GlobalVariables.root_folder, "Logs", "TargetScanLogs"));
+            var resolvedPath = Path.GetFullPath(Path.Combine(logsDir, fileName));
+
+            if (!resolvedPath.StartsWith(logsDir, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { success = false, message = "Invalid file path." });
+
+            if (!System.IO.File.Exists(resolvedPath))
+                return NotFound(new { success = false, message = $"Log file not found: {fileName}" });
+
+            var content = await System.IO.File.ReadAllTextAsync(resolvedPath);
+            return Json(new { content });
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         // ── SCAN SETTINGS API ──────────────────────────────────────────────────
 
@@ -516,8 +768,129 @@ namespace Upsanctionscreener.Controllers
             var result = await svc.UpdateScanSettingsAsync(scan);
             if (!result.Success)
                 return BadRequest(new { success = false, message = result.Error });
+
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var email = User.FindFirstValue(ClaimTypes.Email);
+
+            // e.g. log who fetched the audit logs
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{email} - UPDATED SCAN SETTINGS ",
+                userId: userId,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
             return Json(new { success = true });
         }
+
+
+
+        // ── API KEYS — Create ──────────────────────────────────────────────────────
+        // POST /Dashboard/Settings/ScanSettings/ApiKeys/Create
+        // Body: { "client_id": "my_app" }
+        // Returns: { success, settings: <full ScanSettings> }
+        [HttpPost]
+        [Route("Dashboard/Settings/ScanSettings/ApiKeys/Create")]
+        public async Task<IActionResult> ScanSettingsApiKeysCreate([FromBody] CreateApiKeyRequest req)
+        {
+            if (string.IsNullOrWhiteSpace(req?.ClientId))
+                return BadRequest(new { success = false, message = "client_id is required." });
+
+            if (!System.Text.RegularExpressions.Regex.IsMatch(req.ClientId, @"^[a-zA-Z0-9_-]+$"))
+                return BadRequest(new { success = false, message = "client_id may only contain letters, numbers, hyphens and underscores." });
+
+            var svc = new UpSanctionSettingsService(_db);
+            var result = await svc.CreateApiKeyAsync(req.ClientId);
+
+            if (!result.Success)
+                return BadRequest(new { success = false, message = result.Error });
+
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{email} - CREATED API KEY FOR CLIENT: {req.ClientId}",
+                userId: userId,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
+
+            return Json(new { success = true, settings = result.Data });
+        }
+
+        // ── API KEYS — Delete ──────────────────────────────────────────────────────
+        // POST /Dashboard/Settings/ScanSettings/ApiKeys/Delete/{id}
+        // Returns: { success, settings: <full ScanSettings> }
+        [HttpPost]
+        [Route("Dashboard/Settings/ScanSettings/ApiKeys/Delete/{id:int}")]
+        public async Task<IActionResult> ScanSettingsApiKeysDelete(int id)
+        {
+            var svc = new UpSanctionSettingsService(_db);
+            var result = await svc.DeleteApiKeyAsync(id);
+
+            if (!result.Success)
+                return BadRequest(new { success = false, message = result.Error });
+
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{email} - DELETED API KEY ID: {id}",
+                userId: userId,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
+
+            return Json(new { success = true, settings = result.Data });
+        }
+
+        // ── API KEYS — Update Status ───────────────────────────────────────────────
+        // POST /Dashboard/Settings/ScanSettings/ApiKeys/UpdateStatus/{id}
+        // Body: { "status": "active" | "inactive" }
+        // Returns: { success, settings: <full ScanSettings> }
+        [HttpPost]
+        [Route("Dashboard/Settings/ScanSettings/ApiKeys/UpdateStatus/{id:int}")]
+        public async Task<IActionResult> ScanSettingsApiKeysUpdateStatus(int id, [FromBody] UpdateApiKeyStatusRequest req)
+        {
+            if (string.IsNullOrWhiteSpace(req?.Status))
+                return BadRequest(new { success = false, message = "status is required." });
+
+            var svc = new UpSanctionSettingsService(_db);
+            var result = await svc.UpdateApiKeyStatusAsync(id, req.Status);
+
+            if (!result.Success)
+                return BadRequest(new { success = false, message = result.Error });
+
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{email} - UPDATED API KEY ID: {id} STATUS TO: {req.Status}",
+                userId: userId,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
+
+            return Json(new { success = true, settings = result.Data });
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         // ══════════════════════════════════════════════════════════════════════
         // SOURCE SETTINGS API
@@ -542,6 +915,18 @@ namespace Upsanctionscreener.Controllers
             var result = await svc.UpdateAdverseMediaFilterAsync(keywords);
             if (!result.Success)
                 return BadRequest(new { success = false, message = result.Error });
+
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var email = User.FindFirstValue(ClaimTypes.Email);
+
+            // e.g. log who updated the adverse media filter
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{email} - UPDATED ADVERSE MEDIA FILTER",
+                userId: userId,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
             return Json(new { success = true });
         }
 
@@ -648,6 +1033,18 @@ namespace Upsanctionscreener.Controllers
                 });
                 await System.IO.File.WriteAllTextAsync(filePath, json);
 
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var email = User.FindFirstValue(ClaimTypes.Email);
+
+                // e.g. log who fetched the audit logs
+                await AuditLogger.LogAsync(
+                    db: _db,
+                    eventName: $"{email} - UPDATED NIGERIAN SANCTION LIST",
+                    userId: userId,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    pageUrl: HttpContext.Request.Path
+                );
+
                 return Json(new { success = true, id = newId });
             }
             catch (Exception ex)
@@ -664,8 +1061,10 @@ namespace Upsanctionscreener.Controllers
             {
                 var filePath = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase", "NigerianSanctionList.json");
                 var entries = NigerianSanctionListReader.LoadFromFile(filePath);
+                var entry = entries.Where(e => e.ID == id).ToList();
                 var before = entries.Count;
                 entries = entries.Where(e => e.ID != id).ToList();
+               
 
                 if (entries.Count == before)
                     return NotFound(new { success = false, message = "Entry not found." });
@@ -676,6 +1075,17 @@ namespace Upsanctionscreener.Controllers
                     DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
                 });
                 await System.IO.File.WriteAllTextAsync(filePath, json);
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var email = User.FindFirstValue(ClaimTypes.Email);
+
+                // e.g. log who fetched the audit logs
+                await AuditLogger.LogAsync(
+                    db: _db,
+                    eventName: $"{email} - DELETED NIGERIAN SANCTION LIST ENTRY {id} - {System.Text.Json.JsonSerializer.Serialize(entry)}",
+                    userId: userId,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    pageUrl: HttpContext.Request.Path
+                );
                 return Json(new { success = true });
             }
             catch (Exception ex)
@@ -750,6 +1160,17 @@ namespace Upsanctionscreener.Controllers
                     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
                 };
                 await System.IO.File.WriteAllTextAsync(filePath, JsonSerializer.Serialize(entries, serializeOpts));
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var email = User.FindFirstValue(ClaimTypes.Email);
+
+                // e.g. log who fetched the audit logs
+                await AuditLogger.LogAsync(
+                    db: _db,
+                    eventName: $"{email} - UPSERTED PEP ENTRY {newId} - {System.Text.Json.JsonSerializer.Serialize(entry)}",
+                    userId: userId,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    pageUrl: HttpContext.Request.Path
+                );
 
                 return Json(new { success = true, id = newId });
             }
@@ -772,7 +1193,9 @@ namespace Upsanctionscreener.Controllers
                 var json = await System.IO.File.ReadAllTextAsync(filePath);
                 var entries = JsonSerializer.Deserialize<List<PepEntry>>(json) ?? new();
                 var before = entries.Count;
+                var entry = entries.Where(e => e.Id == id).ToList();
                 entries = entries.Where(e => e.Id != id).ToList();
+              
 
                 if (entries.Count == before)
                     return NotFound(new { success = false, message = "PEP not found." });
@@ -780,6 +1203,17 @@ namespace Upsanctionscreener.Controllers
                 await System.IO.File.WriteAllTextAsync(filePath,
                     JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true }));
 
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var email = User.FindFirstValue(ClaimTypes.Email);
+
+                // e.g. log who fetched the audit logs
+                await AuditLogger.LogAsync(
+                    db: _db,
+                    eventName: $"{email} - DELETED PEP ENTRY {id} -{System.Text.Json.JsonSerializer.Serialize(entry)} ",
+                    userId: userId,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    pageUrl: HttpContext.Request.Path
+                );
                 return Json(new { success = true });
             }
             catch (Exception ex)
@@ -852,6 +1286,18 @@ namespace Upsanctionscreener.Controllers
                 };
                 await System.IO.File.WriteAllTextAsync(filePath, JsonSerializer.Serialize(entries, serializeOpts));
 
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var email = User.FindFirstValue(ClaimTypes.Email);
+
+                // e.g. log who fetched the audit logs
+                await AuditLogger.LogAsync(
+                    db: _db,
+                    eventName: $"{email} - UPSERTED UBO ENTRY - {System.Text.Json.JsonSerializer.Serialize(entry)}",
+                    userId: userId,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    pageUrl: HttpContext.Request.Path
+                );
+
                 return Json(new { success = true, id = newId });
             }
             catch (Exception ex)
@@ -873,6 +1319,7 @@ namespace Upsanctionscreener.Controllers
                 var json = await System.IO.File.ReadAllTextAsync(filePath);
                 var deserializeOpts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var entries = JsonSerializer.Deserialize<List<UboEntry>>(json, deserializeOpts) ?? new();
+                var entry = entries.Where(e => e.Id == id).ToList();
                 var before = entries.Count;
                 entries = entries.Where(e => e.Id != id).ToList();
 
@@ -886,6 +1333,18 @@ namespace Upsanctionscreener.Controllers
                     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
                 };
                 await System.IO.File.WriteAllTextAsync(filePath, JsonSerializer.Serialize(entries, serializeOpts));
+
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var email = User.FindFirstValue(ClaimTypes.Email);
+
+                // e.g. log who fetched the audit logs
+                await AuditLogger.LogAsync(
+                    db: _db,
+                    eventName: $"{email} - DELETED UBO WITH ID {id} - {System.Text.Json.JsonSerializer.Serialize(entry)}",
+                    userId: userId,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    pageUrl: HttpContext.Request.Path
+                );
 
                 return Json(new { success = true });
             }
@@ -966,12 +1425,17 @@ namespace Upsanctionscreener.Controllers
             });
         }
 
+
+
+
+
+
+
+
         // ══════════════════════════════════════════════════════════════════════
         // MULTI-SCAN API
         // ══════════════════════════════════════════════════════════════════════
-        [Route("Dashboard/MultiScan/Tasks")]
-        public IActionResult MultiScanTasks() =>
-            View("~/Views/Dashboard/MultiScanScreen.cshtml");
+       
 
         [HttpPost]
         [IgnoreAntiforgeryToken]
@@ -1068,6 +1532,18 @@ namespace Upsanctionscreener.Controllers
                 await file.CopyToAsync(stream);
             }
 
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var email = User.FindFirstValue(ClaimTypes.Email);
+
+            // e.g. log who fetched the audit logs
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{email} - UPLOADED FILE {file.FileName} to {savedFilePath}",
+                userId: userId,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
+
             return Json(new
             {
                 success = true,
@@ -1098,6 +1574,9 @@ namespace Upsanctionscreener.Controllers
             try
             {
                 System.IO.File.Delete(targetPath);
+
+              
+
                 return Json(new { success = true });
             }
             catch (Exception ex)
@@ -1198,7 +1677,7 @@ namespace Upsanctionscreener.Controllers
         [HttpPost]
         [IgnoreAntiforgeryToken]
         [Route("Dashboard/MultiScan/CancelTask/{id:int}")]
-        public IActionResult MultiScanCancelTask(int id)
+        public async Task<IActionResult> MultiScanCancelTask(int id)
         {
             try
             {
@@ -1213,6 +1692,17 @@ namespace Upsanctionscreener.Controllers
                     return BadRequest(new { success = false, message = "Only Pending or Scanning tasks can be cancelled." });
 
                 Scanner.UpdateMultiScanTask(id, "Cancelled", "Cancelled by user.");
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var email = User.FindFirstValue(ClaimTypes.Email);
+
+                // e.g. log who fetched the audit logs
+                await AuditLogger.LogAsync(
+                    db: _db,
+                    eventName: $"{email} - CANCELED MULTISCAN TASK {System.Text.Json.JsonSerializer.Serialize(task)}",
+                    userId: userId,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    pageUrl: HttpContext.Request.Path
+                );
                 return Json(new { success = true });
             }
             catch (Exception ex)
@@ -1224,7 +1714,7 @@ namespace Upsanctionscreener.Controllers
         [HttpPost]
         [IgnoreAntiforgeryToken]
         [Route("Dashboard/MultiScan/DeleteTask/{id:int}")]
-        public IActionResult MultiScanDeleteTask(int id)
+        public async Task<IActionResult> MultiScanDeleteTask(int id)
         {
             try
             {
@@ -1263,6 +1753,18 @@ namespace Upsanctionscreener.Controllers
                     // Re-use internal method via a public helper — or inline the logic:
                 }
                 Scanner.DeleteMultiScanTask(id);
+
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var email = User.FindFirstValue(ClaimTypes.Email);
+
+                // e.g. log who fetched the audit logs
+                await AuditLogger.LogAsync(
+                    db: _db,
+                    eventName: $"{email} - DELETED MULTISCAN TASK {System.Text.Json.JsonSerializer.Serialize(task)}",
+                    userId: userId,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    pageUrl: HttpContext.Request.Path
+                );
 
                 return Json(new { success = true });
             }
