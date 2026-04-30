@@ -69,11 +69,19 @@ namespace Upsanctionscreener.Controllers
             }
 
             // ── All checks passed — sign the user in ──────────────────────────
+           
             await SignInUserAsync(user);
 
             // Update last-login timestamp
             user.LastLoginDate = DateTime.UtcNow;
             await _db.SaveChangesAsync();
+            await AuditLogger.LogAsync(
+            db: _db,
+            eventName: $"{email} - LOGIN SUCESSFULL",
+            userId: user.Id,
+            ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+            pageUrl: HttpContext.Request.Path
+        );
 
             return RedirectToAction("Index", "Dashboard");
         }
@@ -91,6 +99,7 @@ namespace Upsanctionscreener.Controllers
             // Fetch email to display in the view (read-only)
             var userId = (int)TempData.Peek("ForceChangeUserId")!;
             var user = await _db.SanctionScanUsers.FindAsync(userId);
+
             if (user is null)
                 return RedirectToAction("Login");
 
@@ -146,6 +155,15 @@ namespace Upsanctionscreener.Controllers
             // ── Save ──────────────────────────────────────────────────────────
             user.Password = BCrypt.Net.BCrypt.HashPassword(newPassword);
             await _db.SaveChangesAsync();
+
+            await AuditLogger.LogAsync(
+           db: _db,
+           eventName: "PASSWORD UPDATED",
+           userId: user.Id,
+           ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+           pageUrl: HttpContext.Request.Path
+       );
+
 
             TempData["SuccessMessage"] = "Password updated successfully. Please sign in with your new password.";
             return RedirectToAction("Login");

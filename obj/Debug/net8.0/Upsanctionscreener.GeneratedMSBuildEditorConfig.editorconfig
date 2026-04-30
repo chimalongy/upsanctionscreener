@@ -58,8 +58,8 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRGFzaGJvYXJkXFJlcG9ydHNcQ3VzdG9tZXJSZXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/dell/source/repos/upsanctionscreener/Views/Dashboard/Reports/MerchantScanReports.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRGFzaGJvYXJkXFJlcG9ydHNcTWVyY2hhbnRTY2FuUmVwb3J0cy5jc2h0bWw=
+[C:/Users/dell/source/repos/upsanctionscreener/Views/Dashboard/Reports/TargetScanReports.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRGFzaGJvYXJkXFJlcG9ydHNcVGFyZ2V0U2NhblJlcG9ydHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/dell/source/repos/upsanctionscreener/Views/Dashboard/Settings/AuditLogs.cshtml]

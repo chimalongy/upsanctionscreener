@@ -10,11 +10,17 @@
         to   { opacity: 1; transform: translateY(0); }
     }
     @@keyframes spin { to { transform: rotate(360deg); } }
+    @@keyframes copyPop {
+        0%   { transform: scale(1); }
+        40%  { transform: scale(1.18); }
+        100% { transform: scale(1); }
+    }
 
     .fade-up   { opacity: 0; animation: fadeUp 0.45s ease forwards; }
     .fade-up-1 { animation-delay: 0.05s; }
     .fade-up-2 { animation-delay: 0.15s; }
     .fade-up-3 { animation-delay: 0.25s; }
+    .fade-up-4 { animation-delay: 0.35s; }
 
     .spinner { animation: spin 0.7s linear infinite; }
 
@@ -75,14 +81,12 @@
         box-shadow: 0 0 0 4px var(--color-brand-100, #dbeafe);
     }
 
-    /* ── Threshold colour band (green → amber → red) ── */
     .threshold-hint {
         display: flex; justify-content: space-between;
         margin-top: 6px; font-size: 0.68rem;
         color: var(--color-text-muted, #94a3b8);
     }
 
-    /* ── Email textarea ── */
     #fEmailRecipients {
         resize: vertical; min-height: 110px;
         font-family: inherit;
@@ -94,13 +98,124 @@
         border-radius: 16px;
         padding: 1.5rem;
     }
+
+    /* ── API Keys table ── */
+    .api-table {
+        width: 100%; border-collapse: collapse; font-size: 0.8rem;
+    }
+    .api-table thead tr {
+        border-bottom: 1px solid var(--color-border, #e2e8f0);
+    }
+    .api-table thead th {
+        padding: 8px 12px; text-align: left;
+        font-size: 0.68rem; font-weight: 600;
+        color: var(--color-text-muted, #94a3b8);
+        text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .api-table tbody tr {
+        border-bottom: 1px solid var(--color-border, #e2e8f0);
+        transition: background 0.12s;
+    }
+    .api-table tbody tr:last-child { border-bottom: none; }
+    .api-table tbody tr:hover { background: var(--color-surface, #f8fafc); }
+    .api-table tbody td { padding: 10px 12px; vertical-align: middle; }
+
+    .status-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 10px; border-radius: 9999px;
+        font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .status-active   { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+    .status-inactive { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+    .key-mono {
+        font-family: 'Courier New', monospace; font-size: 0.75rem;
+        color: var(--color-text-muted, #94a3b8);
+        background: var(--color-surface, #f8fafc);
+        padding: 2px 7px; border-radius: 6px;
+        border: 1px solid var(--color-border, #e2e8f0);
+    }
+
+    /* ── Key cell layout: masked text + copy button inline ── */
+    .key-cell {
+        display: flex; align-items: center; gap: 6px;
+    }
+
+    .icon-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 30px; height: 30px; border-radius: 8px;
+        border: 1px solid var(--color-border, #e2e8f0);
+        background: transparent; cursor: pointer;
+        transition: background 0.12s, border-color 0.12s, color 0.12s; color: inherit;
+        flex-shrink: 0;
+    }
+    .icon-btn:hover  { background: var(--color-surface, #f8fafc); }
+    .icon-btn.danger:hover  { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+    .icon-btn.success:hover { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
+
+    /* Copy button specific states */
+    .icon-btn.copy-btn { position: relative; }
+    .icon-btn.copy-btn.copied {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+        color: #16a34a;
+        animation: copyPop 0.3s ease;
+    }
+
+    /* Tooltip for copy feedback */
+    .copy-tooltip {
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%; transform: translateX(-50%);
+        background: #0f172a; color: #fff;
+        font-size: 0.65rem; font-weight: 500;
+        padding: 3px 8px; border-radius: 6px;
+        white-space: nowrap; pointer-events: none;
+        opacity: 0; transition: opacity 0.15s;
+        z-index: 10;
+    }
+    .copy-tooltip::after {
+        content: '';
+        position: absolute; top: 100%; left: 50%;
+        transform: translateX(-50%);
+        border: 4px solid transparent;
+        border-top-color: #0f172a;
+    }
+    .icon-btn.copy-btn:hover .copy-tooltip,
+    .icon-btn.copy-btn.copied .copy-tooltip {
+        opacity: 1;
+    }
+
+    /* ── Modal overlay ── */
+    .modal-overlay {
+        position: fixed; inset: 0; z-index: 9999;
+        background: rgba(0,0,0,0.45); backdrop-filter: blur(2px);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .modal-box {
+        background: var(--color-surface-card, #fff);
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: 20px; padding: 2rem;
+        width: 100%; max-width: 420px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        animation: fadeUp 0.25s ease forwards;
+    }
+    .modal-box h3 {
+        font-size: 1rem; font-weight: 600;
+        color: var(--color-text-primary, #0f172a);
+        margin-bottom: 4px;
+    }
+    .modal-box p.modal-sub {
+        font-size: 0.75rem; color: var(--color-text-muted, #94a3b8);
+        margin-bottom: 1.25rem;
+    }
 </style>
 
 @* ── Page header ── *@
 <div class="flex items-center justify-between mb-6 fade-up fade-up-1">
     <div>
         <h1 class="text-text-primary text-2xl font-semibold font-display">Scan Settings</h1>
-        <p class="text-text-muted text-sm mt-0.5">Configure screening thresholds and notification recipients.</p>
+        <p class="text-text-muted text-sm mt-0.5">Configure screening thresholds, notification recipients, and API access keys.</p>
     </div>
     <button id="saveBtn" onclick="saveSettings()"
             class="flex items-center gap-2 px-4 py-2.5 bg-accent-500 hover:bg-accent-600
@@ -149,7 +264,6 @@
         </div>
 
         <div class="px-1">
-            @* Value display *@
             <div class="flex items-end justify-between mb-3">
                 <label class="field-label mb-0">Match sensitivity</label>
                 <div class="flex items-baseline gap-1">
@@ -158,7 +272,6 @@
                 </div>
             </div>
 
-            @* Slider *@
             <input id="thresholdSlider" type="range" min="1" max="100" value="90" step="1"
                    oninput="updateThreshold(this.value)" />
 
@@ -168,7 +281,6 @@
                 <span>100 — Exact match</span>
             </div>
 
-            @* Contextual badge *@
             <div id="thresholdBadge" class="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border"></div>
         </div>
     </div>
@@ -197,15 +309,66 @@
                       class="field-input"
                       placeholder="user@@example.com; another@@example.com"></textarea>
 
-            @* Live parsed preview *@
             <div id="emailPreview" class="mt-3 flex flex-wrap gap-1.5"></div>
         </div>
     </div>
 
+    @* ── API Keys Card ── *@
+    <div class="section-card fade-up fade-up-3">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-text-primary font-semibold text-sm">API Keys</p>
+                    <p class="text-text-muted text-xs">Manage programmatic access keys for external integrations.</p>
+                </div>
+            </div>
+            <button onclick="openCreateKeyModal()"
+                    class="flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600
+                           text-white text-xs font-medium rounded-xl transition-colors shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Create API Key
+            </button>
+        </div>
+
+        @* Alert for API key section *@
+        <div id="apiAlertArea" class="hidden mb-3"></div>
+
+        @* Table *@
+        <div id="apiKeysTableWrap">
+            <div id="apiKeysEmpty" class="hidden py-10 text-center">
+                <svg class="w-8 h-8 mx-auto text-text-muted mb-2 opacity-40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                </svg>
+                <p class="text-xs text-text-muted">No API keys yet. Create one to get started.</p>
+            </div>
+            <table class="api-table" id="apiKeysTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Client ID</th>
+                        <th>API Key</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="apiKeysBody">
+                    @* Populated by JS *@
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     @* ── Summary strip ── *@
-    <div id="summaryStrip" class="hidden section-card fade-up fade-up-3">
+    <div id="summaryStrip" class="hidden section-card fade-up fade-up-4">
         <p class="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Current configuration</p>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
                 <p class="text-xs text-text-muted mb-0.5">Threshold</p>
                 <p id="sumThreshold" class="text-sm text-text-primary font-medium">—</p>
@@ -218,15 +381,122 @@
                 <p class="text-xs text-text-muted mb-0.5">Recipients</p>
                 <p id="sumRecipients" class="text-sm text-text-primary font-medium">—</p>
             </div>
+            <div>
+                <p class="text-xs text-text-muted mb-0.5">API Keys</p>
+                <p id="sumApiKeys" class="text-sm text-text-primary font-medium">—</p>
+            </div>
         </div>
     </div>
 
+</div>
+
+@* ══════════════════════════════════════════════════════
+   CREATE API KEY MODAL
+   ══════════════════════════════════════════════════════ *@
+<div id="createKeyModal" class="modal-overlay hidden" style="display:none">
+    <div class="modal-box">
+        <div class="flex items-center justify-between mb-1">
+            <h3>Create API Key</h3>
+            <button onclick="closeCreateKeyModal()" class="icon-btn">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <p class="modal-sub">Enter a unique Client ID to generate a new API key.</p>
+
+        <div id="modalAlertArea" class="hidden mb-3"></div>
+
+        <div class="mb-5">
+            <label class="field-label">Client ID</label>
+            <input id="modalClientId" type="text" class="field-input"
+                   placeholder="e.g. my_integration_app"
+                   oninput="clearModalAlert()" />
+            <p class="text-xs text-text-muted mt-1.5">Use only letters, numbers, hyphens and underscores.</p>
+        </div>
+
+        <div class="flex items-center gap-2 justify-end">
+            <button onclick="closeCreateKeyModal()"
+                    class="px-4 py-2 text-sm rounded-xl border border-border text-text-primary
+                           hover:bg-surface transition-colors">
+                Cancel
+            </button>
+            <button id="generateKeyBtn" onclick="generateApiKey()"
+                    class="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600
+                           text-white text-sm font-medium rounded-xl transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                </svg>
+                <span id="generateKeyBtnText">Generate API Key</span>
+                <svg id="generateKeySpinner" class="hidden w-4 h-4 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+@* ══════════════════════════════════════════════════════
+   DELETE CONFIRM MODAL
+   ══════════════════════════════════════════════════════ *@
+<div id="deleteKeyModal" class="modal-overlay hidden" style="display:none">
+    <div class="modal-box" style="max-width:380px">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                    <path d="M10 11v6"/><path d="M14 11v6"/>
+                    <path d="M9 6V4h6v2"/>
+                </svg>
+            </div>
+            <div>
+                <h3>Delete API Key</h3>
+                <p class="modal-sub mb-0">This action cannot be undone.</p>
+            </div>
+        </div>
+        <p class="text-sm text-text-primary mb-5">
+            Are you sure you want to delete the key for client <strong id="deleteKeyClientLabel" class="text-red-600"></strong>?
+            Any integrations using this key will immediately lose access.
+        </p>
+        <div class="flex items-center gap-2 justify-end">
+            <button onclick="closeDeleteKeyModal()"
+                    class="px-4 py-2 text-sm rounded-xl border border-border text-text-primary
+                           hover:bg-surface transition-colors">
+                Cancel
+            </button>
+            <button id="confirmDeleteBtn" onclick="confirmDeleteKey()"
+                    class="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600
+                           text-white text-sm font-medium rounded-xl transition-colors">
+                <span id="confirmDeleteBtnText">Delete</span>
+                <svg id="confirmDeleteSpinner" class="hidden w-4 h-4 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+            </button>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
 <script>
     // ── State ──────────────────────────────────────────────────────────────
     let currentSettings = null;
+    let pendingDeleteId  = null;
+
+    // ── Escape helpers ─────────────────────────────────────────────────────
+    function escHtml(str) {
+        return String(str ?? '')
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function escJs(str) {
+        return String(str ?? '')
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '\\"')
+            .replace(/\n/g, '\\n')
+            .replace(/\r/g, '\\r');
+    }
 
     // ── Boot ───────────────────────────────────────────────────────────────
     async function loadSettings() {
@@ -254,9 +524,11 @@
         document.getElementById('thresholdSlider').value = threshold;
         updateThreshold(threshold);
 
-        const emails = (s.email_recipents ?? []).join('; ');
+        const emails = (s.email_recipients ?? s.email_recipents ?? []).join('; ');
         document.getElementById('fEmailRecipients').value = emails;
         renderEmailPills(emails);
+
+        renderApiKeysTable(s.api_keys ?? []);
     }
 
     // ── Threshold helpers ──────────────────────────────────────────────────
@@ -264,11 +536,9 @@
         val = parseInt(val);
         document.getElementById('thresholdDisplay').textContent = val;
 
-        // Update gradient fill
         const slider = document.getElementById('thresholdSlider');
         slider.style.setProperty('--fill', val + '%');
 
-        // Contextual badge
         const badge = document.getElementById('thresholdBadge');
         let cls, label;
         if (val >= 80) {
@@ -286,9 +556,7 @@
             <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 ${val >= 80
                     ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
-                    : val >= 50
-                        ? '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
-                        : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
+                    : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
             </svg>
             ${escHtml(label)}`;
 
@@ -296,11 +564,6 @@
     }
 
     // ── Email helpers ──────────────────────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('fEmailRecipients')
-            .addEventListener('input', e => renderEmailPills(e.target.value));
-    });
-
     function parseEmails(raw) {
         return raw.split(';')
             .map(s => s.trim())
@@ -330,30 +593,281 @@
         updateSummaryStrip();
     }
 
+    // ── Copy API key to clipboard ──────────────────────────────────────────
+    async function copyApiKey(btn, encryptedKey) {
+        try {
+            await navigator.clipboard.writeText(encryptedKey);
+            // Visual feedback: swap to tick icon + green state
+            btn.classList.add('copied');
+            btn.querySelector('.copy-tooltip').textContent = 'Copied!';
+            btn.innerHTML = `
+                <span class="copy-tooltip">Copied!</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M20 6L9 17l-5-5"/>
+                </svg>`;
+            setTimeout(() => {
+                btn.classList.remove('copied');
+                btn.innerHTML = copyIconHtml();
+            }, 2000);
+        } catch {
+            // Fallback for browsers that block clipboard API
+            const ta = document.createElement('textarea');
+            ta.value = encryptedKey;
+            ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+
+            btn.classList.add('copied');
+            setTimeout(() => btn.classList.remove('copied'), 2000);
+        }
+    }
+
+    function copyIconHtml() {
+        return `
+            <span class="copy-tooltip">Copy key</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>`;
+    }
+
+    // ── API Keys table ─────────────────────────────────────────────────────
+    function renderApiKeysTable(keys) {
+        const tbody = document.getElementById('apiKeysBody');
+        const table = document.getElementById('apiKeysTable');
+        const empty = document.getElementById('apiKeysEmpty');
+
+        if (!keys || keys.length === 0) {
+            table.classList.add('hidden');
+            empty.classList.remove('hidden');
+            updateSummaryStrip();
+            return;
+        }
+
+        table.classList.remove('hidden');
+        empty.classList.add('hidden');
+
+        tbody.innerHTML = keys.map(k => {
+            const isActive  = k.status === 'active';
+            const maskedKey = maskKey(k.key ?? '');
+            // Store encrypted key on a data attribute so the copy handler can read it
+            const safeKey   = escHtml(k.key ?? '');
+
+            return `<tr>
+                <td class="text-text-muted">${escHtml(String(k.id))}</td>
+                <td class="font-medium text-text-primary">${escHtml(k.client_id)}</td>
+                <td>
+                    <div class="key-cell">
+                        <span class="key-mono">${escHtml(maskedKey)}</span>
+                        <button
+                            title="Copy encrypted key"
+                            class="icon-btn copy-btn"
+                            data-key="${safeKey}"
+                            onclick="copyApiKey(this, this.dataset.key)">
+                            ${copyIconHtml()}
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <span class="status-badge ${isActive ? 'status-active' : 'status-inactive'}">
+                        <span class="w-1.5 h-1.5 rounded-full inline-block ${isActive ? 'bg-green-500' : 'bg-red-400'}"></span>
+                        ${isActive ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td>
+                    <div class="flex items-center gap-1.5">
+                        <button title="${isActive ? 'Disable key' : 'Enable key'}"
+                                class="icon-btn ${isActive ? 'danger' : 'success'}"
+                                onclick="toggleApiKeyStatus(${k.id}, '${isActive ? 'inactive' : 'active'}')">
+                            ${isActive
+                                ? `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                       <circle cx="12" cy="12" r="10"/>
+                                       <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                                   </svg>`
+                                : `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                       <polyline points="22 4 12 14.01 9 11.01"/>
+                                   </svg>`}
+                        </button>
+                        <button title="Delete key"
+                                class="icon-btn danger"
+                                onclick="openDeleteKeyModal(${k.id}, '${escJs(k.client_id)}')">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                <path d="M10 11v6"/><path d="M14 11v6"/>
+                                <path d="M9 6V4h6v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        updateSummaryStrip();
+    }
+
+    function maskKey(key) {
+        if (!key || key.length <= 8) return '••••••••';
+        return key.substring(0, 6) + '••••••••' + key.substring(key.length - 4);
+    }
+
+    // ── Create Key Modal ───────────────────────────────────────────────────
+    function openCreateKeyModal() {
+        document.getElementById('modalClientId').value = '';
+        clearModalAlert();
+        const modal = document.getElementById('createKeyModal');
+        modal.style.display = '';
+        modal.classList.remove('hidden');
+        setTimeout(() => document.getElementById('modalClientId').focus(), 50);
+    }
+
+    function closeCreateKeyModal() {
+        const modal = document.getElementById('createKeyModal');
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+
+    function clearModalAlert() {
+        document.getElementById('modalAlertArea').classList.add('hidden');
+    }
+
+    async function generateApiKey() {
+        const clientId = document.getElementById('modalClientId').value.trim();
+
+        if (!clientId) {
+            showModalAlert('Client ID is required.', 'error');
+            return;
+        }
+        if (!/^[a-zA-Z0-9_-]+$/.test(clientId)) {
+            showModalAlert('Client ID may only contain letters, numbers, hyphens and underscores.', 'error');
+            return;
+        }
+
+        const btn     = document.getElementById('generateKeyBtn');
+        const spinner = document.getElementById('generateKeySpinner');
+        const text    = document.getElementById('generateKeyBtnText');
+        btn.disabled  = true;
+        spinner.classList.remove('hidden');
+        text.textContent = 'Generating…';
+
+        try {
+            const res  = await fetch('/Dashboard/Settings/ScanSettings/ApiKeys/Create', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ client_id: clientId })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || 'Failed to create key');
+
+            currentSettings = data.settings;
+            renderApiKeysTable(currentSettings.api_keys ?? []);
+            closeCreateKeyModal();
+            showApiAlert('API key created successfully.', 'success');
+        } catch (err) {
+            showModalAlert(err.message || 'Failed to create key. Please try again.', 'error');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            text.textContent = 'Generate API Key';
+        }
+    }
+
+    // ── Delete Key Modal ───────────────────────────────────────────────────
+    function openDeleteKeyModal(id, clientId) {
+        pendingDeleteId = id;
+        document.getElementById('deleteKeyClientLabel').textContent = clientId;
+        const modal = document.getElementById('deleteKeyModal');
+        modal.style.display = '';
+        modal.classList.remove('hidden');
+    }
+
+    function closeDeleteKeyModal() {
+        pendingDeleteId = null;
+        const modal = document.getElementById('deleteKeyModal');
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+
+    async function confirmDeleteKey() {
+        if (pendingDeleteId === null) return;
+
+        const btn     = document.getElementById('confirmDeleteBtn');
+        const spinner = document.getElementById('confirmDeleteSpinner');
+        const text    = document.getElementById('confirmDeleteBtnText');
+        btn.disabled  = true;
+        spinner.classList.remove('hidden');
+        text.textContent = 'Deleting…';
+
+        try {
+            const res  = await fetch(`/Dashboard/Settings/ScanSettings/ApiKeys/Delete/${pendingDeleteId}`, {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || 'Failed to delete key');
+
+            currentSettings = data.settings;
+            renderApiKeysTable(currentSettings.api_keys ?? []);
+            closeDeleteKeyModal();
+            showApiAlert('API key deleted.', 'success');
+        } catch (err) {
+            closeDeleteKeyModal();
+            showApiAlert(err.message || 'Failed to delete key.', 'error');
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('hidden');
+            text.textContent = 'Delete';
+        }
+    }
+
+    // ── Toggle key status ──────────────────────────────────────────────────
+    async function toggleApiKeyStatus(id, newStatus) {
+        try {
+            const res  = await fetch(`/Dashboard/Settings/ScanSettings/ApiKeys/UpdateStatus/${id}`, {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ status: newStatus })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update status');
+
+            currentSettings = data.settings;
+            renderApiKeysTable(currentSettings.api_keys ?? []);
+            showApiAlert(`API key ${newStatus === 'active' ? 'enabled' : 'disabled'}.`, 'success');
+        } catch (err) {
+            showApiAlert(err.message || 'Failed to update key status.', 'error');
+        }
+    }
+
     // ── Summary strip ──────────────────────────────────────────────────────
     function updateSummaryStrip() {
         const strip = document.getElementById('summaryStrip');
         if (!currentSettings) return;
 
-        const threshold = parseInt(document.getElementById('thresholdSlider')?.value ?? 90);
-        const emails    = parseEmails(document.getElementById('fEmailRecipients')?.value ?? '');
+        const threshold  = parseInt(document.getElementById('thresholdSlider')?.value ?? 90);
+        const emails     = parseEmails(document.getElementById('fEmailRecipients')?.value ?? '');
+        const apiKeys    = currentSettings.api_keys ?? [];
+        const activeKeys = apiKeys.filter(k => k.status === 'active').length;
 
         document.getElementById('sumThreshold').textContent   = threshold;
         document.getElementById('sumSensitivity').textContent =
             threshold >= 80 ? 'High precision' : threshold >= 50 ? 'Balanced' : 'Broad match';
         document.getElementById('sumRecipients').textContent  =
             emails.length === 0 ? 'None' : `${emails.length} address${emails.length !== 1 ? 'es' : ''}`;
+        document.getElementById('sumApiKeys').textContent =
+            apiKeys.length === 0 ? 'None' : `${activeKeys} active / ${apiKeys.length} total`;
 
         strip.classList.remove('hidden');
     }
 
-    // ── Save ───────────────────────────────────────────────────────────────
+    // ── Save settings ──────────────────────────────────────────────────────
     async function saveSettings() {
         const threshold = parseInt(document.getElementById('thresholdSlider').value);
         const emailsRaw = document.getElementById('fEmailRecipients').value;
         const emails    = parseEmails(emailsRaw);
 
-        // Validate
         const invalid = emails.filter(e => !/^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(e));
         if (invalid.length > 0) {
             showAlert(`Invalid email address${invalid.length > 1 ? 'es' : ''}: ${invalid.map(escHtml).join(', ')}`, 'error');
@@ -369,8 +883,9 @@
 
         try {
             const payload = {
-                scan_threshold:  threshold,
-                email_recipents: emails
+                scan_threshold:   threshold,
+                email_recipients: emails,
+                api_keys:         currentSettings?.api_keys ?? []
             };
 
             const res  = await fetch('/Dashboard/Settings/ScanSettings/Update', {
@@ -381,7 +896,7 @@
             const data = await res.json();
             if (!res.ok || !data.success) throw new Error(data.message || 'Failed to save');
 
-            currentSettings = payload;
+            currentSettings = { ...currentSettings, ...payload };
             updateSummaryStrip();
             showAlert('Scan settings saved successfully.', 'success');
         } catch (err) {
@@ -393,11 +908,27 @@
         }
     }
 
-    // ── Alert helper ───────────────────────────────────────────────────────
+    // ── Alert helpers ──────────────────────────────────────────────────────
     function showAlert(message, type) {
         const el = document.getElementById('alertArea');
+        _renderAlert(el, message, type);
+        setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    function showApiAlert(message, type) {
+        const el = document.getElementById('apiAlertArea');
+        _renderAlert(el, message, type);
+        setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    function showModalAlert(message, type) {
+        const el = document.getElementById('modalAlertArea');
+        _renderAlert(el, message, type);
+    }
+
+    function _renderAlert(el, message, type) {
         const ok = type === 'success';
-        el.className = `mb-4 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
+        el.className = `mb-3 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
             ${ok ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`;
         el.innerHTML = `
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -406,15 +937,28 @@
                     : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
             </svg>${escHtml(message)}`;
         el.classList.remove('hidden');
-        setTimeout(() => el.classList.add('hidden'), 5000);
     }
 
-    function escHtml(str) {
-        return String(str ?? '')
-            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
+    // ── DOM Ready ──────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('fEmailRecipients')
+            .addEventListener('input', e => renderEmailPills(e.target.value));
 
-    loadSettings();
+        document.getElementById('createKeyModal').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeCreateKeyModal();
+        });
+        document.getElementById('deleteKeyModal').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeDeleteKeyModal();
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeCreateKeyModal();
+                closeDeleteKeyModal();
+            }
+        });
+
+        loadSettings();
+    });
 </script>
 }

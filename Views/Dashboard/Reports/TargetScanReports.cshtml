@@ -1,0 +1,599 @@
+﻿@{
+    ViewData["Title"] = "TargetScanReports";
+    ViewData["ActivePage"] = "TargetScanReports";
+    Layout = "~/Views/Shared/_DashboardLayout.cshtml";
+}
+
+<style>
+    @@keyframes fadeUp {
+        from { opacity: 0; transform: translateY(16px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+    .fade-up   { opacity: 0; animation: fadeUp 0.45s ease forwards; }
+    .fade-up-1 { animation-delay: 0.05s; }
+    .fade-up-2 { animation-delay: 0.15s; }
+    .fade-up-3 { animation-delay: 0.25s; }
+    .fade-up-4 { animation-delay: 0.35s; }
+
+    @@keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.7s linear infinite; }
+
+    /* Tab toggle */
+    .tab-btn {
+        position: relative;
+        padding: 0.5rem 1.25rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-radius: 0.625rem;
+        transition: all 0.18s ease;
+        color: var(--color-text-secondary);
+        border: 1px solid transparent;
+        cursor: pointer;
+        background: transparent;
+    }
+    .tab-btn.active {
+        background: var(--color-brand-500, #3b82f6);
+        color: #fff;
+        border-color: var(--color-brand-500, #3b82f6);
+        box-shadow: 0 2px 8px rgba(59,130,246,0.25);
+    }
+    .tab-btn:not(.active):hover {
+        background: var(--color-surface);
+        border-color: var(--color-border);
+        color: var(--color-text-primary);
+    }
+
+    /* Card row */
+    .report-row { transition: background 0.15s ease; }
+    .report-row:hover { background: var(--color-surface, #f8fafc); }
+
+    /* Modal backdrop */
+    .modal-backdrop {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.45);
+        backdrop-filter: blur(3px);
+        z-index: 50;
+        display: flex; align-items: center; justify-content: center;
+        padding: 1.5rem;
+        animation: fadeIn 0.2s ease forwards;
+    }
+    .modal-panel {
+        background: var(--color-surface-card, #fff);
+        border: 1px solid var(--color-border);
+        border-radius: 1.25rem;
+        width: 100%;
+        max-width: 780px;
+        max-height: 82vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+        animation: fadeUp 0.25s ease forwards;
+    }
+    .log-content {
+        font-family: 'JetBrains Mono', 'Fira Mono', 'Cascadia Code', monospace;
+        font-size: 0.75rem;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: var(--color-text-secondary);
+        overflow-y: auto;
+        flex: 1;
+        padding: 1.25rem;
+        background: var(--color-surface, #f8fafc);
+        border-radius: 0 0 1rem 1rem;
+    }
+
+    /* Log level colouring */
+    .log-content .log-error   { color: #dc2626; }
+    .log-content .log-warn    { color: #d97706; }
+    .log-content .log-info    { color: #2563eb; }
+    .log-content .log-success { color: #16a34a; }
+
+    .page-btn {
+        min-width: 32px; height: 32px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 8px; font-size: 0.75rem; font-weight: 500;
+        border: 1px solid var(--color-border);
+        color: var(--color-text-secondary);
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .page-btn:hover:not(:disabled) {
+        background: var(--color-surface);
+        color: var(--color-text-primary);
+    }
+    .page-btn.active {
+        background: var(--color-brand-500, #3b82f6);
+        color: #fff;
+        border-color: var(--color-brand-500, #3b82f6);
+    }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+</style>
+
+@* ── Page header ── *@
+<div class="flex items-center justify-between mb-6 fade-up fade-up-1">
+    <div>
+        <h1 class="text-text-primary text-2xl font-semibold font-display">Target Scan Reports</h1>
+        <p class="text-text-muted text-sm mt-0.5">Download scan reports or review detailed scan logs per target.</p>
+    </div>
+
+    @* Tab toggle *@
+    <div class="flex items-center gap-1.5 p-1 bg-surface-card border border-border rounded-xl">
+        <button id="tabReports" class="tab-btn active" onclick="switchTab('reports')">
+            <svg class="w-3.5 h-3.5 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            Scan Reports
+        </button>
+        <button id="tabLogs" class="tab-btn" onclick="switchTab('logs')">
+            <svg class="w-3.5 h-3.5 inline-block mr-1.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M3 12h18M3 6h18M3 18h18"/>
+            </svg>
+            Scan Logs
+        </button>
+    </div>
+</div>
+
+@* ── Search + target filter bar ── *@
+<div class="bg-surface-card border border-border rounded-2xl px-5 py-3.5 mb-4 fade-up fade-up-2">
+    <div class="flex flex-wrap items-center gap-3">
+
+        @* Search *@
+        <div class="flex-1 min-w-[200px] relative">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none"
+                 fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input id="searchInput" type="text" placeholder="Search by filename or target…"
+                   oninput="applyFilters()"
+                   class="w-full pl-8 pr-4 py-2 bg-surface border border-border rounded-xl text-sm
+                          text-text-primary placeholder-text-muted focus:outline-none
+                          focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition-colors" />
+        </div>
+
+        @* Target dropdown *@
+        <div class="min-w-[200px]">
+            <label class="block text-xs font-medium text-text-muted mb-1.5">Filter by target</label>
+            <select id="targetFilter" onchange="applyFilters()"
+                    class="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm
+                           text-text-primary focus:outline-none focus:border-brand-400
+                           focus:ring-2 focus:ring-brand-100 transition-colors">
+                <option value="">All Targets</option>
+                @* Populated by JS after data loads *@
+            </select>
+        </div>
+
+        <span id="itemCount" class="text-xs text-text-muted ml-auto">—</span>
+    </div>
+</div>
+
+@* ── Main table card ── *@
+<div class="bg-surface-card border border-border rounded-2xl shadow-sm overflow-hidden fade-up fade-up-3">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="mainTable">
+            <thead>
+                <tr class="border-b border-border bg-surface" id="tableHead">
+                    @* filled by JS *@
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <tr>
+                    <td colspan="6" class="text-center py-14 text-text-muted">
+                        <svg class="w-5 h-5 mx-auto mb-2 spinner text-brand-400"
+                             fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                        </svg>
+                        <span class="text-xs">Loading…</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="px-5 py-3 border-t border-border bg-surface flex flex-wrap items-center justify-between gap-3">
+        <span id="footerCount" class="text-xs text-text-muted">—</span>
+        <div id="pagination" class="flex items-center gap-1"></div>
+    </div>
+</div>
+
+@* ── Log viewer modal ── *@
+<div id="logModal" class="modal-backdrop" style="display:none;" onclick="closeLogModal(event)">
+    <div class="modal-panel" onclick="event.stopPropagation()">
+        @* Header *@
+        <div class="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div>
+                <h2 class="text-sm font-semibold text-text-primary" id="logModalTitle">Scan Log</h2>
+                <p class="text-xs text-text-muted mt-0.5" id="logModalMeta"></p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="copyLogContent()"
+                        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border
+                               rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                    Copy
+                </button>
+                <button onclick="closeLogModal()"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-text-muted
+                               hover:text-text-primary hover:bg-surface border border-transparent
+                               hover:border-border transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M18 6 6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        @* Body *@
+        <div class="log-content" id="logContent">
+            <div class="flex items-center justify-center h-24 text-text-muted text-xs">
+                <svg class="w-4 h-4 mr-2 spinner text-brand-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+                Loading log…
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let targets       = [];   // { id, targetName } — from DB settings
+let allReports    = [];   // { fileName, targetName, targetId, fileSizeKb, createdAt }
+let allLogs       = [];   // { fileName, targetName, targetId, fileSizeKb, createdAt }
+
+let filteredItems = [];
+const PAGE_SIZE   = 20;
+let currentPage   = 1;
+let activeTab     = 'reports';  // 'reports' | 'logs'
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function init() {
+    await Promise.all([loadTargets(), loadReports(), loadLogs()]);
+    buildTargetDropdown();
+    applyFilters();
+}
+
+async function loadTargets() {
+    try {
+        const res = await fetch('/Dashboard/Settings/TargetSettings/GetAll');
+        if (!res.ok) return;
+        const json = await res.json();
+        targets = (json.data || []).map(t => ({ id: String(t.id), targetName: t.targetName }));
+    } catch {}
+}
+
+async function loadReports() {
+    try {
+        const res = await fetch('/Dashboard/Reports/TargetScanReports/GetAll');
+        if (!res.ok) return;
+        const json = await res.json();
+        allReports = json.reports || [];
+    } catch {}
+}
+
+async function loadLogs() {
+    try {
+        const res = await fetch('/Dashboard/Reports/TargetScanReports/GetLogs');
+        if (!res.ok) return;
+        const json = await res.json();
+        allLogs = json.logs || [];
+    } catch {}
+}
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById('tabReports').classList.toggle('active', tab === 'reports');
+    document.getElementById('tabLogs').classList.toggle('active', tab === 'logs');
+    currentPage = 1;
+
+    // Rebuild dropdown for the new tab so it shows names relevant to that tab's data
+    buildTargetDropdown();
+    applyFilters();
+}
+
+// ── Target dropdown ───────────────────────────────────────────────────────────
+// Merges names from:
+//   1. DB target settings (all configured targets)
+//   2. Actual resolved target names on report/log files (catches deleted targets)
+// Filters to only names that appear in the currently active tab's data so the
+// dropdown never shows options that would yield zero results.
+function buildTargetDropdown() {
+    const sel = document.getElementById('targetFilter');
+    const previousValue = sel.value; // preserve selection across tab switches
+
+    // Names from DB settings
+    const dbNames = targets.map(t => t.targetName).filter(Boolean);
+
+    // Names actually present in the active data set
+    const activeSource = activeTab === 'reports' ? allReports : allLogs;
+    const dataNames = activeSource.map(item => item.targetName).filter(Boolean);
+
+    // Merge, deduplicate, sort — only keep names that appear in the active source
+    const activeDataSet = new Set(dataNames);
+    const merged = [...new Set([...dbNames, ...dataNames])]
+        .filter(name => activeDataSet.has(name))
+        .sort((a, b) => a.localeCompare(b));
+
+    // Rebuild options (keep "All Targets" at position 0)
+    while (sel.options.length > 1) sel.remove(1);
+
+    merged.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+    });
+
+    // Restore previous selection if it still exists in the new list
+    if (previousValue && merged.includes(previousValue)) {
+        sel.value = previousValue;
+    } else {
+        sel.value = '';
+    }
+}
+
+// ── Filter / search ───────────────────────────────────────────────────────────
+function applyFilters() {
+    const search    = document.getElementById('searchInput').value.trim().toLowerCase();
+    const targetVal = document.getElementById('targetFilter').value; // exact target name
+    const source    = activeTab === 'reports' ? allReports : allLogs;
+
+    filteredItems = source.filter(item => {
+        // Exact match on target name (dropdown selection)
+        if (targetVal) {
+            if ((item.targetName ?? '') !== targetVal) return false;
+        }
+        // Substring match on filename or target name (free-text search box)
+        if (search) {
+            const hay = [item.fileName, item.targetName]
+                .map(v => String(v ?? '').toLowerCase()).join(' ');
+            if (!hay.includes(search)) return false;
+        }
+        return true;
+    });
+
+    currentPage = 1;
+    renderTable();
+}
+
+// ── Table render ──────────────────────────────────────────────────────────────
+function renderTable() {
+    const totalPgs = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+    if (currentPage > totalPgs) currentPage = totalPgs;
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const page  = filteredItems.slice(start, start + PAGE_SIZE);
+    const total = filteredItems.length;
+    const sourceTotal = (activeTab === 'reports' ? allReports : allLogs).length;
+
+    const countText = total === sourceTotal
+        ? `${total} file${total !== 1 ? 's' : ''}`
+        : `${total} of ${sourceTotal} files (filtered)`;
+
+    document.getElementById('itemCount').textContent   = countText;
+    document.getElementById('footerCount').textContent = countText;
+
+    // Header
+    const head = document.getElementById('tableHead');
+    if (activeTab === 'reports') {
+        head.innerHTML = `
+            <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">#</th>
+            <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">File Name</th>
+            <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden sm:table-cell">Target</th>
+            <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden md:table-cell">Size</th>
+            <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden lg:table-cell">Generated</th>
+            <th class="text-right text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">Action</th>`;
+    } else {
+        head.innerHTML = `
+            <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">#</th>
+            <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">Log File</th>
+            <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden sm:table-cell">Target</th>
+            <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden md:table-cell">Size</th>
+            <th class="text-left text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide hidden lg:table-cell">Created</th>
+            <th class="text-right text-xs font-semibold text-text-muted px-5 py-3 uppercase tracking-wide">Action</th>`;
+    }
+
+    // Body
+    const tbody = document.getElementById('tableBody');
+    if (page.length === 0) {
+        const label = activeTab === 'reports' ? 'No scan reports found.' : 'No scan logs found.';
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-14 text-text-muted text-xs">${label}</td>
+            </tr>`;
+        renderPagination(totalPgs);
+        return;
+    }
+
+    tbody.innerHTML = page.map((item, idx) => {
+        const rowNum  = start + idx + 1;
+        const dateStr = item.createdAt
+            ? new Date(item.createdAt).toLocaleString('en-GB', {
+                  day: '2-digit', month: 'short', year: 'numeric',
+                  hour: '2-digit', minute: '2-digit'
+              })
+            : '—';
+        const sizeStr = item.fileSizeKb != null
+            ? item.fileSizeKb >= 1024
+                ? `${(item.fileSizeKb / 1024).toFixed(1)} MB`
+                : `${item.fileSizeKb} KB`
+            : '—';
+
+        const targetBadge = item.targetName
+            ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border
+                           bg-blue-50 text-blue-700 border-blue-200">${escHtml(item.targetName)}</span>`
+            : '<span class="text-text-muted text-xs">—</span>';
+
+        const actionBtn = activeTab === 'reports'
+            ? `<button onclick="downloadReport('${escHtml(item.fileName)}')"
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
+                              bg-brand-50 border border-brand-200 text-brand-700 rounded-lg
+                              hover:bg-brand-100 hover:border-brand-300 transition-colors">
+                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                       <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                   </svg>
+                   Download
+               </button>`
+            : `<button onclick="readLog('${escHtml(item.fileName)}', '${escHtml(item.targetName || '')}', '${escHtml(dateStr)}')"
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
+                              border border-border text-text-secondary rounded-lg
+                              hover:bg-surface hover:text-text-primary transition-colors">
+                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                       <circle cx="12" cy="12" r="3"/>
+                   </svg>
+                   Read Log
+               </button>`;
+
+        return `
+        <tr class="report-row border-b border-border last:border-0">
+            <td class="px-5 py-3 text-text-muted text-xs font-mono">${rowNum}</td>
+            <td class="px-5 py-3">
+                <div class="flex items-center gap-2">
+                    ${activeTab === 'reports'
+                        ? `<svg class="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                               <polyline points="14 2 14 8 20 8"/>
+                           </svg>`
+                        : `<svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                               <path d="M3 12h18M3 6h18M3 18h18"/>
+                           </svg>`
+                    }
+                    <span class="text-text-primary text-xs font-medium truncate max-w-[240px]"
+                          title="${escHtml(item.fileName)}">${escHtml(item.fileName)}</span>
+                </div>
+            </td>
+            <td class="px-5 py-3 hidden sm:table-cell">${targetBadge}</td>
+            <td class="px-5 py-3 text-text-muted text-xs hidden md:table-cell">${sizeStr}</td>
+            <td class="px-5 py-3 text-text-secondary text-xs whitespace-nowrap hidden lg:table-cell">${dateStr}</td>
+            <td class="px-5 py-3 text-right">${actionBtn}</td>
+        </tr>`;
+    }).join('');
+
+    renderPagination(totalPgs);
+}
+
+// ── Pagination ─────────────────────────────────────────────────────────────────
+function renderPagination(totalPages) {
+    const el = document.getElementById('pagination');
+    if (totalPages <= 1) { el.innerHTML = ''; return; }
+
+    const MAX_VISIBLE = 5;
+    let pages = [];
+    if (totalPages <= MAX_VISIBLE + 2) {
+        pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    } else {
+        pages = [1];
+        let s = Math.max(2, currentPage - 1);
+        let e = Math.min(totalPages - 1, currentPage + 1);
+        if (currentPage <= 3)            e = Math.min(totalPages - 1, 4);
+        if (currentPage >= totalPages-2) s = Math.max(2, totalPages - 3);
+        if (s > 2)            pages.push('…');
+        for (let i = s; i <= e; i++) pages.push(i);
+        if (e < totalPages-1) pages.push('…');
+        pages.push(totalPages);
+    }
+
+    el.innerHTML = `
+        <button class="page-btn" onclick="goPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        ${pages.map(p => p === '…'
+            ? `<span class="page-btn cursor-default border-0 text-text-muted">…</span>`
+            : `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goPage(${p})">${p}</button>`
+        ).join('')}
+        <button class="page-btn" onclick="goPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </button>`;
+}
+
+function goPage(p) {
+    const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
+    if (p < 1 || p > totalPages) return;
+    currentPage = p;
+    renderTable();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Download report ───────────────────────────────────────────────────────────
+function downloadReport(fileName) {
+    window.location.href = `/Dashboard/Reports/TargetScanReports/Download?fileName=${encodeURIComponent(fileName)}`;
+}
+
+// ── Log modal ─────────────────────────────────────────────────────────────────
+async function readLog(fileName, targetName, dateStr) {
+    document.getElementById('logModal').style.display = 'flex';
+    document.getElementById('logModalTitle').textContent = fileName;
+    document.getElementById('logModalMeta').textContent =
+        [targetName, dateStr].filter(Boolean).join(' · ');
+    document.getElementById('logContent').innerHTML = `
+        <div class="flex items-center justify-center h-24 text-text-muted text-xs">
+            <svg class="w-4 h-4 mr-2 spinner text-brand-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+            Loading log…
+        </div>`;
+
+    try {
+        const res = await fetch(`/Dashboard/Reports/TargetScanReports/ReadLog?fileName=${encodeURIComponent(fileName)}`);
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        const json = await res.json();
+        const raw  = json.content || '(empty log file)';
+        document.getElementById('logContent').innerHTML = colouriseLog(escHtml(raw));
+    } catch (err) {
+        document.getElementById('logContent').innerHTML =
+            `<span class="text-red-500">Failed to load log: ${escHtml(err.message)}</span>`;
+    }
+}
+
+function closeLogModal(event) {
+    if (!event || event.target === document.getElementById('logModal') || event.currentTarget === undefined) {
+        document.getElementById('logModal').style.display = 'none';
+    }
+}
+
+function copyLogContent() {
+    const text = document.getElementById('logContent').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.currentTarget;
+        const orig = btn.innerHTML;
+        btn.innerHTML = `<svg class="w-3.5 h-3.5 inline-block text-green-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Copied`;
+        setTimeout(() => { btn.innerHTML = orig; }, 1800);
+    });
+}
+
+// Colourises common log-level keywords
+function colouriseLog(html) {
+    return html
+        .replace(/\b(ERROR|FATAL|EXCEPTION)\b/g, '<span class="log-error">$1</span>')
+        .replace(/\b(WARN|WARNING)\b/g,           '<span class="log-warn">$1</span>')
+        .replace(/\b(INFO)\b/g,                    '<span class="log-info">$1</span>')
+        .replace(/\b(SUCCESS|DONE|COMPLETED)\b/g,  '<span class="log-success">$1</span>');
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function escHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modal on Escape
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('logModal').style.display = 'none';
+});
+
+init();
+</script>
+}

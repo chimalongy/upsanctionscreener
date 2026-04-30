@@ -131,13 +131,13 @@
 
     <div class="flex items-center gap-2 ml-auto">
         <span id="resultCount" class="text-xs text-text-muted"></span>
-        <button onclick="exportCsv()"
+        <button onclick="exportExcel()"
                 class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border
                        text-text-secondary hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Export CSV
+            Export Excel
         </button>
     </div>
 </div>
@@ -324,6 +324,7 @@
 </div>
 
 @section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
     let allUbos       = [];
     let filtered      = [];
@@ -711,20 +712,44 @@
         }
     }
 
-    function exportCsv() {
+    function exportExcel() {
         const headers = ['ID', 'FullName', 'Company', 'DOB', 'Nationality', 'Gender', 'Ownership%', 'ControlType', 'IDNumber', 'Address', 'Remark', 'MerchantIDs'];
+
         const rows = filtered.map(u => [
-            u.id, u.full_name, u.company, u.dob, u.nationality, u.gender,
-            u.percentage_of_ownership || '',
-            u.nature_of_control, u.id_number, u.address, u.remark,
+            u.id,
+            u.full_name ?? '',
+            u.company ?? '',
+            u.dob ?? '',
+            u.nationality ?? '',
+            u.gender ?? '',
+            u.percentage_of_ownership ?? '',
+            u.nature_of_control ?? '',
+            u.id_number ?? '',
+            u.address ?? '',
+            u.remark ?? '',
             (u.merchant_ids || []).join(';')
-        ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
-        const csv = [headers.join(','), ...rows].join('\n');
-        const a = Object.assign(document.createElement('a'), {
-            href: 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv),
-            download: `UBOs-${new Date().toISOString().slice(0, 10)}.csv`
-        });
-        a.click();
+        ]);
+
+        const wsData = [headers, ...rows];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        // Bold header row
+        const headerRange = XLSX.utils.decode_range(ws['!ref']);
+        for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
+            const cellRef = XLSX.utils.encode_cell({ r: 0, c: col });
+            if (ws[cellRef]) {
+                ws[cellRef].s = { font: { bold: true } };
+            }
+        }
+
+        // Auto-width columns
+        ws['!cols'] = headers.map((h, i) => ({
+            wch: Math.max(h.length, ...rows.map(r => String(r[i] ?? '').length), 12)
+        }));
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'UBOs');
+        XLSX.writeFile(wb, `UBOs-${new Date().toISOString().slice(0, 10)}.xlsx`);
     }
 
     function openConfirm({ icon, iconBg, title, message, btnColor, action }) {

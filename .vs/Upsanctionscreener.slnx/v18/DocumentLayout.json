@@ -3,28 +3,16 @@
   "WorkspaceRootPath": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\classess\\search\\scanexporters\\targetscanresultexporter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\search\\scanexporters\\targetscanresultexporter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\classess\\search\\scanner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\search\\scanner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\classess\\utils\\globalfunctions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\utils\\globalfunctions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\views\\dashboard\\settings\\scansettings.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:views\\dashboard\\settings\\scansettings.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\classess\\utils\\upsanctionsettingsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\utils\\upsanctionsettingsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\classess\\utils\\databasedatareader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\utils\\databasedatareader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -34,89 +22,49 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 3,
           "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "DashboardController.cs",
-              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\DashboardController.cs",
-              "RelativeDocumentMoniker": "Controllers\\DashboardController.cs",
-              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\DashboardController.cs",
-              "RelativeToolTip": "Controllers\\DashboardController.cs",
-              "ViewState": "AgIAAAIBAAAAAAAAAAASwBoBAAA4AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-28T12:54:37.786Z",
-              "IsPinned": true,
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "TargetScanResultExporter.cs",
-              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\ScanExporters\\TargetScanResultExporter.cs",
-              "RelativeDocumentMoniker": "Classess\\Search\\ScanExporters\\TargetScanResultExporter.cs",
-              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\ScanExporters\\TargetScanResultExporter.cs",
-              "RelativeToolTip": "Classess\\Search\\ScanExporters\\TargetScanResultExporter.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-29T21:58:41.686Z",
-              "EditorCaption": ""
-            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 1,
               "Title": "UpSanctionSettingsService.cs",
               "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Utils\\UpSanctionSettingsService.cs",
               "RelativeDocumentMoniker": "Classess\\Utils\\UpSanctionSettingsService.cs",
               "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Utils\\UpSanctionSettingsService.cs",
               "RelativeToolTip": "Classess\\Utils\\UpSanctionSettingsService.cs",
-              "ViewState": "AgIAAE4AAAAAAAAAAAA3wF4AAAAoAAAAAAAAAA==",
+              "ViewState": "AgIAAAIDAAAAAAAAAAAiwBgDAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-29T10:42:48.136Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "DatabaseDataReader.cs",
-              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Utils\\DatabaseDataReader.cs",
-              "RelativeDocumentMoniker": "Classess\\Utils\\DatabaseDataReader.cs",
-              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Utils\\DatabaseDataReader.cs",
-              "RelativeToolTip": "Classess\\Utils\\DatabaseDataReader.cs",
-              "ViewState": "AgIAAFcAAAAAAAAAAAAswGgAAAAhAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-29T09:39:24.959Z",
+              "WhenOpened": "2026-04-30T13:58:21.589Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
-              "Title": "GlobalFunctions.cs",
-              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Utils\\GlobalFunctions.cs",
-              "RelativeDocumentMoniker": "Classess\\Utils\\GlobalFunctions.cs",
-              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Utils\\GlobalFunctions.cs",
-              "RelativeToolTip": "Classess\\Utils\\GlobalFunctions.cs",
-              "ViewState": "AgIAAJ8BAAAAAAAAAAAiwJ8BAAApAAAAAAAAAA==",
+              "Title": "DashboardController.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\DashboardController.cs",
+              "RelativeDocumentMoniker": "Controllers\\DashboardController.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\DashboardController.cs",
+              "RelativeToolTip": "Controllers\\DashboardController.cs",
+              "ViewState": "AgIAAMsGAAAAAAAAAAAiwPYGAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-29T07:26:44.186Z",
+              "WhenOpened": "2026-04-30T13:57:34.023Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "Scanner.cs",
-              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\Scanner.cs",
-              "RelativeDocumentMoniker": "Classess\\Search\\Scanner.cs",
-              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Search\\Scanner.cs",
-              "RelativeToolTip": "Classess\\Search\\Scanner.cs",
-              "ViewState": "AgIAAGQBAAAAAAAAAAAqwHgBAAAmAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-28T10:40:28.843Z",
+              "DocumentIndex": 0,
+              "Title": "ScanSettings.cshtml",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Settings\\ScanSettings.cshtml",
+              "RelativeDocumentMoniker": "Views\\Dashboard\\Settings\\ScanSettings.cshtml",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Settings\\ScanSettings.cshtml",
+              "RelativeToolTip": "Views\\Dashboard\\Settings\\ScanSettings.cshtml",
+              "ViewState": "AgIAAJsDAAAAAAAAAAAqwLwDAAAmAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-04-30T13:57:19.918Z",
               "EditorCaption": ""
             }
           ]

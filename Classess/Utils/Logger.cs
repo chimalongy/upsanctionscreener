@@ -19,8 +19,8 @@
                 string filePath = Path.Combine(folderName, $"{fileName}.logs");
 
                 string timestampedMessage = $"{Demarcator}{Environment.NewLine}" +
-                                            $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}" +
-                                            $"{Demarcator}{Environment.NewLine}";
+                                            $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}{Environment.NewLine}";
+                                            //$"{Demarcator}{Environment.NewLine}";
 
                 File.AppendAllText(filePath, timestampedMessage);
             }
