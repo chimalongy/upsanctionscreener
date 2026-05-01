@@ -127,6 +127,9 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseMiddleware<Upsanctionscreener.Middleware.ApiKeyAuthMiddleware>(); 
+
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Auth}/{action=Login}/{id?}");
