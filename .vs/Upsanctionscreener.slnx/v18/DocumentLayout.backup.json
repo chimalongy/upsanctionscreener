@@ -3,8 +3,20 @@
   "WorkspaceRootPath": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\views\\dashboard\\settings\\scansettings.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:views\\dashboard\\settings\\scansettings.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\controllers\\scanapicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:controllers\\scanapicontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\models\\apimodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:models\\apimodels.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\middleware\\apikeyauthmiddleware.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:middleware\\apikeyauthmiddleware.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\classess\\utils\\upsanctionsettingsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -13,6 +25,10 @@
     {
       "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\views\\dashboard\\settings\\scansettings.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:views\\dashboard\\settings\\scansettings.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     }
   ],
   "DocumentGroupContainers": [
@@ -22,7 +38,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Bookmark",
@@ -30,7 +46,59 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "ScanApiController.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\ScanApiController.cs",
+              "RelativeDocumentMoniker": "Controllers\\ScanApiController.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\ScanApiController.cs",
+              "RelativeToolTip": "Controllers\\ScanApiController.cs",
+              "ViewState": "AgIAAPwAAAAAAAAAAAAmwBEBAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-05-01T10:06:22.355Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "ApiModels.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Models\\ApiModels.cs",
+              "RelativeDocumentMoniker": "Models\\ApiModels.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Models\\ApiModels.cs",
+              "RelativeToolTip": "Models\\ApiModels.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAEYAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-05-01T10:05:31.51Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Program.cs",
+              "RelativeDocumentMoniker": "Program.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Program.cs",
+              "RelativeToolTip": "Program.cs",
+              "ViewState": "AgIAAGcAAAAAAAAAAAAAAIEAAABJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-05-01T10:04:35.077Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "ApiKeyAuthMiddleware.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Middleware\\ApiKeyAuthMiddleware.cs",
+              "RelativeDocumentMoniker": "Middleware\\ApiKeyAuthMiddleware.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Middleware\\ApiKeyAuthMiddleware.cs",
+              "RelativeToolTip": "Middleware\\ApiKeyAuthMiddleware.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAGkAAAA7AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-05-01T09:55:11.22Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
               "Title": "UpSanctionSettingsService.cs",
               "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Classess\\Utils\\UpSanctionSettingsService.cs",
               "RelativeDocumentMoniker": "Classess\\Utils\\UpSanctionSettingsService.cs",
@@ -43,26 +111,26 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 5,
               "Title": "DashboardController.cs",
               "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\DashboardController.cs",
               "RelativeDocumentMoniker": "Controllers\\DashboardController.cs",
               "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\DashboardController.cs",
               "RelativeToolTip": "Controllers\\DashboardController.cs",
-              "ViewState": "AgIAAMsGAAAAAAAAAAAiwPYGAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAAAPYGAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-04-30T13:57:34.023Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 6,
               "Title": "ScanSettings.cshtml",
               "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Settings\\ScanSettings.cshtml",
               "RelativeDocumentMoniker": "Views\\Dashboard\\Settings\\ScanSettings.cshtml",
-              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Settings\\ScanSettings.cshtml*",
-              "RelativeToolTip": "Views\\Dashboard\\Settings\\ScanSettings.cshtml*",
-              "ViewState": "AgIAAJkDAAAAAAAAAAAiwMQDAAAAAAAAAAAAAA==",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Settings\\ScanSettings.cshtml",
+              "RelativeToolTip": "Views\\Dashboard\\Settings\\ScanSettings.cshtml",
+              "ViewState": "AgIAAJsDAAAAAAAAAAAqwMIDAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
               "WhenOpened": "2026-04-30T13:57:19.918Z",
               "EditorCaption": ""

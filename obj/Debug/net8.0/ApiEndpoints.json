@@ -1,1 +1,44 @@
-[]
+[
+  {
+    "ContainingType": "Upsanctionscreener.Controllers.ScanApiController",
+    "Method": "Ping",
+    "RelativePath": "api/v1/ping",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Upsanctionscreener.Controllers.ScanApiController",
+    "Method": "BulkScan",
+    "RelativePath": "api/v1/scan/bulk",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "Upsanctionscreener.Models.Api.BulkScanApiRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Upsanctionscreener.Controllers.ScanApiController",
+    "Method": "SingleScan",
+    "RelativePath": "api/v1/scan/single",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "req",
+        "Type": "Upsanctionscreener.Models.Api.SingleScanApiRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  }
+]
