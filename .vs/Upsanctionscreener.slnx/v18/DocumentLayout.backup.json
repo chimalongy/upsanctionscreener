@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\views\\dashboard\\settings\\targetsettings.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:views\\dashboard\\settings\\targetsettings.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\views\\dashboard\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:views\\dashboard\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     }
@@ -23,12 +27,25 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "TargetSettings.cshtml",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Settings\\TargetSettings.cshtml",
+              "RelativeDocumentMoniker": "Views\\Dashboard\\Settings\\TargetSettings.cshtml",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Settings\\TargetSettings.cshtml",
+              "RelativeToolTip": "Views\\Dashboard\\Settings\\TargetSettings.cshtml",
+              "ViewState": "AgIAAMYEAAAAAAAAAAAswNsEAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-05-02T19:23:16.848Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "Index.cshtml",
               "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Index.cshtml",
               "RelativeDocumentMoniker": "Views\\Dashboard\\Index.cshtml",
-              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Index.cshtml*",
-              "RelativeToolTip": "Views\\Dashboard\\Index.cshtml*",
-              "ViewState": "AgIAAMoAAAAAAAAAAAAjwNQAAAAXAAAAAAAAAA==",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Views\\Dashboard\\Index.cshtml",
+              "RelativeToolTip": "Views\\Dashboard\\Index.cshtml",
+              "ViewState": "AgIAAMoAAAAAAAAAAAAjwOUAAAAdAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
               "WhenOpened": "2026-05-02T08:14:34.241Z",
               "EditorCaption": ""

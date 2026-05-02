@@ -103,6 +103,50 @@
         cursor: default;
     }
 
+    /* Field type pill buttons */
+    .field-type-btn {
+        padding: 4px 10px;
+        border-radius: 20px;
+        border: 1px solid var(--color-border, #e2e8f0);
+        font-size: 0.7rem;
+        font-weight: 500;
+        color: var(--color-text-secondary, #64748b);
+        background: var(--color-surface, #f8fafc);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+    .field-type-btn:hover {
+        border-color: var(--color-brand-300, #93c5fd);
+        color: var(--color-brand-600, #2563eb);
+        background: #eff6ff;
+    }
+    .field-type-btn.selected-name   { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
+    .field-type-btn.selected-email  { background: #faf5ff; color: #7c3aed; border-color: #c4b5fd; }
+    .field-type-btn.selected-phone  { background: #f0fdf4; color: #15803d; border-color: #86efac; }
+    .field-type-btn.selected-address{ background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+    .field-type-btn.used-by-other   { opacity: 0.38; cursor: not-allowed; pointer-events: none; }
+
+    .mapping-col-input {
+        flex: 1;
+        padding: 7px 10px;
+        background: var(--color-surface, #f8fafc);
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: 8px;
+        font-size: 0.78rem;
+        color: var(--color-text-primary, #0f172a);
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+        min-width: 0;
+    }
+    .mapping-col-input:focus {
+        border-color: var(--color-brand-400, #60a5fa);
+        box-shadow: 0 0 0 3px var(--color-brand-100, #dbeafe);
+    }
+    .mapping-col-input::placeholder { color: var(--color-text-muted, #94a3b8); }
+
+    .mapping-pills { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+
     /* Toggle switch */
     .toggle-track { transition: background 0.2s; }
     .toggle-thumb { transition: transform 0.2s; }
@@ -294,15 +338,8 @@
                 <div>
                     <div class="flex items-center justify-between mb-3">
                         <p class="text-xs font-semibold text-text-muted uppercase tracking-widest">Data Settings</p>
-                        <button type="button" onclick="addFieldMapping('db')"
-                                class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
-                                       border-border text-text-secondary hover:border-brand-300
-                                       hover:text-brand-600 hover:bg-brand-50 transition-colors">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                            Add Field
-                        </button>
                     </div>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div class="grid grid-cols-2 gap-3 mb-4">
                         <div>
                             <label class="field-label">Table Name <span class="text-red-400">*</span></label>
                             <input id="fTableName" type="text" placeholder="e.g. merchants" class="field-input" />
@@ -312,16 +349,28 @@
                             <input id="fIdColumn" type="text" placeholder="e.g. merchant_id" class="field-input" />
                         </div>
                     </div>
-                    <div id="dbFieldMappingsHeader" class="hidden grid grid-cols-2 gap-2 mb-1 px-1">
-                        <span class="text-xs text-text-muted">Column Name</span>
-                        <span class="text-xs text-text-muted">Match As</span>
+
+                    @* Field Mappings — DB *@
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <p class="text-xs font-medium text-text-secondary">Field Mappings <span class="text-red-400">*</span></p>
+                                <p class="text-xs text-text-muted mt-0.5">Map at least one column. Each scan field can only be assigned once.</p>
+                            </div>
+                            <button type="button" onclick="addFieldMapping('db')"
+                                    id="dbAddFieldBtn"
+                                    class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                                           border-border text-text-secondary hover:border-brand-300
+                                           hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                                Add Field
+                            </button>
+                        </div>
+                        <div id="dbNoFieldsHint" class="py-3 text-center border border-dashed border-border rounded-xl text-xs text-text-muted">
+                            No fields mapped yet — click <strong>Add Field</strong> to begin.
+                        </div>
+                        <div id="dbFieldMappingsContainer" class="space-y-2"></div>
                     </div>
-                    <div id="dbFieldMappingsContainer" class="space-y-2"></div>
-                    <p class="text-xs text-text-muted mt-2">
-                        Map columns to scan fields
-                        (<code class="bg-surface px-1 py-0.5 rounded text-brand-600">name</code>,
-                         <code class="bg-surface px-1 py-0.5 rounded text-brand-600">email</code>, etc).
-                    </p>
                 </div>
             </div>
 
@@ -391,74 +440,48 @@
                 <div>
                     <div class="flex items-center justify-between mb-3">
                         <p class="text-xs font-semibold text-text-muted uppercase tracking-widest">Data Settings</p>
-                        <button type="button" onclick="addFieldMapping('doc')"
-                                class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
-                                       border-border text-text-secondary hover:border-brand-300
-                                       hover:text-brand-600 hover:bg-brand-50 transition-colors">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                            Add Field
-                        </button>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label class="field-label">ID Column <span class="text-red-400">*</span></label>
                         <input id="fDocIdColumn" type="text" placeholder="e.g. merchant_id" class="field-input" />
                         <p class="text-xs text-text-muted mt-1">The column in the Excel file that uniquely identifies each row.</p>
                     </div>
-                    <div id="docFieldMappingsHeader" class="hidden grid grid-cols-2 gap-2 mb-1 px-1">
-                        <span class="text-xs text-text-muted">Column Name</span>
-                        <span class="text-xs text-text-muted">Match As</span>
+
+                    @* Field Mappings — Doc *@
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <p class="text-xs font-medium text-text-secondary">Field Mappings <span class="text-red-400">*</span></p>
+                                <p class="text-xs text-text-muted mt-0.5">Map at least one column. Each scan field can only be assigned once.</p>
+                            </div>
+                            <button type="button" onclick="addFieldMapping('doc')"
+                                    id="docAddFieldBtn"
+                                    class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                                           border-border text-text-secondary hover:border-brand-300
+                                           hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                                Add Field
+                            </button>
+                        </div>
+                        <div id="docNoFieldsHint" class="py-3 text-center border border-dashed border-border rounded-xl text-xs text-text-muted">
+                            No fields mapped yet — click <strong>Add Field</strong> to begin.
+                        </div>
+                        <div id="docFieldMappingsContainer" class="space-y-2"></div>
                     </div>
-                    <div id="docFieldMappingsContainer" class="space-y-2"></div>
-                    <p class="text-xs text-text-muted mt-2">
-                        Map Excel columns to scan fields
-                        (<code class="bg-surface px-1 py-0.5 rounded text-brand-600">name</code>,
-                         <code class="bg-surface px-1 py-0.5 rounded text-brand-600">email</code>, etc).
-                    </p>
                 </div>
             </div>
 
             @* ══════════════════════════════════════════════════
-               EMAIL NOTIFICATION SECTION
+               EMAIL SECTION — simple optional email input
             ══════════════════════════════════════════════════ *@
             <div>
-                <p class="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Email Notifications</p>
-                <div class="bg-surface rounded-xl border border-border p-4 space-y-3">
-                    <div class="flex items-center gap-3">
-                        <button type="button" id="emailNotifToggle" onclick="toggleEmailNotif()"
-                                class="relative w-10 h-5 rounded-full transition-colors duration-200 bg-border focus:outline-none flex-shrink-0">
-                            <span id="emailNotifThumb"
-                                  class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"></span>
-                        </button>
-                        <div>
-                            <span id="emailNotifLabel" class="text-sm text-text-secondary">Send email notifications</span>
-                            <p class="text-xs text-text-muted">Receive alerts when a scan completes or finds matches.</p>
-                        </div>
-                    </div>
-                    <div id="emailNotifOptions" class="hidden pt-1 space-y-3">
-                        <div>
-                            <label class="field-label">Recipient Email(s) <span class="text-red-400">*</span></label>
-                            <input id="fNotifEmail" type="text" placeholder="email@example.com, another@example.com"
-                                   class="field-input" />
-                            <p class="text-xs text-text-muted mt-1">Separate multiple addresses with commas.</p>
-                        </div>
-                        <div>
-                            <label class="field-label">Notify On</label>
-                            <div class="flex flex-wrap gap-2 mt-1">
-                                <label class="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer">
-                                    <input id="notifOnComplete" type="checkbox" checked class="rounded text-brand-500" />
-                                    Scan completed
-                                </label>
-                                <label class="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer">
-                                    <input id="notifOnMatch" type="checkbox" checked class="rounded text-brand-500" />
-                                    Matches found
-                                </label>
-                                <label class="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer">
-                                    <input id="notifOnError" type="checkbox" class="rounded text-brand-500" />
-                                    Errors only
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+                <p class="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Email Alerts</p>
+                <div class="bg-surface rounded-xl border border-border p-4">
+                    <label class="field-label">Only Send Emails To:</label>
+                    <input id="fNotifEmail" type="text"
+                           placeholder="email@example.com, another@example.com"
+                           class="field-input" />
+                    <p class="text-xs text-text-muted mt-1.5">Optional. Separate multiple addresses with commas. Leave blank to disable email alerts.</p>
                 </div>
             </div>
 
@@ -592,6 +615,18 @@
 
 @section Scripts {
 <script>
+// ── Constants ──────────────────────────────────────────────────────────
+// The four scan field types available for mapping.
+// Each can only be assigned to ONE column at a time per scope.
+const SCAN_FIELDS = ['name', 'email', 'phone', 'address'];
+
+const PILL_COLORS = {
+    name:    'selected-name',
+    email:   'selected-email',
+    phone:   'selected-phone',
+    address: 'selected-address'
+};
+
 // ── State ──────────────────────────────────────────────────────────────
 let allTargets       = [];
 let editingId        = null;
@@ -601,10 +636,17 @@ let automate         = false;
 let frequency        = 'daily';
 let fieldRowId       = 0;
 let currentTargetType = 'database'; // 'database' | 'document'
-let emailNotifEnabled = false;
+
+// Tracks which scan field is currently assigned in each scope.
+// e.g. assignedFields.db = { name: 7, email: null, phone: null, address: 3 }
+//      (value = row id that owns that field, or null)
+let assignedFields = {
+    db:  { name: null, email: null, phone: null, address: null },
+    doc: { name: null, email: null, phone: null, address: null }
+};
 
 // File upload state
-let uploadedFileInfo  = null; // { fileName, uploadPath, fileExt }
+let uploadedFileInfo = null; // { fileName, uploadPath, fileExt }
 
 // ── Load ───────────────────────────────────────────────────────────────
 async function loadTargets() {
@@ -686,7 +728,6 @@ function renderCards() {
         const extraFields = fields.length > 3
             ? `<span class="text-xs text-text-muted">+${fields.length - 3} more</span>` : '';
 
-        // Connection line differs by type
         const connLine = isDoc
             ? `<p class="text-text-muted text-xs mt-0.5 truncate" title="${escHtml(doc.upload_path || '')}">
                    ${escHtml(doc.file_name || '—')}${doc.file_extension ? '.' + escHtml(doc.file_extension) : ''}
@@ -781,7 +822,6 @@ function weekdayName(n) {
 function setTargetType(type) {
     currentTargetType = type;
 
-    // Update type buttons
     document.getElementById('typeBtn-database').className =
         'type-btn flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium transition-all ' +
         (type === 'database' ? 'active-db' : 'border-border text-text-secondary');
@@ -789,7 +829,6 @@ function setTargetType(type) {
         'type-btn flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium transition-all ' +
         (type === 'document' ? 'active-doc' : 'border-border text-text-secondary');
 
-    // Show/hide sections
     document.getElementById('section-database').classList.toggle('hidden', type !== 'database');
     document.getElementById('section-document').classList.toggle('hidden', type !== 'document');
 }
@@ -826,7 +865,6 @@ function openEditModal(id) {
         const doc = t.document_settings ?? {};
         const ds  = doc;
 
-        // Populate stored file info
         if (doc.file_name) {
             uploadedFileInfo = {
                 fileName:   doc.file_name,
@@ -843,13 +881,13 @@ function openEditModal(id) {
         const db = t.database_settings ?? {};
         const ds = db.data_settings ?? {};
 
-        document.getElementById('fDbType').value   = db.database_type ?? '';
-        document.getElementById('fHost').value     = db.host          ?? '';
-        document.getElementById('fPort').value     = db.port          ?? '';
-        document.getElementById('fDbName').value   = db.database_name ?? '';
-        document.getElementById('fUsername').value = db.user_name     ?? '';
-        document.getElementById('fTableName').value = ds.table_name ?? '';
-        document.getElementById('fIdColumn').value  = ds.id_column  ?? '';
+        document.getElementById('fDbType').value    = db.database_type ?? '';
+        document.getElementById('fHost').value      = db.host          ?? '';
+        document.getElementById('fPort').value      = db.port          ?? '';
+        document.getElementById('fDbName').value    = db.database_name ?? '';
+        document.getElementById('fUsername').value  = db.user_name     ?? '';
+        document.getElementById('fTableName').value = ds.table_name    ?? '';
+        document.getElementById('fIdColumn').value  = ds.id_column     ?? '';
         (ds.other_fields ?? []).forEach(f => addFieldMapping('db', f.column_name, f.match_as));
 
         document.getElementById('editDbToggleBtn').classList.remove('hidden');
@@ -859,16 +897,10 @@ function openEditModal(id) {
         setDbFieldsLocked(true);
     }
 
-    // Notification
+    // Email
     const notif = t.notification_settings ?? {};
-    if (notif.enabled) {
-        emailNotifEnabled = true;
-        syncEmailNotifToggle();
-        document.getElementById('emailNotifOptions').classList.remove('hidden');
-        document.getElementById('fNotifEmail').value = (notif.recipients ?? []).join(', ');
-        document.getElementById('notifOnComplete').checked = notif.notify_on_complete ?? true;
-        document.getElementById('notifOnMatch').checked    = notif.notify_on_match    ?? true;
-        document.getElementById('notifOnError').checked    = notif.notify_on_error    ?? false;
+    if (notif.enabled && notif.recipients?.length) {
+        document.getElementById('fNotifEmail').value = notif.recipients.join(', ');
     }
 
     // Automation
@@ -963,27 +995,23 @@ function resetForm() {
     document.getElementById('connTestResult').classList.add('hidden');
     document.getElementById('connTestResult').innerHTML = '';
 
-    // Reset DB field mappings
+    // Reset field mappings
     document.getElementById('dbFieldMappingsContainer').innerHTML = '';
-    document.getElementById('dbFieldMappingsHeader').classList.add('hidden');
-
-    // Reset doc field mappings
     document.getElementById('docFieldMappingsContainer').innerHTML = '';
-    document.getElementById('docFieldMappingsHeader').classList.add('hidden');
+    document.getElementById('dbNoFieldsHint').classList.remove('hidden');
+    document.getElementById('docNoFieldsHint').classList.remove('hidden');
+
+    // Reset assigned field tracker
+    assignedFields = {
+        db:  { name: null, email: null, phone: null, address: null },
+        doc: { name: null, email: null, phone: null, address: null }
+    };
 
     fieldRowId = 0;
 
     // Reset file upload
     uploadedFileInfo = null;
     clearUploadUI();
-
-    // Reset email notifications
-    emailNotifEnabled = false;
-    syncEmailNotifToggle();
-    document.getElementById('emailNotifOptions').classList.add('hidden');
-    document.getElementById('notifOnComplete').checked = true;
-    document.getElementById('notifOnMatch').checked    = true;
-    document.getElementById('notifOnError').checked    = false;
 
     // Reset automation
     automate = false;
@@ -1003,25 +1031,6 @@ function togglePwd() {
     inp.type = isHidden ? 'text' : 'password';
     document.getElementById('pwdEye').classList.toggle('hidden', isHidden);
     document.getElementById('pwdEyeOff').classList.toggle('hidden', !isHidden);
-}
-
-// ── Email notification toggle ──────────────────────────────────────────
-function toggleEmailNotif() {
-    emailNotifEnabled = !emailNotifEnabled;
-    syncEmailNotifToggle();
-    document.getElementById('emailNotifOptions').classList.toggle('hidden', !emailNotifEnabled);
-}
-
-function syncEmailNotifToggle() {
-    const btn   = document.getElementById('emailNotifToggle');
-    const thumb = document.getElementById('emailNotifThumb');
-    if (emailNotifEnabled) {
-        btn.classList.replace('bg-border', 'bg-brand-500');
-        thumb.style.transform = 'translateX(20px)';
-    } else {
-        btn.classList.replace('bg-brand-500', 'bg-border');
-        thumb.style.transform = 'translateX(0)';
-    }
 }
 
 // ── Automate toggle ────────────────────────────────────────────────────
@@ -1149,7 +1158,6 @@ async function processFile(file) {
         return;
     }
 
-    // Show uploading state
     document.getElementById('uploadZoneIdle').classList.add('hidden');
     document.getElementById('uploadZoneFile').classList.add('hidden');
     document.getElementById('uploadZoneUploading').classList.remove('hidden');
@@ -1190,15 +1198,14 @@ function showUploadedFileInfo(fileName, uploadPath, fileExt, fileSize) {
     document.getElementById('uploadFileSize').textContent = fileSize
         ? formatBytes(fileSize) : 'Previously uploaded';
 
-    // Populate hidden + display fields
     document.getElementById('fDocFileName').value       = fileName;
     document.getElementById('fDocUploadPath').value     = uploadPath;
     document.getElementById('fDocFileExt').value        = fileExt;
 
-    document.getElementById('fDocFileNameDisplay').value    = fileName;
-    document.getElementById('fDocFileExtDisplay').value     = fileExt;
-    document.getElementById('fDocUploadPathDisplay').value  = uploadPath;
-    document.getElementById('fDocUploadPathDisplay').title  = uploadPath;
+    document.getElementById('fDocFileNameDisplay').value   = fileName;
+    document.getElementById('fDocFileExtDisplay').value    = fileExt;
+    document.getElementById('fDocUploadPathDisplay').value = uploadPath;
+    document.getElementById('fDocUploadPathDisplay').title = uploadPath;
 
     document.getElementById('docFileInfo').classList.remove('hidden');
 }
@@ -1225,60 +1232,197 @@ function clearUploadUI() {
 }
 
 function formatBytes(bytes) {
-    if (bytes < 1024)       return bytes + ' B';
-    if (bytes < 1048576)    return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024)    return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / 1048576).toFixed(1) + ' MB';
 }
 
-// ── Field mappings ─────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+// FIELD MAPPINGS — pill-based type selection
+// ══════════════════════════════════════════════════════════════════════
+
+
 function addFieldMapping(scope, columnName = '', matchAs = '') {
     const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
-    const headerId    = scope === 'doc' ? 'docFieldMappingsHeader'    : 'dbFieldMappingsHeader';
+    const hintId      = scope === 'doc' ? 'docNoFieldsHint'           : 'dbNoFieldsHint';
+    const addBtnId    = scope === 'doc' ? 'docAddFieldBtn'            : 'dbAddFieldBtn';
+
+    // If all 4 scan fields are already assigned, don't allow more rows
+    const allUsed = SCAN_FIELDS.every(f => assignedFields[scope][f] !== null);
+    if (allUsed) {
+        showModalAlert('All four scan fields (name, email, phone, address) are already mapped.', 'error');
+        return;
+    }
 
     const id  = ++fieldRowId;
     const row = document.createElement('div');
     row.id        = `fieldRow-${id}`;
-    row.className = 'field-mapping-row flex items-center gap-2';
-    row.innerHTML = `
-        <input type="text"
-               value="${escHtml(columnName)}"
-               placeholder="column_name"
-               class="field-input flex-1"
-               data-field="column_name" />
-        <input type="text"
-               value="${escHtml(matchAs)}"
-               placeholder="name / email / phone / address…"
-               class="field-input flex-1"
-               data-field="match_as" />
-        <button type="button"
-                onclick="removeFieldRow(${id}, '${scope}')"
-                title="Remove"
-                class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg
-                       text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                <path d="M18 6 6 18M6 6l12 12"/>
-            </svg>
-        </button>`;
-    document.getElementById(containerId).appendChild(row);
+    row.dataset.scope = scope;
+    row.dataset.matchAs = ''; // tracks currently selected pill for this row
+    row.className = 'field-mapping-row bg-surface border border-border rounded-xl p-3 space-y-2';
 
-    if (document.getElementById(containerId).children.length === 1)
-        document.getElementById(headerId).classList.remove('hidden');
+    // Build pill buttons — mark already-used ones
+    const pillsHtml = SCAN_FIELDS.map(f => {
+        const usedByOther = assignedFields[scope][f] !== null && assignedFields[scope][f] !== id;
+        const isSelected  = f === matchAs;
+        const colorCls    = isSelected ? PILL_COLORS[f] : '';
+        const usedCls     = usedByOther ? 'used-by-other' : '';
+        return `<button type="button"
+                        data-field="${f}"
+                        data-rowid="${id}"
+                        data-scope="${scope}"
+                        onclick="selectPill(this)"
+                        class="field-type-btn ${colorCls} ${usedCls}">
+                    ${f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>`;
+    }).join('');
+
+    row.innerHTML = `
+        <div class="flex items-center gap-2">
+            <input type="text"
+                   value="${escHtml(columnName)}"
+                   placeholder="column_name"
+                   data-field="column_name"
+                   class="mapping-col-input" />
+            <button type="button"
+                    onclick="removeFieldRow(${id}, '${scope}')"
+                    title="Remove row"
+                    class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg
+                           text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div>
+            <p class="text-xs text-text-muted mb-1.5">Match as:</p>
+            <div class="mapping-pills" id="pills-${id}">
+                ${pillsHtml}
+            </div>
+        </div>`;
+
+    document.getElementById(containerId).appendChild(row);
+    document.getElementById(hintId).classList.add('hidden');
+
+    // If pre-filling from edit mode, register the assignment
+    if (matchAs && SCAN_FIELDS.includes(matchAs)) {
+        row.dataset.matchAs = matchAs;
+        assignedFields[scope][matchAs] = id;
+        refreshAllPills(scope);
+    }
+
+    // Hide "Add Field" button if all 4 scan fields are now taken
+    updateAddFieldBtn(scope);
+}
+
+/**
+ * Called when a pill button is clicked.
+ * Handles deselect (click same pill again) and re-assign.
+ */
+function selectPill(btn) {
+    const field   = btn.dataset.field;
+    const rowId   = parseInt(btn.dataset.rowid);
+    const scope   = btn.dataset.scope;
+    const row     = document.getElementById(`fieldRow-${rowId}`);
+    const prevMatch = row.dataset.matchAs;
+
+    // If clicking the already-selected pill → deselect
+    if (prevMatch === field) {
+        assignedFields[scope][field] = null;
+        row.dataset.matchAs = '';
+        refreshAllPills(scope);
+        updateAddFieldBtn(scope);
+        return;
+    }
+
+    // If this field is already owned by another row → do nothing (shouldn't reach here since btn is disabled)
+    if (assignedFields[scope][field] !== null && assignedFields[scope][field] !== rowId) return;
+
+    // Release previous assignment for this row
+    if (prevMatch && SCAN_FIELDS.includes(prevMatch)) {
+        assignedFields[scope][prevMatch] = null;
+    }
+
+    // Assign new field to this row
+    assignedFields[scope][field] = rowId;
+    row.dataset.matchAs = field;
+
+    refreshAllPills(scope);
+    updateAddFieldBtn(scope);
+}
+
+/**
+ * Re-renders all pill buttons in the given scope to reflect current assignedFields state.
+ */
+function refreshAllPills(scope) {
+    const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
+    const container   = document.getElementById(containerId);
+
+    [...container.children].forEach(row => {
+        const rowId     = parseInt(row.id.replace('fieldRow-', ''));
+        const currMatch = row.dataset.matchAs;
+        const pillsDiv  = document.getElementById(`pills-${rowId}`);
+        if (!pillsDiv) return;
+
+        [...pillsDiv.children].forEach(btn => {
+            const f = btn.dataset.field;
+            // Remove all state classes
+            btn.classList.remove('selected-name','selected-email','selected-phone','selected-address','used-by-other');
+
+            if (f === currMatch) {
+                // This row owns this field
+                btn.classList.add(PILL_COLORS[f]);
+            } else if (assignedFields[scope][f] !== null && assignedFields[scope][f] !== rowId) {
+                // Another row owns this field
+                btn.classList.add('used-by-other');
+            }
+        });
+    });
+}
+
+/**
+ * Hides "Add Field" button when all 4 scan fields are already claimed.
+ */
+function updateAddFieldBtn(scope) {
+    const addBtnId = scope === 'doc' ? 'docAddFieldBtn' : 'dbAddFieldBtn';
+    const allUsed  = SCAN_FIELDS.every(f => assignedFields[scope][f] !== null);
+    document.getElementById(addBtnId).style.opacity    = allUsed ? '0.4' : '';
+    document.getElementById(addBtnId).style.pointerEvents = allUsed ? 'none' : '';
 }
 
 function removeFieldRow(id, scope) {
-    document.getElementById(`fieldRow-${id}`)?.remove();
+    const row = document.getElementById(`fieldRow-${id}`);
+    if (!row) return;
+
+    // Free up the assigned field
+    const prevMatch = row.dataset.matchAs;
+    if (prevMatch && SCAN_FIELDS.includes(prevMatch)) {
+        assignedFields[scope][prevMatch] = null;
+    }
+
+    row.remove();
+
     const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
-    const headerId    = scope === 'doc' ? 'docFieldMappingsHeader'    : 'dbFieldMappingsHeader';
-    if (document.getElementById(containerId).children.length === 0)
-        document.getElementById(headerId).classList.add('hidden');
+    const hintId      = scope === 'doc' ? 'docNoFieldsHint'           : 'dbNoFieldsHint';
+
+    if (document.getElementById(containerId).children.length === 0) {
+        document.getElementById(hintId).classList.remove('hidden');
+    }
+
+    refreshAllPills(scope);
+    updateAddFieldBtn(scope);
 }
 
+/**
+ * Collects field mappings from the container.
+ * Returns array of { column_name, match_as } — same structure as before.
+ */
 function collectFieldMappings(scope) {
     const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
     return [...document.getElementById(containerId).children].map(row => ({
         column_name: row.querySelector('[data-field="column_name"]').value.trim(),
-        match_as:    row.querySelector('[data-field="match_as"]').value.trim()
-    })).filter(f => f.column_name);
+        match_as:    row.dataset.matchAs ?? ''
+    })).filter(f => f.column_name && f.match_as);
 }
 
 // ── Save target ────────────────────────────────────────────────────────
@@ -1294,26 +1438,29 @@ async function saveTarget() {
     }
 
     // ── Build notification settings ───────────────────────────────────
-    let notificationSettings = { enabled: false };
-    if (emailNotifEnabled) {
-        const emailVal = document.getElementById('fNotifEmail').value.trim();
-        if (!emailVal) { showModalAlert('Please enter at least one notification email address.', 'error'); return; }
+    // Email is now optional and does not require the toggle workflow.
+    // We preserve the same backend structure for compatibility.
+    const emailVal = document.getElementById('fNotifEmail').value.trim();
+    let notificationSettings;
+    if (emailVal) {
         const recipients = emailVal.split(',').map(e => e.trim()).filter(Boolean);
         notificationSettings = {
             enabled:            true,
             recipients,
-            notify_on_complete: document.getElementById('notifOnComplete').checked,
-            notify_on_match:    document.getElementById('notifOnMatch').checked,
-            notify_on_error:    document.getElementById('notifOnError').checked
+            notify_on_complete: true,
+            notify_on_match:    true,
+            notify_on_error:    false
         };
+    } else {
+        notificationSettings = { enabled: false };
     }
 
     // ── Build automation settings ─────────────────────────────────────
-    let startTime      = '02:00';
-    let weekday        = 1;
-    let dayOfMonth     = 15;
+    let startTime       = '02:00';
+    let weekday         = 1;
+    let dayOfMonth      = 15;
     let intervalMinutes = 0;
-    let intervalHours  = 0;
+    let intervalHours   = 0;
 
     if (automate) {
         if (frequency === 'minutely') {
@@ -1358,6 +1505,18 @@ async function saveTarget() {
     let payload;
 
     if (currentTargetType === 'database') {
+        // Validate field mappings: ID column + at least 1 extra mapped field
+        const idColumn  = document.getElementById('fIdColumn').value.trim();
+        const tableName = document.getElementById('fTableName').value.trim();
+        if (!tableName) { showModalAlert('Table name is required.', 'error'); return; }
+        if (!idColumn)  { showModalAlert('ID column is required.', 'error');  return; }
+
+        const mappings = collectFieldMappings('db');
+        if (mappings.length === 0) {
+            showModalAlert('At least one field mapping (in addition to the ID column) is required.', 'error');
+            return;
+        }
+
         if (dbEditUnlocked) {
             const dbType   = document.getElementById('fDbType').value;
             const host     = document.getElementById('fHost').value.trim();
@@ -1365,15 +1524,11 @@ async function saveTarget() {
             const dbName   = document.getElementById('fDbName').value.trim();
             const username = document.getElementById('fUsername').value.trim();
             const password = document.getElementById('fPassword').value;
-            const tableName = document.getElementById('fTableName').value.trim();
-            const idColumn  = document.getElementById('fIdColumn').value.trim();
 
             if (!dbType)  { showModalAlert('Please select a database type.', 'error'); return; }
             if (!host || !port || !dbName || !username) { showModalAlert('Please fill in all connection fields.', 'error'); return; }
             if (!password) { showModalAlert('Password is required.', 'error'); return; }
             if (!connectionTested) { showModalAlert('You must successfully test the database connection before saving.', 'error'); return; }
-            if (!tableName) { showModalAlert('Table name is required.', 'error'); return; }
-            if (!idColumn)  { showModalAlert('ID column is required.', 'error');  return; }
 
             payload = {
                 id: editingId ?? 0,
@@ -1385,33 +1540,19 @@ async function saveTarget() {
                     database_name: dbName,
                     user_name:     username,
                     password,
-                    data_settings: {
-                        table_name:   tableName,
-                        id_column:    idColumn,
-                        other_fields: collectFieldMappings('db')
-                    }
+                    data_settings: { table_name: tableName, id_column: idColumn, other_fields: mappings }
                 },
                 notification_settings: notificationSettings,
                 automation_settings:   automationSettings
             };
         } else {
-            // DB locked — only update data settings + automation + notifications
-            const tableName = document.getElementById('fTableName').value.trim();
-            const idColumn  = document.getElementById('fIdColumn').value.trim();
-            if (!tableName) { showModalAlert('Table name is required.', 'error'); return; }
-            if (!idColumn)  { showModalAlert('ID column is required.', 'error');  return; }
-
             payload = {
                 id: editingId ?? 0,
                 target_name: targetName,
                 target_type: 'database',
                 db_settings_changed: false,
                 database_settings: {
-                    data_settings: {
-                        table_name:   tableName,
-                        id_column:    idColumn,
-                        other_fields: collectFieldMappings('db')
-                    }
+                    data_settings: { table_name: tableName, id_column: idColumn, other_fields: mappings }
                 },
                 notification_settings: notificationSettings,
                 automation_settings:   automationSettings
@@ -1420,19 +1561,26 @@ async function saveTarget() {
     } else {
         // Document target
         if (!uploadedFileInfo) { showModalAlert('Please upload an Excel document.', 'error'); return; }
+
         const docIdColumn = document.getElementById('fDocIdColumn').value.trim();
         if (!docIdColumn) { showModalAlert('ID column is required.', 'error'); return; }
+
+        const mappings = collectFieldMappings('doc');
+        if (mappings.length === 0) {
+            showModalAlert('At least one field mapping (in addition to the ID column) is required.', 'error');
+            return;
+        }
 
         payload = {
             id: editingId ?? 0,
             target_name: targetName,
             target_type: 'document',
             document_settings: {
-                file_name:       uploadedFileInfo.fileName,
-                upload_path:     uploadedFileInfo.uploadPath,
-                file_extension:  uploadedFileInfo.fileExt,
-                id_column:       docIdColumn,
-                other_fields:    collectFieldMappings('doc')
+                file_name:      uploadedFileInfo.fileName,
+                upload_path:    uploadedFileInfo.uploadPath,
+                file_extension: uploadedFileInfo.fileExt,
+                id_column:      docIdColumn,
+                other_fields:   mappings
             },
             notification_settings: notificationSettings,
             automation_settings:   automationSettings
