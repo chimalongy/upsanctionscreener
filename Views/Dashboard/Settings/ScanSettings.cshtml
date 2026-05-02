@@ -1,4 +1,28 @@
-﻿@{
+﻿
+@{
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    if (!role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+    {
+        Context.Response.Redirect("/Dashboard/Index");
+        return;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@{
     ViewData["Title"] = "ScanSettings";
     ViewData["ActivePage"] = "ScanSettings";
     Layout = "~/Views/Shared/_DashboardLayout.cshtml";
@@ -99,7 +123,7 @@
         padding: 1.5rem;
     }
 
-    /* ── API Keys table ── */
+    /* ── API Keys — desktop table ── */
     .api-table {
         width: 100%; border-collapse: collapse; font-size: 0.8rem;
     }
@@ -120,10 +144,45 @@
     .api-table tbody tr:hover { background: var(--color-surface, #f8fafc); }
     .api-table tbody td { padding: 10px 12px; vertical-align: middle; }
 
+    /* ── API Keys — mobile cards ── */
+    .api-key-card {
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: 12px;
+        padding: 12px 14px;
+        background: var(--color-surface, #f8fafc);
+    }
+    .api-key-card + .api-key-card { margin-top: 8px; }
+
+    .api-key-card-top {
+        display: flex; align-items: center;
+        justify-content: space-between; gap: 8px;
+        margin-bottom: 8px;
+    }
+    .api-key-card-id {
+        font-size: 0.8rem; font-weight: 600;
+        color: var(--color-text-primary, #0f172a);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        min-width: 0;
+    }
+    .api-key-card-bottom {
+        display: flex; align-items: center;
+        justify-content: space-between; gap: 8px;
+    }
+
+    /* Hide/show based on breakpoint */
+    .api-desktop { display: block; }
+    .api-mobile  { display: none;  }
+
+    @@media (max-width: 639px) {
+        .api-desktop { display: none;  }
+        .api-mobile  { display: block; }
+    }
+
     .status-badge {
         display: inline-flex; align-items: center; gap: 5px;
         padding: 3px 10px; border-radius: 9999px;
         font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+        white-space: nowrap; flex-shrink: 0;
     }
     .status-active   { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
     .status-inactive { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
@@ -134,9 +193,10 @@
         background: var(--color-surface, #f8fafc);
         padding: 2px 7px; border-radius: 6px;
         border: 1px solid var(--color-border, #e2e8f0);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        min-width: 0;
     }
 
-    /* ── Key cell layout: masked text + copy button inline ── */
     .key-cell {
         display: flex; align-items: center; gap: 6px;
     }
@@ -153,16 +213,12 @@
     .icon-btn.danger:hover  { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
     .icon-btn.success:hover { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
 
-    /* Copy button specific states */
     .icon-btn.copy-btn { position: relative; }
     .icon-btn.copy-btn.copied {
-        background: #f0fdf4;
-        border-color: #bbf7d0;
-        color: #16a34a;
+        background: #f0fdf4; border-color: #bbf7d0; color: #16a34a;
         animation: copyPop 0.3s ease;
     }
 
-    /* Tooltip for copy feedback */
     .copy-tooltip {
         position: absolute;
         bottom: calc(100% + 6px);
@@ -171,8 +227,7 @@
         font-size: 0.65rem; font-weight: 500;
         padding: 3px 8px; border-radius: 6px;
         white-space: nowrap; pointer-events: none;
-        opacity: 0; transition: opacity 0.15s;
-        z-index: 10;
+        opacity: 0; transition: opacity 0.15s; z-index: 10;
     }
     .copy-tooltip::after {
         content: '';
@@ -182,15 +237,14 @@
         border-top-color: #0f172a;
     }
     .icon-btn.copy-btn:hover .copy-tooltip,
-    .icon-btn.copy-btn.copied .copy-tooltip {
-        opacity: 1;
-    }
+    .icon-btn.copy-btn.copied .copy-tooltip { opacity: 1; }
 
     /* ── Modal overlay ── */
     .modal-overlay {
         position: fixed; inset: 0; z-index: 9999;
         background: rgba(0,0,0,0.45); backdrop-filter: blur(2px);
         display: flex; align-items: center; justify-content: center;
+        padding: 1rem;
     }
     .modal-box {
         background: var(--color-surface-card, #fff);
@@ -308,8 +362,6 @@
             <textarea id="fEmailRecipients"
                       class="field-input"
                       placeholder="user@@example.com; another@@example.com"></textarea>
-
-            <div id="emailPreview" class="mt-3 flex flex-wrap gap-1.5"></div>
         </div>
     </div>
 
@@ -329,25 +381,28 @@
             </div>
             <button onclick="openCreateKeyModal()"
                     class="flex items-center gap-2 px-3.5 py-2 bg-brand-500 hover:bg-brand-600
-                           text-white text-xs font-medium rounded-xl transition-colors shadow-sm">
+                           text-white text-xs font-medium rounded-xl transition-colors shadow-sm flex-shrink-0">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
-                Create API Key
+                <span class="hidden sm:inline">Create API Key</span>
+                <span class="sm:hidden">New Key</span>
             </button>
         </div>
 
         @* Alert for API key section *@
         <div id="apiAlertArea" class="hidden mb-3"></div>
 
-        @* Table *@
-        <div id="apiKeysTableWrap">
-            <div id="apiKeysEmpty" class="hidden py-10 text-center">
-                <svg class="w-8 h-8 mx-auto text-text-muted mb-2 opacity-40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
-                </svg>
-                <p class="text-xs text-text-muted">No API keys yet. Create one to get started.</p>
-            </div>
+        @* Empty state *@
+        <div id="apiKeysEmpty" class="hidden py-10 text-center">
+            <svg class="w-8 h-8 mx-auto text-text-muted mb-2 opacity-40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+            </svg>
+            <p class="text-xs text-text-muted">No API keys yet. Create one to get started.</p>
+        </div>
+
+        @* Desktop table *@
+        <div id="apiKeysTableWrap" class="api-desktop">
             <table class="api-table" id="apiKeysTable">
                 <thead>
                     <tr>
@@ -358,11 +413,12 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody id="apiKeysBody">
-                    @* Populated by JS *@
-                </tbody>
+                <tbody id="apiKeysBody"></tbody>
             </table>
         </div>
+
+        @* Mobile cards *@
+        <div id="apiKeysMobileList" class="api-mobile"></div>
     </div>
 
     @* ── Summary strip ── *@
@@ -526,7 +582,6 @@
 
         const emails = (s.email_recipients ?? s.email_recipents ?? []).join('; ');
         document.getElementById('fEmailRecipients').value = emails;
-        renderEmailPills(emails);
 
         renderApiKeysTable(s.api_keys ?? []);
     }
@@ -570,34 +625,10 @@
             .filter(s => s.length > 0);
     }
 
-    function renderEmailPills(raw) {
-        const preview = document.getElementById('emailPreview');
-        const emails  = parseEmails(raw);
-        if (emails.length === 0) { preview.innerHTML = ''; return; }
-
-        preview.innerHTML = emails.map(e => {
-            const valid = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/.test(e);
-            return `<span class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border
-                ${valid
-                    ? 'bg-brand-50 text-brand-700 border-brand-100'
-                    : 'bg-red-50 text-red-700 border-red-200'}">
-                <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    ${valid
-                        ? '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>'
-                        : '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'}
-                </svg>
-                ${escHtml(e)}
-            </span>`;
-        }).join('');
-
-        updateSummaryStrip();
-    }
-
     // ── Copy API key to clipboard ──────────────────────────────────────────
     async function copyApiKey(btn, encryptedKey) {
         try {
             await navigator.clipboard.writeText(encryptedKey);
-            // Visual feedback: swap to tick icon + green state
             btn.classList.add('copied');
             btn.querySelector('.copy-tooltip').textContent = 'Copied!';
             btn.innerHTML = `
@@ -610,7 +641,6 @@
                 btn.innerHTML = copyIconHtml();
             }, 2000);
         } catch {
-            // Fallback for browsers that block clipboard API
             const ta = document.createElement('textarea');
             ta.value = encryptedKey;
             ta.style.position = 'fixed'; ta.style.opacity = '0';
@@ -618,7 +648,6 @@
             ta.select();
             document.execCommand('copy');
             document.body.removeChild(ta);
-
             btn.classList.add('copied');
             setTimeout(() => btn.classList.remove('copied'), 2000);
         }
@@ -633,39 +662,67 @@
             </svg>`;
     }
 
-    // ── API Keys table ─────────────────────────────────────────────────────
+    // ── Shared action buttons HTML ─────────────────────────────────────────
+    function toggleBtnHtml(id, isActive) {
+        return `<button title="${isActive ? 'Disable key' : 'Enable key'}"
+                        class="icon-btn ${isActive ? 'danger' : 'success'}"
+                        onclick="toggleApiKeyStatus(${id}, '${isActive ? 'inactive' : 'active'}')">
+                    ${isActive
+                        ? `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                               <circle cx="12" cy="12" r="10"/>
+                               <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                           </svg>`
+                        : `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                               <polyline points="22 4 12 14.01 9 11.01"/>
+                           </svg>`}
+                </button>`;
+    }
+
+    function deleteBtnHtml(id, clientId) {
+        return `<button title="Delete key" class="icon-btn danger"
+                        onclick="openDeleteKeyModal(${id}, '${escJs(clientId)}')">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        <path d="M10 11v6"/><path d="M14 11v6"/>
+                        <path d="M9 6V4h6v2"/>
+                    </svg>
+                </button>`;
+    }
+
+    // ── Render both desktop table + mobile cards ───────────────────────────
     function renderApiKeysTable(keys) {
-        const tbody = document.getElementById('apiKeysBody');
-        const table = document.getElementById('apiKeysTable');
-        const empty = document.getElementById('apiKeysEmpty');
+        const tbody      = document.getElementById('apiKeysBody');
+        const tableWrap  = document.getElementById('apiKeysTableWrap');
+        const mobileList = document.getElementById('apiKeysMobileList');
+        const empty      = document.getElementById('apiKeysEmpty');
 
         if (!keys || keys.length === 0) {
-            table.classList.add('hidden');
+            tableWrap.style.display  = 'none';
+            mobileList.style.display = 'none';
             empty.classList.remove('hidden');
             updateSummaryStrip();
             return;
         }
 
-        table.classList.remove('hidden');
         empty.classList.add('hidden');
+        tableWrap.style.display  = '';
+        mobileList.style.display = '';
 
+        // Desktop rows
         tbody.innerHTML = keys.map(k => {
             const isActive  = k.status === 'active';
             const maskedKey = maskKey(k.key ?? '');
-            // Store encrypted key on a data attribute so the copy handler can read it
             const safeKey   = escHtml(k.key ?? '');
-
             return `<tr>
                 <td class="text-text-muted">${escHtml(String(k.id))}</td>
                 <td class="font-medium text-text-primary">${escHtml(k.client_id)}</td>
                 <td>
                     <div class="key-cell">
                         <span class="key-mono">${escHtml(maskedKey)}</span>
-                        <button
-                            title="Copy encrypted key"
-                            class="icon-btn copy-btn"
-                            data-key="${safeKey}"
-                            onclick="copyApiKey(this, this.dataset.key)">
+                        <button title="Copy encrypted key" class="icon-btn copy-btn"
+                                data-key="${safeKey}" onclick="copyApiKey(this, this.dataset.key)">
                             ${copyIconHtml()}
                         </button>
                     </div>
@@ -678,32 +735,38 @@
                 </td>
                 <td>
                     <div class="flex items-center gap-1.5">
-                        <button title="${isActive ? 'Disable key' : 'Enable key'}"
-                                class="icon-btn ${isActive ? 'danger' : 'success'}"
-                                onclick="toggleApiKeyStatus(${k.id}, '${isActive ? 'inactive' : 'active'}')">
-                            ${isActive
-                                ? `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                       <circle cx="12" cy="12" r="10"/>
-                                       <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-                                   </svg>`
-                                : `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                       <polyline points="22 4 12 14.01 9 11.01"/>
-                                   </svg>`}
-                        </button>
-                        <button title="Delete key"
-                                class="icon-btn danger"
-                                onclick="openDeleteKeyModal(${k.id}, '${escJs(k.client_id)}')">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                <path d="M10 11v6"/><path d="M14 11v6"/>
-                                <path d="M9 6V4h6v2"/>
-                            </svg>
-                        </button>
+                        ${toggleBtnHtml(k.id, isActive)}
+                        ${deleteBtnHtml(k.id, k.client_id)}
                     </div>
                 </td>
             </tr>`;
+        }).join('');
+
+        // Mobile cards
+        mobileList.innerHTML = keys.map(k => {
+            const isActive  = k.status === 'active';
+            const maskedKey = maskKey(k.key ?? '');
+            const safeKey   = escHtml(k.key ?? '');
+            return `<div class="api-key-card">
+                <div class="api-key-card-top">
+                    <div class="api-key-card-id">${escHtml(k.client_id)}</div>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        ${toggleBtnHtml(k.id, isActive)}
+                        ${deleteBtnHtml(k.id, k.client_id)}
+                    </div>
+                </div>
+                <div class="api-key-card-bottom">
+                    <span class="key-mono" style="flex:1;min-width:0">${escHtml(maskedKey)}</span>
+                    <button title="Copy key" class="icon-btn copy-btn"
+                            data-key="${safeKey}" onclick="copyApiKey(this, this.dataset.key)">
+                        ${copyIconHtml()}
+                    </button>
+                    <span class="status-badge ${isActive ? 'status-active' : 'status-inactive'}">
+                        <span class="w-1.5 h-1.5 rounded-full inline-block ${isActive ? 'bg-green-500' : 'bg-red-400'}"></span>
+                        ${isActive ? 'Active' : 'Inactive'}
+                    </span>
+                </div>
+            </div>`;
         }).join('');
 
         updateSummaryStrip();
@@ -941,9 +1004,6 @@
 
     // ── DOM Ready ──────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('fEmailRecipients')
-            .addEventListener('input', e => renderEmailPills(e.target.value));
-
         document.getElementById('createKeyModal').addEventListener('click', e => {
             if (e.target === e.currentTarget) closeCreateKeyModal();
         });
