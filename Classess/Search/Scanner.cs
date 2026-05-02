@@ -617,24 +617,19 @@ namespace Upsanctionscreener.Classess.Search
 
 
         public static List<TargetScanResult> ParallelTargetScan(
-            SanctionNamesBKTree sanctionTree,
-            DataTable data_to_scan,
-            List<SanctionEntry> sanction_entries,
-             string folderName, string fileName
-
-
-
-            )  // ← changed
-
-
+      SanctionNamesBKTree sanctionTree,
+      DataTable data_to_scan,
+      List<SanctionEntry> sanction_entries,
+      string folderName, string fileName)
         {
             if (sanctionTree == null) throw new ArgumentNullException(nameof(sanctionTree));
             if (data_to_scan == null) throw new ArgumentNullException(nameof(data_to_scan));
             if (sanction_entries == null) throw new ArgumentNullException(nameof(sanction_entries));
 
-            if (!data_to_scan.Columns.Contains("ID")) { 
-             Logger.LogToFile(folderName, fileName, $"");
-            throw new ArgumentException("DataTable must contain an 'ID' column.");
+            if (!data_to_scan.Columns.Contains("ID"))
+            {
+                Logger.LogToFile(folderName, fileName, $"DataTable must contain an 'ID' column.");
+                throw new ArgumentException("DataTable must contain an 'ID' column.");
             }
 
             bool hasName = data_to_scan.Columns.Contains("name");
@@ -643,7 +638,6 @@ namespace Upsanctionscreener.Classess.Search
             var rows = data_to_scan.Rows.Cast<DataRow>().ToArray();
             var results = new TargetScanResult[rows.Length];
 
-            // ← Dictionary<string, SanctionEntry> instead of Dictionary<string, DataRow>
             var sanctionLookup = sanction_entries
                 .Where(e => !string.IsNullOrEmpty(e.ID))
                 .ToDictionary(e => e.ID, e => e);
@@ -657,7 +651,7 @@ namespace Upsanctionscreener.Classess.Search
 
                     List<SanctionNamesBKTree.BKSearchResult> nameHits = new();
                     var resolvedHits = new List<SanctionNamesBKTree.BKSearchResult>();
-                    var resolvedEntries = new List<SanctionEntry>();  // ← SanctionEntry, not DataRow
+                    var resolvedEntries = new List<SanctionEntry>();
 
                     if (hasName)
                     {
@@ -668,14 +662,13 @@ namespace Upsanctionscreener.Classess.Search
 
                     foreach (var hit in nameHits)
                     {
-                        if (!sanctionLookup.TryGetValue(hit.EntryId, out var sanctionEntry))  // ← SanctionEntry
+                        if (!sanctionLookup.TryGetValue(hit.EntryId, out var sanctionEntry))
                             continue;
 
                         if (hasAddress)
                         {
                             string scanAddress = item.row["address"]?.ToString()?.Trim() ?? string.Empty;
 
-                            // ← Addresses is already List<string>, no Split needed
                             if (!string.IsNullOrEmpty(scanAddress) && sanctionEntry.Addresses.Count > 0)
                             {
                                 var words = scanAddress.Split(
@@ -694,7 +687,6 @@ namespace Upsanctionscreener.Classess.Search
                             }
                             else
                             {
-                                // No address to compare — include the hit as-is
                                 resolvedHits.Add(hit);
                                 resolvedEntries.Add(sanctionEntry);
                             }
@@ -712,13 +704,13 @@ namespace Upsanctionscreener.Classess.Search
                         Name = hasName ? item.row["name"]?.ToString()?.Trim() : null,
                         Address = hasAddress ? item.row["address"]?.ToString()?.Trim() : null,
                         Hits = resolvedHits,
-                        ResolvedSanctionEntries = resolvedEntries  // ← now List<SanctionEntry>
+                        ResolvedSanctionEntries = resolvedEntries
                     };
                 });
 
-            return results.ToList();
+            // Only return rows that had at least one match
+            return results.Where(r => r != null && r.Hits.Count > 0).ToList();
         }
-
 
     }
 

@@ -1,4 +1,14 @@
 ﻿@{
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    if (!role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+    {
+        Context.Response.Redirect("/Dashboard/Index");
+        return;
+    }
+}
+
+
+@{
     ViewData["Title"] = "Users";
     ViewData["ActivePage"] = "Users";
     Layout = "~/Views/Shared/_DashboardLayout.cshtml";

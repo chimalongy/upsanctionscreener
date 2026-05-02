@@ -1,4 +1,16 @@
-﻿@{
+﻿
+
+@{
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    if (!role.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+    {
+        Context.Response.Redirect("/Dashboard/Index");
+        return;
+    }
+}
+
+@{
+
     ViewData["Title"] = "SourceSettings";
     ViewData["ActivePage"] = "SourceSettings";
     Layout = "~/Views/Shared/_DashboardLayout.cshtml";
@@ -72,17 +84,6 @@
         border-color: #fca5a5;
         color: #dc2626;
         background: #fef2f2;
-    }
-
-    /* keyword pill preview */
-    .kw-pill {
-        display: inline-flex; align-items: center;
-        font-size: 0.7rem; padding: 3px 10px;
-        border-radius: 9999px;
-        border: 1px solid var(--color-border, #e2e8f0);
-        background: var(--color-surface, #f8fafc);
-        color: var(--color-text-secondary, #475569);
-        white-space: nowrap;
     }
 
     #confirmModal { display: none; }
@@ -208,9 +209,9 @@
         <textarea id="fAdverseMedia"
                   class="field-input"
                   placeholder="fraud&#10;corruption&#10;money laundering&#10;sanctions&#10;…"
-                  oninput="updateKeywordPreview()"></textarea>
+                  oninput="updateKeywordStats()"></textarea>
 
-        @* Live stats + preview ── *@
+        @* Live stats + sort button *@
         <div class="mt-3 flex items-center justify-between flex-wrap gap-2">
             <div id="kwStats" class="text-xs text-text-muted"></div>
             <button type="button" onclick="sortKeywords()"
@@ -223,9 +224,6 @@
                 Sort A–Z
             </button>
         </div>
-
-        @* Pill preview (first 12) *@
-        <div id="kwPillPreview" class="mt-3 flex flex-wrap gap-1.5"></div>
     </div>
 
 </div>
@@ -275,7 +273,7 @@
 
             const keywords = data.data ?? [];
             document.getElementById('fAdverseMedia').value = keywords.join('\n');
-            updateKeywordPreview();
+            updateKeywordStats();
 
             document.getElementById('adverseLoadingArea').classList.add('hidden');
             document.getElementById('adverseEditor').classList.remove('hidden');
@@ -291,25 +289,12 @@
             .filter(s => s.length > 0);
     }
 
-    function updateKeywordPreview() {
+    function updateKeywordStats() {
         const keywords = parseKeywords(document.getElementById('fAdverseMedia').value);
-
-        // Stats
         const stats = document.getElementById('kwStats');
         stats.textContent = keywords.length === 0
             ? 'No keywords entered'
             : `${keywords.length} keyword${keywords.length !== 1 ? 's' : ''}`;
-
-        // Pill preview — first 15, then "+N more"
-        const preview  = document.getElementById('kwPillPreview');
-        const visible  = keywords.slice(0, 15);
-        const overflow = keywords.length - visible.length;
-
-        preview.innerHTML = visible.map(k =>
-            `<span class="kw-pill">${escHtml(k)}</span>`
-        ).join('') + (overflow > 0
-            ? `<span class="kw-pill text-text-muted">+${overflow} more</span>`
-            : '');
     }
 
     function sortKeywords() {
@@ -317,7 +302,7 @@
         const kws = parseKeywords(ta.value).sort((a, b) =>
             a.toLowerCase().localeCompare(b.toLowerCase()));
         ta.value = kws.join('\n');
-        updateKeywordPreview();
+        updateKeywordStats();
     }
 
     async function saveAdverseMedia() {

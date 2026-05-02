@@ -18,14 +18,12 @@ namespace Upsanctionscreener.Middleware
 
         public async Task InvokeAsync(HttpContext context, AppDbContext db)
         {
-            // Only guard routes under /api/
             if (!context.Request.Path.StartsWithSegments("/api"))
             {
                 await _next(context);
                 return;
             }
 
-            // Extract headers
             if (!context.Request.Headers.TryGetValue(HeaderName, out var suppliedKey) ||
                 !context.Request.Headers.TryGetValue(ClientIdHeader, out var suppliedClientId))
             {
@@ -39,7 +37,6 @@ namespace Upsanctionscreener.Middleware
                 return;
             }
 
-            // Load scan settings and validate the key
             var svc = new UpSanctionSettingsService(db);
             var result = await svc.GetScanSettingsAsync();
 
@@ -57,10 +54,11 @@ namespace Upsanctionscreener.Middleware
 
             var apiKeys = result.Data?.ApiKeys ?? new List<ApiKey>();
 
-            // Find the key that matches this client_id and is active
+            // Find active key matching both client_id AND the encrypted key directly
             var matchedKey = apiKeys.FirstOrDefault(k =>
                 k.ClientId.Equals(suppliedClientId.ToString(), StringComparison.OrdinalIgnoreCase) &&
-                k.Status == "active");
+                k.Status == "active" &&
+                k.Key.Equals(suppliedKey.ToString(), StringComparison.Ordinal));
 
             if (matchedKey is null)
             {
@@ -69,42 +67,12 @@ namespace Upsanctionscreener.Middleware
                 await context.Response.WriteAsync(JsonSerializer.Serialize(new
                 {
                     success = false,
-                    message = "Invalid or inactive Client ID."
+                    message = "Invalid or inactive API key."
                 }));
                 return;
             }
 
-            // The stored key is encrypted — decrypt and compare
-            try
-            {
-                var decryptedKey = Cryptor.Decrypt(matchedKey.Key, useHashing: true);
-                if (!decryptedKey.Equals(suppliedKey.ToString(), StringComparison.Ordinal))
-                {
-                    context.Response.StatusCode = 401;
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsync(JsonSerializer.Serialize(new
-                    {
-                        success = false,
-                        message = "Invalid API key."
-                    }));
-                    return;
-                }
-            }
-            catch
-            {
-                context.Response.StatusCode = 500;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsync(JsonSerializer.Serialize(new
-                {
-                    success = false,
-                    message = "Key validation error."
-                }));
-                return;
-            }
-
-            // Attach the validated client ID to the request for controllers to read
             context.Items["ApiClientId"] = matchedKey.ClientId;
-
             await _next(context);
         }
     }
