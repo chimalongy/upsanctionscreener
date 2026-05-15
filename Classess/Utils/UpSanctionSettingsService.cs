@@ -479,6 +479,22 @@ namespace Upsanctionscreener.Classess.Utils
                            ?? new List<TargetSetting>();
                 return SettingsResult<List<TargetSetting>>.Ok(data);
             }
+            catch (JsonException ex) when (ex.Path == "$" && ex.LineNumber == 0 && ex.BytePositionInLine == 1)
+            {
+                // DB contains a non-array value (e.g. `{}`) — auto-heal it to an empty array
+                try
+                {
+                    row.TargetSettings = "[]";
+                    await _db.SaveChangesAsync();
+                }
+                catch (Exception healEx)
+                {
+                    return SettingsResult<List<TargetSetting>>.Fail(
+                        $"Target settings were corrupt and auto-heal failed: {healEx.Message}");
+                }
+
+                return SettingsResult<List<TargetSetting>>.Ok(new List<TargetSetting>());
+            }
             catch (Exception ex)
             {
                 return SettingsResult<List<TargetSetting>>.Fail($"Failed to parse target settings: {ex.Message}");

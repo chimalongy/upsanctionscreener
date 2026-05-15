@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.EntityFrameworkCore;
 using Upsanctionscreener.Data;
-using Upsanctionscreener.Models;
 
 namespace Upsanctionscreener.Classess.Utils
 {
@@ -17,17 +12,28 @@ namespace Upsanctionscreener.Classess.Utils
             string? ipAddress = null,
             string? pageUrl = null)
         {
-            var log = new AuditLog
+            try
             {
-                Event = eventName,
-                UserId = userId,
-                IpAddress = ipAddress,
-                PageUrl = pageUrl,
-                EventDate = DateTime.UtcNow
-            };
+                int nextId = 1;
+                if (await db.AuditLogs.AnyAsync())
+                    nextId = await db.AuditLogs.MaxAsync(a => a.Id) + 1;
 
-            db.AuditLogs.Add(log);
-            await db.SaveChangesAsync();
+                await db.Database.ExecuteSqlRawAsync(
+                    @"INSERT INTO public.audit_logs (id, event, eventdate, ipaddress, pageurl, userid)
+                      VALUES ({0}, {1}, {2}, {3}, {4}, {5})",
+                    nextId,
+                    eventName,
+                    DateTime.UtcNow,
+                    ipAddress ?? (object)DBNull.Value,
+                    pageUrl ?? (object)DBNull.Value,
+                    userId.HasValue ? userId.Value.ToString() : (object)DBNull.Value
+                );
+            }
+            catch (Exception ex)
+            {
+                // Never let audit log failure crash the main request
+                Console.WriteLine($"[AuditLogger] Failed: {ex.Message}");
+            }
         }
     }
 }

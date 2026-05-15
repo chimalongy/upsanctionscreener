@@ -29,63 +29,69 @@ namespace Upsanctionscreener.Controllers
             return View();
         }
 
-        // ── POST /Auth/Login ──────────────────────────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(string email, string password)
         {
-            if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+            try
             {
-                ModelState.AddModelError("", "Email and password are required.");
+                if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+                {
+                    ModelState.AddModelError("", "Email and password are required.");
+                    return View();
+                }
+
+                var user = await _db.SanctionScanUsers
+                    .FirstOrDefaultAsync(u => u.Email == email.Trim().ToLower());
+
+                // Generic message — don't reveal whether email exists
+                if (user is null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
+                {
+                    ModelState.AddModelError("", "Invalid email or password.");
+                    return View();
+                }
+
+                // ── Account must be enabled ───────────────────────────────────────
+                if (!string.Equals(user.ProfileStatus, "enabled", StringComparison.OrdinalIgnoreCase))
+                {
+                    ModelState.AddModelError("", "Your account has been disabled. Please contact your administrator.");
+                    return View();
+                }
+
+                // ── Default-password check → force change ─────────────────────────
+                var defaultPassword = _config["NEW_PASSWORD"];
+                if (!string.IsNullOrEmpty(defaultPassword) &&
+                    BCrypt.Net.BCrypt.Verify(defaultPassword, user.Password))
+                {
+                    TempData["ForceChangeUserId"] = user.Id;
+                    return RedirectToAction("UpdatePassword");
+                }
+
+                // ── All checks passed — sign the user in ──────────────────────────
+                await SignInUserAsync(user);
+
+                // Update last-login timestamp
+                user.LastLoginDate = DateTime.UtcNow.ToString();
+                await _db.SaveChangesAsync();
+                await AuditLogger.LogAsync(
+                    db: _db,
+                    eventName: $"{email} - LOGIN SUCESSFULL",
+                    userId: user.Id,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    pageUrl: HttpContext.Request.Path
+                );
+
+                return RedirectToAction("Index", "Dashboard");
+            }
+            catch (Exception ex)
+            {
+                // Log the exception if you have a logger available
+                // _logger.LogError(ex, "Login failed for {Email}", email);
+
+                ModelState.AddModelError("", "Login failed. Please try again.");
                 return View();
             }
-
-            var user = await _db.SanctionScanUsers
-                .FirstOrDefaultAsync(u => u.Email == email.Trim().ToLower());
-
-            // Generic message — don't reveal whether email exists
-            if (user is null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
-            {
-                ModelState.AddModelError("", "Invalid email or password.");
-                return View();
-            }
-
-            // ── Account must be enabled ───────────────────────────────────────
-            if (!string.Equals(user.ProfileStatus, "enabled", StringComparison.OrdinalIgnoreCase))
-            {
-                ModelState.AddModelError("", "Your account has been disabled. Please contact your administrator.");
-                return View();
-            }
-
-            // ── Default-password check → force change ─────────────────────────
-            var defaultPassword = _config["NEW_PASSWORD"];
-            if (!string.IsNullOrEmpty(defaultPassword) &&
-                BCrypt.Net.BCrypt.Verify(defaultPassword, user.Password))
-            {
-                // Store the user id in a short-lived temp cookie so UpdatePassword
-                // knows which account to update — no session needed.
-                TempData["ForceChangeUserId"] = user.Id;
-                return RedirectToAction("UpdatePassword");
-            }
-
-            // ── All checks passed — sign the user in ──────────────────────────
-           
-            await SignInUserAsync(user);
-
-            // Update last-login timestamp
-            user.LastLoginDate = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-            await AuditLogger.LogAsync(
-            db: _db,
-            eventName: $"{email} - LOGIN SUCESSFULL",
-            userId: user.Id,
-            ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
-            pageUrl: HttpContext.Request.Path
-        );
-
-            return RedirectToAction("Index", "Dashboard");
         }
-
         // ── GET /Auth/UpdatePassword ──────────────────────────────────────────
         [HttpGet]
        

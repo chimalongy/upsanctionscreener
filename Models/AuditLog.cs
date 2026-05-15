@@ -1,5 +1,4 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Upsanctionscreener.Models
@@ -12,19 +11,20 @@ namespace Upsanctionscreener.Models
         public int Id { get; set; }
 
         [Column("userid")]
-        public int? UserId { get; set; }
+        [StringLength(100)]
+        public string? UserId { get; set; }   // was int? — DB column is varchar(100)
 
         [Column("ipaddress")]
-        [StringLength(50)]
-        public string IpAddress { get; set; }
+        [StringLength(100)]
+        public string? IpAddress { get; set; }
 
         [Column("event")]
-        public string Event { get; set; }
+        public string? Event { get; set; }
 
         [Column("eventdate")]
-        public DateTime EventDate { get; set; } = DateTime.Now;
+        public DateTime EventDate { get; set; } = DateTime.UtcNow;
 
         [Column("pageurl")]
-        public string PageUrl { get; set; }
+        public string? PageUrl { get; set; }
     }
 }

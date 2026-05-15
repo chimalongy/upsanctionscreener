@@ -12,38 +12,38 @@ namespace Upsanctionscreener.Models
         public int Id { get; set; }
 
         [Column("first_name")]
-        [StringLength(100)]
-        public string FirstName { get; set; }
+        public string? FirstName { get; set; }
 
         [Column("last_name")]
-        [StringLength(100)]
-        public string LastName { get; set; }
+        public string? LastName { get; set; }
 
         [Column("department")]
-        [StringLength(150)]
-        public string Department { get; set; }
+        public string? Department { get; set; }
 
+        // because DB is text
         [Column("last_login_date")]
-        public DateTime? LastLoginDate { get; set; }
+        public string? LastLoginDate { get; set; }
+
+        [NotMapped]
+        public string SafeLastLoginDate =>
+            string.IsNullOrWhiteSpace(LastLoginDate) ? "Never" : LastLoginDate;
 
         [Column("profile_status")]
-        [StringLength(50)]
-        public string ProfileStatus { get; set; }
+        public string? ProfileStatus { get; set; }
 
         [Column("role")]
-        [StringLength(50)]
-        public string Role { get; set; }
+        public string? Role { get; set; }
 
         [Required]
         [Column("email")]
-        [StringLength(255)]
         public string Email { get; set; }
 
         [Required]
         [Column("password")]
         public string Password { get; set; }
 
+        // MUST match postgres timestamp
         [Column("created_at")]
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime? CreatedAt { get; set; }
     }
 }

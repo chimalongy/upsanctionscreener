@@ -22,7 +22,10 @@ Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 //target.DatabaseSettings.ConnectionString,
 //merchants);
 
-
+//string connstr = "T28FmqXWeDjp02iuw0BLAgIHLBW5JXc7hOrlMtpFDPUm/J7VrpdQ+7h47NZf1TjKzXOjZ+Wme4FBQaHc9AOxKa932ifaeO/Rr5aoHyVLtaJlMkok9fvzdtdBjiVLDf8V";
+//string decryptedConnStr = Cryptor.Decrypt(connstr, true);
+//string newconstring = "Host=172.27.148.17;Port=1700;Database=upsanction;Username=upsanction;Password=Comp@2025A";
+//string newencryped = Cryptor.Encrypt(newconstring, true);
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -108,6 +111,14 @@ builder.Services.AddHttpClient<SanctionDownloader>(client =>
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<UpSanctionSettingsService>();
+
+//builder.WebHost.ConfigureKestrel(options =>
+//{
+//    options.ListenAnyIP(3000, listenOptions =>
+//    {
+//        listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
+//    });
+//});
 
 var app = builder.Build();
 

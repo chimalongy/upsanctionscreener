@@ -16,7 +16,7 @@ namespace Upsanctionscreener.Classess.Utils
         public static async Task<IEnumerable<object>> GetAllUsersAsync(AppDbContext db)
         {
             return await db.SanctionScanUsers
-                .OrderByDescending(u => u.CreatedAt)
+                .OrderByDescending(u => u.CreatedAt ?? DateTime.MinValue)
                 .Select(u => new
                 {
                     u.Id,
