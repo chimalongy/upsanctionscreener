@@ -34,6 +34,11 @@
         to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
+    @@keyframes scanModalIn {
+        from { opacity: 0; transform: translateY(24px) scale(0.96); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
     /* ── Tab styles ── */
     .result-tab {
         position: relative;
@@ -104,17 +109,49 @@
         }
     }
 
-    /* Modal drag handle for mobile */
-    .modal-drag-handle {
-        width: 36px; height: 4px;
-        background: #e5e7eb; border-radius: 2px;
-        margin: 0.6rem auto 0;
-        flex-shrink: 0;
+    /* ── Scan complete modal ── */
+    .scan-modal-overlay {
+        display: none;
+        position: fixed; inset: 0; z-index: 10000;
+        background: rgba(0,0,0,0.5);
+        align-items: center; justify-content: center;
+        padding: 1rem;
     }
-    @@media (min-width: 640px) { .modal-drag-handle { display: none; } }
+    .scan-modal-overlay.open { display: flex; }
 
-    /* Dark mode modal */
+    .scan-modal-box {
+        background: #fff;
+        border-radius: 1.5rem;
+        width: 100%;
+        max-width: 340px;
+        padding: 2rem 1.5rem 1.75rem;
+        display: flex; flex-direction: column; align-items: center;
+        text-align: center;
+        animation: scanModalIn 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08);
+    }
+
+    .scan-success-ring {
+        width: 72px; height: 72px; border-radius: 50%;
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 0 0 8px #ecfdf5;
+    }
+
+    @@keyframes checkDraw {
+        from { stroke-dashoffset: 40; opacity: 0; }
+        to   { stroke-dashoffset: 0;  opacity: 1; }
+    }
+    .check-path {
+        stroke-dasharray: 40;
+        stroke-dashoffset: 40;
+        animation: checkDraw 0.35s ease 0.15s forwards;
+    }
+
     @@media (prefers-color-scheme: dark) {
+        .scan-modal-box { background: #1e1e2e; color: #e5e7eb; }
+        .scan-success-ring { background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); box-shadow: 0 0 0 8px #022c22; }
         .modal-box { background: #1e1e2e; color: #e5e7eb; }
         .modal-header { border-bottom-color: #2d2d3f !important; }
         .modal-body { scrollbar-color: #3f3f5a transparent; }
@@ -126,6 +163,15 @@
         .modal-type-badge { background: #2d2d3f !important; color: #9ca3af !important; }
         .modal-drag-handle { background: #3f3f5a; }
     }
+
+    /* Modal drag handle for mobile */
+    .modal-drag-handle {
+        width: 36px; height: 4px;
+        background: #e5e7eb; border-radius: 2px;
+        margin: 0.6rem auto 0;
+        flex-shrink: 0;
+    }
+    @@media (min-width: 640px) { .modal-drag-handle { display: none; } }
 
     .modal-header {
         display: flex; align-items: flex-start; justify-content: space-between;
@@ -358,6 +404,43 @@
     </div>
 </div>
 
+@* ── Report Bar (now ABOVE results) ── *@
+<div id="reportBar"
+     class="hidden flex items-center justify-between gap-3
+            bg-indigo-50 border border-indigo-200 rounded-2xl
+            px-4 py-3 mb-3 shadow-sm">
+    <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor"
+                 stroke-width="2" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <polyline points="9 15 12 18 15 15"/>
+            </svg>
+        </div>
+        <div class="min-w-0">
+            <p class="text-xs font-semibold text-indigo-900 leading-tight">Screening report ready</p>
+            <p class="text-[10px] text-indigo-500 truncate">PDF generated for this search</p>
+        </div>
+    </div>
+    <a id="reportDownloadBtn"
+       href="#"
+       download
+       class="flex-shrink-0 flex items-center gap-1.5
+              bg-indigo-600 hover:bg-indigo-700 text-white
+              text-xs font-medium px-3 py-1.5 rounded-lg
+              transition-colors shadow-sm">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor"
+             stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download
+    </a>
+</div>
+
 @* ── Results area ── *@
 <div id="resultsArea" class="hidden fade-up fade-up-3">
     <div class="bg-surface-card border border-border rounded-2xl shadow-sm mb-4 overflow-hidden">
@@ -412,6 +495,44 @@
         <path d="m21 21-4.35-4.35" />
     </svg>
     <p class="text-sm">Select a search type and enter a value to begin screening.</p>
+</div>
+
+
+@* ══════════════════════════════════════════════════════════════════
+   SCAN COMPLETE MODAL
+   ══════════════════════════════════════════════════════════════════ *@
+<div id="scanCompleteModal" class="scan-modal-overlay" onclick="handleScanOverlayClick(event)">
+    <div class="scan-modal-box" onclick="event.stopPropagation()">
+        <div class="scan-success-ring">
+            <svg width="32" height="32" fill="none" stroke="#059669" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <path class="check-path" d="M5 13l4 4L19 7"/>
+            </svg>
+        </div>
+        <h2 class="text-text-primary font-bold text-lg mb-1 leading-snug">Scan Complete</h2>
+        <p class="text-text-secondary text-sm mb-5 leading-relaxed">
+            Your screening report is ready to download.
+        </p>
+        <a id="scanModalDownloadBtn"
+           href="#"
+           download
+           class="w-full flex items-center justify-center gap-2
+                  bg-blue-600 hover:bg-blue-700 text-white
+                  font-semibold text-sm px-5 py-3 rounded-xl
+                  transition-colors shadow-sm mb-3">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download Report
+        </a>
+        <button onclick="closeScanModal()"
+                class="w-full py-2.5 text-sm font-medium text-text-secondary
+                       hover:text-text-primary hover:bg-surface rounded-xl transition-colors">
+            View Results
+        </button>
+    </div>
 </div>
 
 
@@ -580,10 +701,31 @@
         if (e.target === document.getElementById(id)) closeModal(id);
     }
 
+    // ── scan complete modal ────────────────────────────────────────────────────
+
+    function openScanModal(downloadUrl) {
+        const btn = document.getElementById('scanModalDownloadBtn');
+        if (btn) btn.href = downloadUrl || '#';
+        const overlay = document.getElementById('scanCompleteModal');
+        overlay.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeScanModal() {
+        const overlay = document.getElementById('scanCompleteModal');
+        overlay.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    function handleScanOverlayClick(e) {
+        if (e.target === document.getElementById('scanCompleteModal')) closeScanModal();
+    }
+
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             closeModal('sanctionModal');
             closeModal('pepModal');
+            closeScanModal();
         }
     });
 
@@ -877,6 +1019,7 @@
         setError(null);
         document.getElementById('screenBtn').disabled = true;
         document.getElementById('resultsArea').classList.add('hidden');
+        document.getElementById('reportBar').classList.add('hidden');
         document.getElementById('emptyState').classList.add('hidden');
         document.getElementById('spinner').classList.remove('hidden');
 
@@ -948,10 +1091,27 @@
                 mediaEmpty.classList.remove('hidden');
             }
 
+            // ── Report bar + scan complete modal ───────────────────────────────
+            const reportFileName = data.reportFileName ?? '';
+            const reportBar      = document.getElementById('reportBar');
+            const reportBtn      = document.getElementById('reportDownloadBtn');
+
+            if (reportFileName && reportBar && reportBtn) {
+                const downloadUrl = `/Dashboard/DownloadReport?fileName=${encodeURIComponent(reportFileName)}`;
+                reportBtn.href = downloadUrl;
+                reportBar.classList.remove('hidden');
+                // Show scan-complete modal
+                openScanModal(downloadUrl);
+            } else if (reportBar) {
+                reportBar.classList.add('hidden');
+                // Still show completion modal even without a report
+                openScanModal(null);
+            }
+
             // Jump to first tab with results
-            const firstHit = sanctions.length   ? 'sanctions'
-                           : peps.length         ? 'peps'
-                           : adverseMedia.length ? 'adverseMedia'
+            const firstHit = sanctions.length    ? 'sanctions'
+                           : peps.length          ? 'peps'
+                           : adverseMedia.length  ? 'adverseMedia'
                            : 'sanctions';
             switchTab(firstHit);
 
@@ -976,6 +1136,7 @@
         document.getElementById('searchInput').value = '';
         setError(null);
         document.getElementById('resultsArea').classList.add('hidden');
+        document.getElementById('reportBar').classList.add('hidden');
         document.getElementById('emptyState').classList.remove('hidden');
         document.getElementById('spinner').classList.add('hidden');
         _sanctionResults = [];

@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml.Bibliography;
+﻿
+using DocumentFormat.OpenXml.Bibliography;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,7 @@ using Upsanctionscreener.Models;
 using Upsanctionscreener.Models.ViewModels;
 using Upsanctionscreener.Services;
 
+
 using static Upsanctionscreener.Classess.Search.PEPBKTree;
 
 namespace Upsanctionscreener.Controllers
@@ -30,6 +32,7 @@ namespace Upsanctionscreener.Controllers
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly SanctionDownloader _downloader;
         private readonly TargetSchedulerService _targetScheduler;
+       
         public DashboardController(AppDbContext db, IConfiguration config,  UpSanctionSettingsService settingsService, IServiceScopeFactory scopeFactory, SanctionDownloader downloader, TargetSchedulerService targetScheduler)  
         {
             _db = db;
@@ -39,6 +42,7 @@ namespace Upsanctionscreener.Controllers
             _scopeFactory = scopeFactory;
             _downloader = downloader;
             _targetScheduler = targetScheduler;
+            
         }
 
         // ══════════════════════════════════════════════════════════════════════
@@ -1354,9 +1358,15 @@ return BadRequest(new { message = error });
             }
         }
 
+
+
         // ══════════════════════════════════════════════════════════════════════
         // SINGLE SCREEN API
         // ══════════════════════════════════════════════════════════════════════
+
+        // Constructor / field injection needed:
+        //   private readonly IConverter _pdfConverter;   // DinkToPdf singleton — register in Program.cs:
+        //   builder.Services.AddSingleton(typeof(IConverter), new SynchronizedConverter(new PdfTools()));
 
         [HttpPost]
         [Route("Dashboard/SingleScreen")]
@@ -1369,16 +1379,14 @@ return BadRequest(new { message = error });
             if (!validFields.Contains(req.SearchField?.ToLower()))
                 return BadRequest(new { success = false, message = "Invalid search field." });
 
+            // ── Sanctions ──────────────────────────────────────────────────────────
             var filePath = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase", "basesource", "UPSanctionDB.xlsx");
             var sanctionList = SanctionExcelReader.LoadFromExcel(filePath);
-            var sanctionMatches = new List<(string EntryId, string Matched, double Similarity, int EditDistance)>();
 
-            var field = (req.SearchField ?? "name").ToLowerInvariant();
-
-            var result = await Scanner.SingleScanScreener(req.Threshold??0.9,req.SearchTerm, req.SearchField, _scopeFactory);
-
+            var result = await Scanner.SingleScanScreener(req.Threshold ?? 0.9, req.SearchTerm, req.SearchField, _scopeFactory);
             dynamic response = result;
-            sanctionMatches = response.data;
+            List<(string EntryId, string Matched, double Similarity, int EditDistance)> sanctionMatches = response.data;
+
             var completeSanctionList = sanctionMatches
                 .Select(c => new { entry = sanctionList.FirstOrDefault(x => x.ID == c.EntryId), c.Similarity })
                 .Where(x => x.entry is not null)
@@ -1388,6 +1396,7 @@ return BadRequest(new { message = error });
                     sanction_item = x.entry!
                 }).ToList();
 
+            // ── PEPs ───────────────────────────────────────────────────────────────
             var pepEntries = GlobalFunctions.FetchAllPeps();
             var pepTree = new PEPBKTree.PEPSanctionBKTree();
             pepTree.Load(pepEntries);
@@ -1401,32 +1410,110 @@ return BadRequest(new { message = error });
                     pep_item = x.entry!
                 }).ToList();
 
+            // ── Adverse media ──────────────────────────────────────────────────────
             var adverseMediaResults = await GoogleNewsRssService.SearchAsync(req.SearchTerm);
             var adverseMediaSettings = await _settingsService.GetAdverseMediaFilterAsync();
             List<string> adverseMediaFilters = adverseMediaSettings.Data;
 
-            var filteredAdverseMedia = adverseMediaResults.Where(item =>
-                !adverseMediaFilters.Any(filter =>
-                    item.Title.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-                    item.Summary.Contains(filter, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
+            //var filteredAdverseMedia = adverseMediaResults.Where(item =>
+            //    adverseMediaFilters.Any(filter =>
+            //        (item.Title ?? "").Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+            //        (item.Summary ?? "").Contains(filter, StringComparison.OrdinalIgnoreCase)))
+            //    .ToList();
+
+
+            var filteredAdverseMedia = new List<RssNewsItem>();
+
+            for (int i = 0; i < adverseMediaResults.Count; i++)
+            {
+                var item = adverseMediaResults[i];
+
+                bool matches = false;
+
+                for (int j = 0; j < adverseMediaFilters.Count; j++)
+                {
+                    var filter = adverseMediaFilters[j];
+
+                    if ((item.Title ?? "").Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                        (item.Summary ?? "").Contains(filter, StringComparison.OrdinalIgnoreCase))
+                    {
+                        matches = true;
+                        break;
+                    }
+                }
+
+                if (matches)
+                {
+                    filteredAdverseMedia.Add(item);
+                }
+            }
+
+            // ── Generate PDF report ────────────────────────────────────────────────
+            string reportFileName = string.Empty;
+            try
+            {
+                reportFileName = await SingleScreenReportGenerator.GenerateAsync(
+    req.SearchTerm,
+    req.SearchField ?? "name",
+    req.Threshold ?? 0.9,
+    completeSanctionList,
+    completePepList,
+    filteredAdverseMedia);
+            }
+            catch (Exception ex)
+            {
+                // Non-fatal — log and continue; frontend receives empty reportFileName
+                // _logger.LogError(ex, "Failed to generate scan PDF report for term '{Term}'", req.SearchTerm);
+
+                Console.WriteLine($"[PDF ERROR] {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                // Return the error in dev so you can see it
+                reportFileName = $"ERROR: {ex.Message}";
 
 
 
+
+            }
 
             return Json(new
             {
                 success = true,
                 searchTerm = req.SearchTerm,
                 searchField = req.SearchField,
+                reportFileName,                    // ← filename only, e.g. "scan-report_JohnDoe_20250518_120000.pdf"
                 sanctions = completeSanctionList,
                 peps = completePepList,
                 adverseMedia = filteredAdverseMedia
             });
         }
 
+        // ══════════════════════════════════════════════════════════════════════
+        // REPORT DOWNLOAD ENDPOINT
+        // ══════════════════════════════════════════════════════════════════════
 
+        [HttpGet]
+        [Route("Dashboard/DownloadReport")]
+        public IActionResult DownloadReport([FromQuery] string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return BadRequest("No file name specified.");
 
+            // Reject any path traversal attempts — accept a bare filename only
+            if (fileName.Contains('/') || fileName.Contains('\\') || fileName.Contains(".."))
+                return BadRequest("Invalid file name.");
+
+            var reportsDir = Path.Combine(GlobalVariables.root_folder, "reports", "scan-reports");
+            var fullPath = Path.Combine(reportsDir, fileName);
+
+            // Double-check the resolved path is still inside the reports folder
+            if (!Path.GetFullPath(fullPath).StartsWith(Path.GetFullPath(reportsDir), StringComparison.OrdinalIgnoreCase))
+                return Forbid();
+
+            if (!System.IO.File.Exists(fullPath))
+                return NotFound("Report not found.");
+
+            return PhysicalFile(fullPath, "application/pdf", fileName);
+        }
 
 
 
@@ -1435,7 +1522,9 @@ return BadRequest(new { message = error });
         // ══════════════════════════════════════════════════════════════════════
         // MULTI-SCAN API
         // ══════════════════════════════════════════════════════════════════════
-       
+
+
+
 
         [HttpPost]
         [IgnoreAntiforgeryToken]
@@ -1773,6 +1862,99 @@ return BadRequest(new { message = error });
                 return BadRequest(new { success = false, message = ex.Message });
             }
         }
+
+
+
+
+
+        // ══════════════════════════════════════════════════════════════════════
+        // DAILY DOWNLOADS — add these methods to DashboardController.cs
+        // ══════════════════════════════════════════════════════════════════════
+
+        // ── View route ───────────────────────────────────────────────────────
+        [Route("Dashboard/Reports/DailyDownloads")]
+        public IActionResult DailyDownloads() =>
+            View("~/Views/Dashboard/Reports/DailyDownloads.cshtml");
+
+
+        // ── GET /Dashboard/Reports/DailyDownloads/GetLogs ────────────────────
+        // Lists every .log / .logs file in Logs/DailyDownloadLogs.
+        // Response: { logs: [ { fileName, fileSizeKb, createdAt } ] }
+        [HttpGet]
+        [Route("Dashboard/Reports/DailyDownloads/GetLogs")]
+        public IActionResult DailyDownloadsGetLogs()
+        {
+            try
+            {
+                var logsDir = Path.Combine(GlobalVariables.root_folder, "Logs", "UPDatabaseDownloadLogs");
+
+                if (!Directory.Exists(logsDir))
+                    return Json(new { logs = Array.Empty<object>() });
+
+                var logFiles = Directory
+                    .EnumerateFiles(logsDir, "*.*", SearchOption.TopDirectoryOnly)
+                    .Where(f =>
+                    {
+                        var ext = Path.GetExtension(f).ToLowerInvariant();
+                        return ext == ".log" || ext == ".logs";
+                    })
+                    .OrderByDescending(System.IO.File.GetLastWriteTimeUtc)
+                    .Select(f =>
+                    {
+                        var info = new FileInfo(f);
+                        return new
+                        {
+                            fileName = info.Name,
+                            fileSizeKb = (int)Math.Ceiling(info.Length / 1024.0),
+                            createdAt = info.LastWriteTimeUtc
+                        };
+                    })
+                    .ToList();
+
+                return Json(new { logs = logFiles });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+
+        // ── GET /Dashboard/Reports/DailyDownloads/ReadLog?fileName=... ───────
+        // Returns the full text of a .log / .logs file from Logs/DailyDownloadLogs.
+        // Response: { content: "..." }
+        [HttpGet]
+        [Route("Dashboard/Reports/DailyDownloads/ReadLog")]
+        public async Task<IActionResult> DailyDownloadsReadLog([FromQuery] string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return BadRequest(new { success = false, message = "fileName is required." });
+
+            var ext = Path.GetExtension(fileName).ToLowerInvariant();
+            if (ext != ".log" && ext != ".logs")
+                return BadRequest(new { success = false, message = "Only .log and .logs files may be read." });
+
+            if (fileName.IndexOfAny(new[] { '/', '\\' }) >= 0 || fileName.Contains(".."))
+                return BadRequest(new { success = false, message = "Invalid file name." });
+
+            var logsDir = Path.GetFullPath(Path.Combine(GlobalVariables.root_folder, "Logs", "UPDatabaseDownloadLogs"));
+            var resolvedPath = Path.GetFullPath(Path.Combine(logsDir, fileName));
+
+            if (!resolvedPath.StartsWith(logsDir, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { success = false, message = "Invalid file path." });
+
+            if (!System.IO.File.Exists(resolvedPath))
+                return NotFound(new { success = false, message = $"Log file not found: {fileName}" });
+
+            var content = await System.IO.File.ReadAllTextAsync(resolvedPath);
+            return Json(new { content });
+        }
+
+
+
+
+
+
 
 
     }

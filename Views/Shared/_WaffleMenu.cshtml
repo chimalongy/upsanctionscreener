@@ -81,6 +81,7 @@
         @* ── Reports ── *@
         <p class="text-[10px] text-text-muted font-medium uppercase tracking-widest px-1 mb-2">Reports</p>
         <div class="grid grid-cols-3 gap-1 mb-4">
+
             <a href="/Dashboard/Reports/TargetScanReports"
                    class="nav-tile @(ViewData["ActivePage"]?.ToString() == "TargetScanReports" ? "active" : "")">
                 <svg class="w-6 h-6 text-text-muted" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -90,6 +91,17 @@
                 </svg>
                 <span class="text-[10px] text-text-muted">Target Scans</span>
             </a>
+
+            <a href="/Dashboard/Reports/DailyDownloads"
+                   class="nav-tile @(ViewData["ActivePage"]?.ToString() == "DailyDownloads" ? "active" : "")">
+                <svg class="w-6 h-6 text-text-muted" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span class="text-[10px] text-text-muted text-center">Daily Downloads</span>
+            </a>
+
         </div>
 
         @* ── Settings (Admin only) ── *@

@@ -1,3 +1,5 @@
+using DinkToPdf;
+using DinkToPdf.Contracts;
 using DocumentFormat.OpenXml.Office2010.CustomUI;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -15,7 +17,7 @@ using Upsanctionscreener.Services;
 using Upsanctionscreener.Services;
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-
+await SingleScreenReportGenerator.EnsureBrowserAsync();
 //List<Merchant> merchants = MerchantGenerator.GenerateMerchants(500);
 //await MerchantGenerator.InsertMerchantsAsync(
 //DatabaseType.Postgres,
@@ -112,13 +114,13 @@ builder.Services.AddHttpClient<SanctionDownloader>(client =>
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<UpSanctionSettingsService>();
 
-//builder.WebHost.ConfigureKestrel(options =>
-//{
-//    options.ListenAnyIP(3000, listenOptions =>
-//    {
-//        listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
-//    });
-//});
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(3000, listenOptions =>
+    {
+        listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
+    });
+});
 
 var app = builder.Build();
 
