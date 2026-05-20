@@ -103,7 +103,7 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
             List<TargetScanResult> results,
             string scanType)
         {
-            bool IsMatch(TargetScanResult r) => r.Hits.Count > 0;
+            bool IsMatch(TargetScanResult r) => r.Hits != null && r.Hits.Count > 0;
 
             var matchedRows = results
                 .Where(r => IsMatch(r))
@@ -131,25 +131,32 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
                     : null;
 
                 ws.Cell(row, 1).Value = scanType;
-                ws.Cell(row, 2).Value = item.Result.RowId;
+                ws.Cell(row, 2).Value = item.Result.RowId ?? string.Empty;
                 ws.Cell(row, 3).Value = item.Result.Name ?? string.Empty;
                 ws.Cell(row, 4).Value = item.Result.Address ?? string.Empty;
                 ws.Cell(row, 5).Value = item.Result.Email ?? string.Empty;
                 ws.Cell(row, 6).Value = item.Result.Phone ?? string.Empty;
-                ws.Cell(row, 7).Value = item.TopHit.MatchedName;
+
+                // Matched Field: shows which source column produced the match
+                // Falls back to TopHit.MatchedName if MatchedColumn is not available
+                string matchedField = !string.IsNullOrEmpty(item.Result.MatchedColumn)
+                    ? item.Result.MatchedColumn
+                    : item.TopHit.MatchedName ?? string.Empty;
+                ws.Cell(row, 7).Value = matchedField;
+
                 ws.Cell(row, 8).Value = similarityPct;
                 ws.Cell(row, 8).Style.NumberFormat.Format = "0.00";
                 ws.Cell(row, 9).Value = candidatesCount;
 
                 if (entry != null)
                 {
-                    ws.Cell(row, 10).Value = entry.ID;
-                    ws.Cell(row, 11).Value = entry.SubjectType;
-                    ws.Cell(row, 12).Value = entry.Source;
-                    ws.Cell(row, 13).Value = entry.ReferenceNumber;
-                    ws.Cell(row, 14).Value = entry.DateDesignated;
-                    ws.Cell(row, 15).Value = entry.SanctionImposed;
-                    ws.Cell(row, 16).Value = entry.Comments;
+                    ws.Cell(row, 10).Value = entry.ID ?? string.Empty;
+                    ws.Cell(row, 11).Value = entry.SubjectType ?? string.Empty;
+                    ws.Cell(row, 12).Value = entry.Source ?? string.Empty;
+                    ws.Cell(row, 13).Value = entry.ReferenceNumber ?? string.Empty;
+                    ws.Cell(row, 14).Value = entry.DateDesignated ?? string.Empty;
+                    ws.Cell(row, 15).Value = entry.SanctionImposed ?? string.Empty;
+                    ws.Cell(row, 16).Value = entry.Comments ?? string.Empty;
                     ws.Cell(row, 17).Value = entry.CallSign ?? string.Empty;
                     ws.Cell(row, 18).Value = entry.VesselType ?? string.Empty;
                     ws.Cell(row, 19).Value = entry.VesselFlag ?? string.Empty;
@@ -157,12 +164,12 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
                     ws.Cell(row, 21).Value = entry.GrossRegisteredTonnage ?? string.Empty;
 
                     // List<string> fields — join with " | " for readability in Excel
-                    ws.Cell(row, 22).Value = string.Join(" | ", entry.Names);
-                    ws.Cell(row, 23).Value = string.Join(" | ", entry.Addresses);
-                    ws.Cell(row, 24).Value = string.Join(" | ", entry.PhoneNumbers);
-                    ws.Cell(row, 25).Value = string.Join(" | ", entry.EmailAddresses);
-                    ws.Cell(row, 26).Value = string.Join(" | ", entry.Positions);
-                    ws.Cell(row, 27).Value = string.Join(" | ", entry.IdList);
+                    ws.Cell(row, 22).Value = entry.Names != null ? string.Join(" | ", entry.Names) : string.Empty;
+                    ws.Cell(row, 23).Value = entry.Addresses != null ? string.Join(" | ", entry.Addresses) : string.Empty;
+                    ws.Cell(row, 24).Value = entry.PhoneNumbers != null ? string.Join(" | ", entry.PhoneNumbers) : string.Empty;
+                    ws.Cell(row, 25).Value = entry.EmailAddresses != null ? string.Join(" | ", entry.EmailAddresses) : string.Empty;
+                    ws.Cell(row, 26).Value = entry.Positions != null ? string.Join(" | ", entry.Positions) : string.Empty;
+                    ws.Cell(row, 27).Value = entry.IdList != null ? string.Join(" | ", entry.IdList) : string.Empty;
                 }
 
                 ws.Cell(row, 8).Style.Fill.BackgroundColor = XLColor.FromHtml("#C6EFCE");
@@ -174,7 +181,7 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
             foreach (var result in noMatchRows)
             {
                 ws.Cell(row, 1).Value = scanType;
-                ws.Cell(row, 2).Value = result.RowId;
+                ws.Cell(row, 2).Value = result.RowId ?? string.Empty;
                 ws.Cell(row, 3).Value = result.Name ?? string.Empty;
                 ws.Cell(row, 4).Value = result.Address ?? string.Empty;
                 ws.Cell(row, 5).Value = result.Email ?? string.Empty;
@@ -218,7 +225,7 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
         {
             var ws = workbook.Worksheets.Add("Summary");
 
-            bool IsMatch(TargetScanResult r) => r.Hits.Count > 0;
+            bool IsMatch(TargetScanResult r) => r.Hits != null && r.Hits.Count > 0;
 
             int matched = results.Count(r => IsMatch(r));
             int highConf = results.Count(r => IsMatch(r) && r.Hits.Any(h => h.Similarity * 100 >= 95));

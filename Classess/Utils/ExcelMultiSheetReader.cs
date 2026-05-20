@@ -66,6 +66,31 @@ namespace Upsanctionscreener.Classess.Utils
             }
         }
 
+
+        public ExcelReadResult ReadTargetExcelFile(
+            string filePath,
+            string idColumnName,
+            List<FieldMapping> otherFields,
+            bool generateId = false)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(filePath))
+                    return new ExcelReadResult { Success = false, Error = "File path is not provided." };
+
+                if (!File.Exists(filePath))
+                    return new ExcelReadResult { Success = false, Error = $"File not found: {filePath}" };
+
+                using var stream = File.OpenRead(filePath);
+
+                return ProcessTargetExcel(stream, idColumnName, otherFields, generateId);
+            }
+            catch (Exception ex)
+            {
+                return new ExcelReadResult { Success = false, Error = ex.Message };
+            }
+        }
+
         // =========================
         // SHARED LOGIC
         // =========================
@@ -196,6 +221,133 @@ namespace Upsanctionscreener.Classess.Utils
 
             return new ExcelReadResult { Success = true, Data = combinedTable };
         }
+
+
+
+        private ExcelReadResult ProcessTargetExcel(
+     Stream stream,
+     string idColumnName,
+     List<FieldMapping> otherFields,
+     bool generateId)
+        {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+            using var reader = ExcelReaderFactory.CreateReader(stream);
+
+            var dataSet = reader.AsDataSet(new ExcelDataSetConfiguration()
+            {
+                ConfigureDataTable = (_) => new ExcelDataTableConfiguration()
+                {
+                    UseHeaderRow = true
+                }
+            });
+
+            if (dataSet == null || dataSet.Tables.Count == 0)
+                return new ExcelReadResult { Success = false, Error = "Excel file contains no sheets." };
+
+            DataTable? combinedTable = null;
+            bool foundValidSheet = false;
+            int autoId = 1;
+
+            foreach (DataTable sheet in dataSet.Tables)
+            {
+                if (sheet.Columns.Count == 0)
+                    continue;
+
+                bool hasIdColumn = !generateId && sheet.Columns.Contains(idColumnName);
+
+                if (!generateId && !hasIdColumn)
+                    continue;
+
+                // Check that all otherFields exist in this sheet
+                bool allFieldsExist = otherFields.All(f => sheet.Columns.Contains(f.ColumnName));
+                if (!allFieldsExist)
+                    continue;
+
+                // First valid sheet — build combined table schema
+                if (combinedTable == null)
+                {
+                    combinedTable = new DataTable();
+                    combinedTable.Columns.Add("SheetName", typeof(string));
+
+                    if (generateId)
+                    {
+                        combinedTable.Columns.Add("ID", typeof(string));
+                    }
+                    else
+                    {
+                        combinedTable.Columns.Add(idColumnName, typeof(string));
+                    }
+
+                    // Add all other fields using their ORIGINAL column names (no mapping)
+                    foreach (var field in otherFields)
+                    {
+                        if (!combinedTable.Columns.Contains(field.ColumnName))
+                            combinedTable.Columns.Add(field.ColumnName, typeof(string));
+                    }
+                }
+
+                foundValidSheet = true;
+
+                foreach (DataRow row in sheet.Rows)
+                {
+                    // Skip rows where ID column is empty (when not auto-generating)
+                    if (!generateId)
+                    {
+                        var idValue = row[idColumnName]?.ToString()?.Trim();
+                        if (string.IsNullOrWhiteSpace(idValue))
+                            continue;
+                    }
+
+                    // Skip rows where ALL otherFields are empty
+                    bool allOtherFieldsEmpty = otherFields.All(f =>
+                        string.IsNullOrWhiteSpace(row[f.ColumnName]?.ToString()));
+                    if (allOtherFieldsEmpty)
+                        continue;
+
+                    DataRow newRow = combinedTable.NewRow();
+                    newRow["SheetName"] = sheet.TableName;
+
+                    if (generateId)
+                    {
+                        newRow["ID"] = autoId++;
+                    }
+                    else
+                    {
+                        newRow[idColumnName] = row[idColumnName]?.ToString()?.Trim();
+                    }
+
+                    // Copy all other fields using original column names
+                    foreach (var field in otherFields)
+                    {
+                        newRow[field.ColumnName] = row[field.ColumnName]?.ToString()?.Trim();
+                    }
+
+                    combinedTable.Rows.Add(newRow);
+                }
+            }
+
+            if (!foundValidSheet || combinedTable == null)
+            {
+                var requiredColumns = string.Join(", ", otherFields.Select(f => f.ColumnName));
+                return new ExcelReadResult
+                {
+                    Success = false,
+                    Error = generateId
+                        ? $"No sheet contains all required fields: {requiredColumns}."
+                        : $"No sheet contains ID column '{idColumnName}' and all fields: {requiredColumns}."
+                };
+            }
+
+            return new ExcelReadResult { Success = true, Data = combinedTable };
+        }
+
+
+
+
+
+
+
 
         // =========================
         // TABLE CREATION — specific scan column

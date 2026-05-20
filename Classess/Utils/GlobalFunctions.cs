@@ -268,6 +268,62 @@ namespace Upsanctionscreener.Classess.Utils
             return dataTable;
         }
 
+
+
+        public static DataTable NormaLizeNamesinTargetColumn(
+    DataTable dataTable,
+    List<FieldMapping> mappings,
+    string mappedTo)
+        {
+            if (dataTable == null)
+                throw new ArgumentNullException(nameof(dataTable));
+
+            if (mappings == null || mappings.Count == 0)
+                throw new ArgumentException("Mappings cannot be null or empty.", nameof(mappings));
+
+            if (string.IsNullOrWhiteSpace(mappedTo))
+                throw new ArgumentException("MappedTo value cannot be empty.", nameof(mappedTo));
+
+            // Find all column names that map to the specified 'mappedTo' value
+            var targetColumns = mappings
+                .Where(m => string.Equals(m.MatchAs, mappedTo, StringComparison.OrdinalIgnoreCase))
+                .Select(m => m.ColumnName)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (targetColumns.Count == 0)
+                throw new ArgumentException($"No mappings found for '{mappedTo}'.", nameof(mappedTo));
+
+            // Validate all target columns exist in the DataTable
+            foreach (var columnName in targetColumns)
+            {
+                if (!dataTable.Columns.Contains(columnName))
+                    throw new ArgumentException($"Column '{columnName}' does not exist in the DataTable.");
+            }
+
+            // Normalize values in all target columns
+            foreach (DataRow row in dataTable.Rows)
+            {
+                foreach (var columnName in targetColumns)
+                {
+                    if (row[columnName] != DBNull.Value)
+                    {
+                        string original = row[columnName]?.ToString();
+                        row[columnName] = NormalizeString(original);
+                    }
+                    else
+                    {
+                        row[columnName] = string.Empty;
+                    }
+                }
+            }
+
+            return dataTable;
+        }
+
+
+
+
         public static List<SanctionEntry> NormalizeSanctionListNames(List<SanctionEntry> sanctionList)
         {
             if (sanctionList == null || sanctionList.Count == 0)
@@ -413,10 +469,98 @@ namespace Upsanctionscreener.Classess.Utils
         }
 
 
+        //   public static TaskFileReadResult ReadTargetFile(
+        //string file_path,
+        //string idColumnName,
+        //List<FieldMapping> otherFields)
+        //   {
+        //       TaskFileReadResult result = new TaskFileReadResult
+        //       {
+        //           Success = false,
+        //           Data = null,
+        //           Error = null
+        //       };
+
+
+
+        //       try
+        //       {
+        //           if (otherFields == null || otherFields.Count == 0)
+        //           {
+        //               result.Error = "No field mappings provided.";
+        //               return result;
+        //           }
+
+        //           ExcelMultiSheetReader excel_reader = new ExcelMultiSheetReader();
+        //           ExcelReadResult excel_result = excel_reader.ReadTargetExcelFile(file_path, idColumnName: idColumnName, otherFields);
+
+        //           if (!excel_result.Success || excel_result.Data == null)
+        //           {
+        //               result.Error = excel_result.Error ?? "Failed to read Excel file.";
+        //               return result;
+        //           }
+
+        //           DataTable source = excel_result.Data;
+
+        //           // Validate all mapped column names exist in the source before building output
+        //           foreach (var field in otherFields)
+        //           {
+        //               if (!source.Columns.Contains(field.ColumnName))
+        //               {
+        //                   result.Error = $"Mapped column '{field.ColumnName}' was not found in the Excel file.";
+        //                   return result;
+        //               }
+        //           }
+
+        //           // Build output DataTable: ID + only the mapped fields (name, address, email, phone)
+        //           DataTable mapped = new DataTable();
+        //           mapped.Columns.Add("ID", typeof(string));
+
+        //           var validMatchAs = new HashSet<string>(
+        //               new[] { "name", "address", "email", "phone" },
+        //               StringComparer.OrdinalIgnoreCase);
+
+        //           foreach (var field in otherFields)
+        //           {
+        //               if (validMatchAs.Contains(field.MatchAs))
+        //                   mapped.Columns.Add(field.MatchAs, typeof(string));
+        //           }
+
+        //           int autoId = 1;
+        //           foreach (DataRow sourceRow in source.Rows)
+        //           {
+        //               DataRow mappedRow = mapped.NewRow();
+
+        //               mappedRow["ID"] = sourceRow[idColumnName];
+
+
+
+        //               foreach (var field in otherFields)
+        //               {
+        //                   if (validMatchAs.Contains(field.MatchAs))
+        //                       mappedRow[field.MatchAs] = sourceRow[field.ColumnName]?.ToString() ?? "";
+        //               }
+
+        //               mapped.Rows.Add(mappedRow);
+        //           }
+
+        //           result.Success = true;
+        //           result.Data = mapped;
+        //       }
+        //       catch (Exception ex)
+        //       {
+        //           result.Success = false;
+        //           result.Error = ex.Message;
+        //       }
+
+        //       return result;
+        //   }
+
+
         public static TaskFileReadResult ReadTargetFile(
-     string file_path,
-     string idColumnName,
-     List<FieldMapping> otherFields)
+    string file_path,
+    string idColumnName,
+    List<FieldMapping> otherFields)
         {
             TaskFileReadResult result = new TaskFileReadResult
             {
@@ -424,8 +568,6 @@ namespace Upsanctionscreener.Classess.Utils
                 Data = null,
                 Error = null
             };
-
-            
 
             try
             {
@@ -436,7 +578,7 @@ namespace Upsanctionscreener.Classess.Utils
                 }
 
                 ExcelMultiSheetReader excel_reader = new ExcelMultiSheetReader();
-                ExcelReadResult excel_result = excel_reader.ReadExcelFromPath(file_path, idColumnName: idColumnName, scanColumnName: "");
+                ExcelReadResult excel_result = excel_reader.ReadTargetExcelFile(file_path, idColumnName: idColumnName, otherFields);
 
                 if (!excel_result.Success || excel_result.Data == null)
                 {
@@ -446,7 +588,7 @@ namespace Upsanctionscreener.Classess.Utils
 
                 DataTable source = excel_result.Data;
 
-                // Validate all mapped column names exist in the source before building output
+                // Validate all mapped column names exist in the source
                 foreach (var field in otherFields)
                 {
                     if (!source.Columns.Contains(field.ColumnName))
@@ -456,40 +598,9 @@ namespace Upsanctionscreener.Classess.Utils
                     }
                 }
 
-                // Build output DataTable: ID + only the mapped fields (name, address, email, phone)
-                DataTable mapped = new DataTable();
-                mapped.Columns.Add("ID", typeof(string));
-
-                var validMatchAs = new HashSet<string>(
-                    new[] { "name", "address", "email", "phone" },
-                    StringComparer.OrdinalIgnoreCase);
-
-                foreach (var field in otherFields)
-                {
-                    if (validMatchAs.Contains(field.MatchAs))
-                        mapped.Columns.Add(field.MatchAs, typeof(string));
-                }
-
-                int autoId = 1;
-                foreach (DataRow sourceRow in source.Rows)
-                {
-                    DataRow mappedRow = mapped.NewRow();
-
-                    mappedRow["ID"] = sourceRow[idColumnName];
-
-
-
-                    foreach (var field in otherFields)
-                    {
-                        if (validMatchAs.Contains(field.MatchAs))
-                            mappedRow[field.MatchAs] = sourceRow[field.ColumnName]?.ToString() ?? "";
-                    }
-
-                    mapped.Rows.Add(mappedRow);
-                }
-
+                // Return the source DataTable directly — no mapping, no filtering
                 result.Success = true;
-                result.Data = mapped;
+                result.Data = source;
             }
             catch (Exception ex)
             {
@@ -499,6 +610,12 @@ namespace Upsanctionscreener.Classess.Utils
 
             return result;
         }
+
+
+
+
+
+
 
         public static DataTable DeduplicateDatatbaleById(DataTable table, string idColumnName)
         {

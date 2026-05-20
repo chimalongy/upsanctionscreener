@@ -111,7 +111,7 @@ namespace Upsanctionscreener.Classess.Utils
                     throw new ArgumentException("IdColumn is required.");
 
                 // ID column always aliased as "ID"
-                var columns = new List<string> { $"{Quote(settings.IdColumn)} AS ID" };
+                var columns = new List<string> { $"{Quote(settings.IdColumn)}" };
 
                 // Other fields aliased using their match_as value
                 if (settings.OtherFields != null && settings.OtherFields.Count > 0)
@@ -119,7 +119,7 @@ namespace Upsanctionscreener.Classess.Utils
                     foreach (var field in settings.OtherFields)
                     {
                         if (!string.IsNullOrWhiteSpace(field.ColumnName) && !string.IsNullOrWhiteSpace(field.MatchAs))
-                            columns.Add($"{Quote(field.ColumnName)} AS {field.MatchAs}");
+                            columns.Add($"{Quote(field.ColumnName)}");
                     }
                 }
 

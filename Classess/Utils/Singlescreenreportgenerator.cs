@@ -99,10 +99,9 @@
                 ? $"<img src='data:image/png;base64,{logoBase64}' style='width:32px;height:32px;object-fit:contain;border-radius:6px;' />"
                 : "<div style='width:32px;height:32px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;'><span style='font-size:14px;font-weight:900;color:#1e1b4b;'>UP</span></div>";
 
-            // ── Only first 3 of each ──
-            var top3Sanctions = sanctions.Take(3).ToList();
-            var top3Peps = peps.Take(3).ToList();
-            var top3Media = adverseMedia.Take(3).ToList();
+            // ── Only first 5 of each (wider columns allow more) ──
+            var top5Sanctions = sanctions.Take(5).ToList();
+            var top5Media = adverseMedia.Take(5).ToList();
 
             bool hasHits = sanctions.Count > 0 || peps.Count > 0;
 
@@ -151,8 +150,8 @@
   .verdict-clear .verdict-label { color: #15803d; }
   .verdict-hit   .verdict-label { color: #dc2626; }
 
-  /* ── 3-column match grid ── */
-  .matches-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 10px; }
+  /* ── 2-column match grid ── */
+  .matches-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
   .match-col { display: flex; flex-direction: column; gap: 0; }
 
   /* ── Section heading inside each column ── */
@@ -163,7 +162,6 @@
   }
   .sh-badge { font-size: 8px; font-weight: 700; padding: 1px 6px; border-radius: 999px; }
   .sh-badge.red   { background: #fee2e2; color: #b91c1c; }
-  .sh-badge.amber { background: #fef3c7; color: #92400e; }
   .sh-badge.blue  { background: #dbeafe; color: #1e40af; }
 
   /* ── Match cards ── */
@@ -177,7 +175,6 @@
   .card-badges { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 4px; }
   .badge       { font-size: 7.5px; padding: 1px 5px; border-radius: 999px; border: 1px solid #e5e7eb; color: #374151; background: #f9fafb; }
   .badge.red   { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
-  .badge.amber { background: #fffbeb; border-color: #fde68a; color: #92400e; }
   .kv-grid     { display: grid; grid-template-columns: 60px 1fr; row-gap: 2px; font-size: 8px; }
   .kv-label    { color: #6b7280; font-weight: 500; }
   .kv-val      { color: #111827; word-break: break-word; }
@@ -255,7 +252,7 @@
   </div>
 </div>");
 
-            // ── 3-column matches grid ────────────────────────────────────────
+            // ── 2-column matches grid ────────────────────────────────────────
             sb.Append("<div class='matches-grid'>");
 
             // ── Column 1: Sanction Matches ───────────────────────────────────
@@ -266,13 +263,13 @@
     <span class='sh-badge red'>{sanctions.Count}</span>
   </div>");
 
-            if (top3Sanctions.Count == 0)
+            if (top5Sanctions.Count == 0)
             {
                 sb.Append("<div class='empty-state'>No sanction matches found.</div>");
             }
             else
             {
-                foreach (var row in top3Sanctions)
+                foreach (var row in top5Sanctions)
                 {
                     var e = row.sanction_item;
                     if (e == null) continue;
@@ -301,8 +298,8 @@
 </div>");
                 }
 
-                if (sanctions.Count > 3)
-                    sb.Append($"<div class='more-note'>+ {sanctions.Count - 3} more match(es) — see full report</div>");
+                if (sanctions.Count > 5)
+                    sb.Append($"<div class='more-note'>+ {sanctions.Count - 5} more match(es) — see full report</div>");
             }
 
             sb.Append("</div>"); // end sanctions column
@@ -315,13 +312,13 @@
     <span class='sh-badge blue'>{adverseMedia.Count}</span>
   </div>");
 
-            if (top3Media.Count == 0)
+            if (top5Media.Count == 0)
             {
                 sb.Append("<div class='empty-state'>No adverse media found.</div>");
             }
             else
             {
-                foreach (var item in top3Media)
+                foreach (var item in top5Media)
                 {
                     string pubDate = item.PublishedDate != default
                         ? item.PublishedDate.ToString("dd MMM yyyy")
@@ -337,62 +334,11 @@
 </div>");
                 }
 
-                if (adverseMedia.Count > 3)
-                    sb.Append($"<div class='more-note'>+ {adverseMedia.Count - 3} more item(s) — see full report</div>");
+                if (adverseMedia.Count > 5)
+                    sb.Append($"<div class='more-note'>+ {adverseMedia.Count - 5} more item(s) — see full report</div>");
             }
 
             sb.Append("</div>"); // end media column
-
-            // ── Column 3: PEP Matches ────────────────────────────────────────
-            sb.Append($@"
-<div class='match-col'>
-  <div class='col-heading'>
-    PEP Matches
-    <span class='sh-badge amber'>{peps.Count}</span>
-  </div>");
-
-            if (top3Peps.Count == 0)
-            {
-                sb.Append("<div class='empty-state'>No PEP matches found.</div>");
-            }
-            else
-            {
-                foreach (var row in top3Peps)
-                {
-                    var e = row.pep_item;
-                    if (e == null) continue;
-
-                    string fullName = e.FullName ?? "—";
-                    string merchant = e.MerchantName ?? "—";
-                    string category = e.MonitoringCategory ?? "—";
-                    string freq = e.TransactionMonitoringFrequency ?? "—";
-                    string location = e.MerchantLocation ?? "";
-                    string doo = e.DOO ?? "";
-                    string simStr = row.similarity ?? "—";
-
-                    sb.Append($@"
-<div class='result-card'>
-  <div class='card-top'>
-    <div class='card-name'>{H(fullName)}</div>
-    <span class='sim-pill {SimClass(simStr)}'>{H(simStr)}</span>
-  </div>
-  <div class='card-badges'>
-    <span class='badge amber'>{H(category)}</span>
-    <span class='badge'>{H(freq)}</span>
-  </div>
-  <div class='kv-grid'>
-    {KvRow("Merchant", merchant)}
-    {KvRow("Location", location)}
-    {KvRow("Onboarded", doo)}
-  </div>
-</div>");
-                }
-
-                if (peps.Count > 3)
-                    sb.Append($"<div class='more-note'>+ {peps.Count - 3} more match(es) — see full report</div>");
-            }
-
-            sb.Append("</div>"); // end pep column
 
             sb.Append("</div>"); // end matches-grid
 

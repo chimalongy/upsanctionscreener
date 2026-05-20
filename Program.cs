@@ -18,10 +18,14 @@ using Upsanctionscreener.Services;
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 await SingleScreenReportGenerator.EnsureBrowserAsync();
-//List<Merchant> merchants = MerchantGenerator.GenerateMerchants(500);
+
+
+
+
+//List<Merchant> merchants = MerchantGenerator.GenerateMerchants(5000);
 //await MerchantGenerator.InsertMerchantsAsync(
 //DatabaseType.Postgres,
-//target.DatabaseSettings.ConnectionString,
+// "PvhvuxtEzWuiFUwdqcLCddmDuSbpdNBV1rpYp8m1ezlBQaHc9AOxKRhbmVELA5El4cyvS6oaVrn+CAZvRBzVtFcJuQGUjZGfFIlhtD6bO4E=",
 //merchants);
 
 //string connstr = "T28FmqXWeDjp02iuw0BLAgIHLBW5JXc7hOrlMtpFDPUm/J7VrpdQ+7h47NZf1TjKzXOjZ+Wme4FBQaHc9AOxKa932ifaeO/Rr5aoHyVLtaJlMkok9fvzdtdBjiVLDf8V";

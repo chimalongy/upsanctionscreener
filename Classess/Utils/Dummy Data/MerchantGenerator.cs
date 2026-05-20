@@ -8,15 +8,18 @@ public class Merchant
 {
     public int MerchantId { get; set; }
     public string MerchantName { get; set; }
-    public string MerchantAddress { get; set; }
-    public string MerchantEmail { get; set; }
-    public string MerchantPhone { get; set; }
+    public string MerchantContactName { get; set; }
+    public string Email { get; set; }
+    public string Address { get; set; }
+    public string Phone { get; set; }
 }
+
 public enum DatabaseType
 {
     Postgres,
     Oracle
 }
+
 public static class MerchantGenerator
 {
     public static List<Merchant> GenerateMerchants(int count = 1000)
@@ -26,68 +29,81 @@ public static class MerchantGenerator
 
         string[] firstNames =
         {
-        "Adebayo", "Chinedu", "Ibrahim", "Oluwaseun", "Uche", "Emeka", "Abubakar",
-        "Tunde", "Kelechi", "Yakubu", "Femi", "Chukwuemeka", "Suleiman", "Bola"
-    };
+            "Adebayo", "Chinedu", "Ibrahim", "Oluwaseun", "Uche", "Emeka", "Abubakar",
+            "Tunde", "Kelechi", "Yakubu", "Femi", "Chukwuemeka", "Suleiman", "Bola",
+            "Ngozi", "Amina", "Fatima", "Chisom", "Blessing", "Yetunde"
+        };
 
         string[] lastNames =
         {
-        "Okafor", "Balogun", "Mohammed", "Eze", "Akinyemi", "Ibrahim", "Nwankwo",
-        "Ojo", "Danladi", "Obi", "Usman", "Ademola", "Okeke", "Bello"
-    };
+            "Okafor", "Balogun", "Mohammed", "Eze", "Akinyemi", "Ibrahim", "Nwankwo",
+            "Ojo", "Danladi", "Obi", "Usman", "Ademola", "Okeke", "Bello",
+            "Adesanya", "Chukwu", "Garba", "Lawal", "Musa", "Adeyemi"
+        };
 
-        string[] businessTypes =
+        string[] businessPrefixes =
         {
-        "Enterprises", "Stores", "Trading Co", "Supermarket", "Ventures",
-        "Global Ventures", "Retailers", "Distribution Ltd", "General Merchants"
-    };
+            "Sunrise", "Golden", "Royal", "Premier", "Eagle", "Pinnacle", "Sterling",
+            "Heritage", "Allied", "Landmark", "Summit", "United", "Apex", "Emerald",
+            "Crown", "Titan", "Nova", "Crest", "Horizon", "Zenith"
+        };
+
+        string[] businessSuffixes =
+        {
+            "Enterprises Ltd", "Trading Company", "Supermarket", "Ventures Ltd",
+            "Global Supplies", "Retail Stores", "Distribution Ltd", "General Merchants",
+            "Commodities Ltd", "Logistics", "Holdings", "Solutions Ltd",
+            "Resources Ltd", "Industries Ltd", "Services Ltd"
+        };
 
         string[] cities =
         {
-        "Lagos", "Abuja", "Port Harcourt", "Ibadan", "Enugu", "Kano", "Kaduna"
-    };
+            "Lagos", "Abuja", "Port Harcourt", "Ibadan", "Enugu", "Kano", "Kaduna"
+        };
 
         string[] streets =
         {
-        "Allen Avenue", "Broad Street", "Awolowo Road", "Herbert Macaulay Way",
-        "Ikorodu Road", "Lagos Island Road", "Ahmadu Bello Way"
-    };
+            "Allen Avenue", "Broad Street", "Awolowo Road", "Herbert Macaulay Way",
+            "Ikorodu Road", "Lagos Island Road", "Ahmadu Bello Way",
+            "Adeola Odeku Street", "Victoria Arobieke Street", "Ozumba Mbadiwe Avenue"
+        };
 
         for (int i = 1; i <= count; i++)
         {
-            var first = firstNames[random.Next(firstNames.Length)];
-            var last = lastNames[random.Next(lastNames.Length)];
-            var business = businessTypes[random.Next(businessTypes.Length)];
+            // Business name: prefix + suffix (no person name)
+            var prefix = businessPrefixes[random.Next(businessPrefixes.Length)];
+            var suffix = businessSuffixes[random.Next(businessSuffixes.Length)];
+            string merchantName = $"{prefix} {suffix}";
 
-            string ownerName = $"{first} {last}";
-            string businessName = $"{ownerName} {business}";
+            // Contact name: just a person's name (no business words)
+            var firstName = firstNames[random.Next(firstNames.Length)];
+            var lastName = lastNames[random.Next(lastNames.Length)];
+            string contactName = $"{firstName} {lastName}";
 
             string address = $"{random.Next(1, 300)} {streets[random.Next(streets.Length)]}, {cities[random.Next(cities.Length)]}";
-            string email = $"{first.ToLower()}.{last.ToLower()}{i}@mail.com";
+            string email = $"{firstName.ToLower()}.{lastName.ToLower()}{i}@mail.com";
             string phone = $"+234{random.Next(700000000, 809999999)}";
 
             merchants.Add(new Merchant
             {
                 MerchantId = i,
-                MerchantName = businessName,
-                MerchantAddress = address,
-                MerchantEmail = email,
-                MerchantPhone = phone
+                MerchantName = merchantName,
+                MerchantContactName = contactName,
+                Email = email,
+                Address = address,
+                Phone = phone
             });
         }
 
         return merchants;
     }
+
     public static async Task InsertMerchantsAsync(
-         DatabaseType dbType,
-         string connectionString,
-         List<Merchant> merchants
-     )
-        
+        DatabaseType dbType,
+        string connectionString,
+        List<Merchant> merchants)
     {
-
         connectionString = Cryptor.Decrypt(connectionString, true);
-
 
         if (merchants == null || merchants.Count == 0)
             return;
@@ -117,17 +133,18 @@ public static class MerchantGenerator
         try
         {
             string sql = @"
-                INSERT INTO merchants (merchant_name, merchant_address, merchant_email, merchant_phone)
-                VALUES (@name, @address, @email, @phone);
+                INSERT INTO merchants (merchant_name, merchant_contact_name, email, address, phone)
+                VALUES (@merchantName, @merchantContactName, @email, @address, @phone);
             ";
 
             foreach (var merchant in merchants)
             {
                 using var cmd = new NpgsqlCommand(sql, conn, transaction);
-                cmd.Parameters.AddWithValue("@name", merchant.MerchantName);
-                cmd.Parameters.AddWithValue("@address", merchant.MerchantAddress);
-                cmd.Parameters.AddWithValue("@email", merchant.MerchantEmail);
-                cmd.Parameters.AddWithValue("@phone", merchant.MerchantPhone);
+                cmd.Parameters.AddWithValue("@merchantName", merchant.MerchantName);
+                cmd.Parameters.AddWithValue("@merchantContactName", merchant.MerchantContactName);
+                cmd.Parameters.AddWithValue("@email", merchant.Email);
+                cmd.Parameters.AddWithValue("@address", merchant.Address);
+                cmd.Parameters.AddWithValue("@phone", merchant.Phone);
 
                 await cmd.ExecuteNonQueryAsync();
             }
@@ -151,8 +168,8 @@ public static class MerchantGenerator
         try
         {
             string sql = @"
-                INSERT INTO merchants (merchant_name, merchant_address, merchant_email, merchant_phone)
-                VALUES (:name, :address, :email, :phone)
+                INSERT INTO merchants (merchant_name, merchant_contact_name, email, address, phone)
+                VALUES (:merchantName, :merchantContactName, :email, :address, :phone)
             ";
 
             foreach (var merchant in merchants)
@@ -160,10 +177,11 @@ public static class MerchantGenerator
                 using var cmd = new OracleCommand(sql, conn);
                 cmd.Transaction = transaction;
 
-                cmd.Parameters.Add(new OracleParameter("name", merchant.MerchantName));
-                cmd.Parameters.Add(new OracleParameter("address", merchant.MerchantAddress));
-                cmd.Parameters.Add(new OracleParameter("email", merchant.MerchantEmail));
-                cmd.Parameters.Add(new OracleParameter("phone", merchant.MerchantPhone));
+                cmd.Parameters.Add(new OracleParameter("merchantName", merchant.MerchantName));
+                cmd.Parameters.Add(new OracleParameter("merchantContactName", merchant.MerchantContactName));
+                cmd.Parameters.Add(new OracleParameter("email", merchant.Email));
+                cmd.Parameters.Add(new OracleParameter("address", merchant.Address));
+                cmd.Parameters.Add(new OracleParameter("phone", merchant.Phone));
 
                 await cmd.ExecuteNonQueryAsync();
             }
@@ -176,5 +194,4 @@ public static class MerchantGenerator
             throw;
         }
     }
-
 }
