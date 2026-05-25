@@ -23,7 +23,6 @@
             string searchField,
             double threshold,
             IEnumerable<SingleSearchSanctionMatchRow> sanctions,
-            IEnumerable<PepSearchSanctionMatchRow> peps,
             IEnumerable<RssNewsItem> adverseMedia)
         {
             var outputDirectory = Path.Combine(GlobalVariables.root_folder, "reports", "scan-reports");
@@ -34,7 +33,7 @@
             var outputPath = Path.Combine(outputDirectory, fileName);
 
             var html = BuildHtml(searchTerm, searchField, threshold, timestamp,
-                                 sanctions.ToList(), peps.ToList(), adverseMedia.ToList());
+                                 sanctions.ToList(), adverseMedia.ToList());
 
             await using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
             {
@@ -82,10 +81,8 @@
         private static string BuildHtml(
             string searchTerm, string searchField, double threshold, DateTime timestamp,
             List<SingleSearchSanctionMatchRow> sanctions,
-            List<PepSearchSanctionMatchRow> peps,
             List<RssNewsItem> adverseMedia)
         {
-            // ── Logo: embed as base64 so Puppeteer resolves it without an HTTP server ──
             string logoBase64 = "";
             try
             {
@@ -99,11 +96,10 @@
                 ? $"<img src='data:image/png;base64,{logoBase64}' style='width:32px;height:32px;object-fit:contain;border-radius:6px;' />"
                 : "<div style='width:32px;height:32px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;'><span style='font-size:14px;font-weight:900;color:#1e1b4b;'>UP</span></div>";
 
-            // ── Only first 5 of each (wider columns allow more) ──
             var top5Sanctions = sanctions.Take(5).ToList();
             var top5Media = adverseMedia.Take(5).ToList();
 
-            bool hasHits = sanctions.Count > 0 || peps.Count > 0;
+            bool hasHits = sanctions.Count > 0;
 
             var sb = new StringBuilder();
 
@@ -126,16 +122,13 @@
   .mc-val   { font-size: 10px; font-weight: 600; color: #fff; }
 
   /* ── Summary bar ── */
-  .summary-bar { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 10px; }
+  .summary-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
   .sum-card { border-radius: 8px; padding: 8px 12px; }
   .sc-count { font-size: 18px; font-weight: 700; margin-bottom: 1px; }
   .sc-label { font-size: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
   .sum-sanction { background: #fef2f2; border: 1px solid #fecaca; }
   .sum-sanction .sc-count { color: #dc2626; }
   .sum-sanction .sc-label { color: #ef4444; }
-  .sum-pep      { background: #fffbeb; border: 1px solid #fde68a; }
-  .sum-pep      .sc-count { color: #d97706; }
-  .sum-pep      .sc-label { color: #f59e0b; }
   .sum-media    { background: #eff6ff; border: 1px solid #bfdbfe; }
   .sum-media    .sc-count { color: #2563eb; }
   .sum-media    .sc-label { color: #3b82f6; }
@@ -224,10 +217,6 @@
     <div class='sc-count'>{sanctions.Count}</div>
     <div class='sc-label'>Sanction Matches</div>
   </div>
-  <div class='sum-card sum-pep'>
-    <div class='sc-count'>{peps.Count}</div>
-    <div class='sc-label'>PEP Matches</div>
-  </div>
   <div class='sum-card sum-media'>
     <div class='sc-count'>{adverseMedia.Count}</div>
     <div class='sc-label'>Adverse Media Items</div>
@@ -247,7 +236,7 @@
                 : @"<div class='verdict verdict-clear'>
   <div class='verdict-icon'>✓</div>
   <div>
-    <div class='verdict-label'>No Direct Sanction / PEP Matches</div>
+    <div class='verdict-label'>No Direct Sanction Matches</div>
     <div class='verdict-sub'>Review adverse media below if applicable. Continue with standard due diligence.</div>
   </div>
 </div>");

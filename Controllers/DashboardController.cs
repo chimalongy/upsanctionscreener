@@ -3,6 +3,7 @@ using DocumentFormat.OpenXml.Bibliography;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Quartz;
 using Quartz.Logging;
 using System.Data;
 using System.Diagnostics;
@@ -726,7 +727,43 @@ return BadRequest(new { message = error });
         }
 
 
+        [HttpPost]
+        [Route("Dashboard/Settings/TargetSettings/RunNow/{id:int}")]
+        public async Task<IActionResult> TargetSettingsRunNow(int id)
+        {
+            var svc = new UpSanctionSettingsService(_db);
+            var getAllResult = await svc.GetTargetSettingsAsync();
 
+            if (!getAllResult.Success || getAllResult.Data is null)
+                return BadRequest(new { success = false, message = "Could not load targets." });
+
+            var target = getAllResult.Data.FirstOrDefault(t => t.Id == id);
+            if (target is null)
+                return NotFound(new { success = false, message = $"Target {id} not found." });
+
+            try
+            {
+        
+                Task.Run(async () =>{Scanner.TargetScanScreener(target.Id, target.TargetName, target.AutomationSettings?.Frequency ?? "manual", _scopeFactory);});
+
+
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                var email = User.FindFirstValue(ClaimTypes.Email);
+                await AuditLogger.LogAsync(
+                    db: _db,
+                    eventName: $"{email} - MANUALLY TRIGGERED TARGET SCAN: {target.TargetName} (ID: {id})",
+                    userId: userId,
+                    ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    pageUrl: HttpContext.Request.Path
+                );
+
+                return Json(new { success = true, message = $"Scan for \"{target.TargetName}\" has been queued." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = $"Failed to trigger scan: {ex.Message}" });
+            }
+        }
 
 
 
@@ -1457,7 +1494,6 @@ return BadRequest(new { message = error });
     req.SearchField ?? "name",
     req.Threshold ?? 0.9,
     completeSanctionList,
-    completePepList,
     filteredAdverseMedia);
             }
             catch (Exception ex)

@@ -156,6 +156,13 @@
     /* Toggle switch */
     .toggle-track { transition: background 0.2s; }
     .toggle-thumb { transition: transform 0.2s; }
+
+    /* Run Now button loading state */
+    .run-now-btn[data-running="true"] {
+        opacity: 0.7;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
 </style>
 
 @* ── Page header ── *@
@@ -773,7 +780,26 @@ function renderCards() {
                         ${connLine}
                     </div>
                 </div>
+
+              
                 <div class="flex items-center gap-2 flex-shrink-0">
+                   
+                    <button id="runNowBtn-${t.id}"
+                            onclick="runNow(${t.id}, '${escHtml(t.target_name)}')"
+                            title="Trigger scan immediately"
+                            class="run-now-btn flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                                   border-emerald-200 text-emerald-700 bg-emerald-50
+                                   hover:border-emerald-400 hover:bg-emerald-100 transition-colors">
+                       
+                        <svg id="runNowIcon-${t.id}" class="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                       
+                        <svg id="runNowSpinner-${t.id}" class="hidden w-3 h-3 flex-shrink-0 spinner" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                        </svg>
+                        <span id="runNowText-${t.id}">Run Now</span>
+                    </button>
                     <button onclick="openEditModal(${t.id})"
                             class="text-xs px-3 py-1.5 rounded-lg border border-border text-text-secondary
                                    hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 transition-colors">
@@ -822,6 +848,42 @@ function renderCards() {
 
 function weekdayName(n) {
     return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n] ?? '—';
+}
+
+// ── Run Now ────────────────────────────────────────────────────────────
+async function runNow(id, name) {
+    const btn     = document.getElementById(`runNowBtn-${id}`);
+    const icon    = document.getElementById(`runNowIcon-${id}`);
+    const spinner = document.getElementById(`runNowSpinner-${id}`);
+    const text    = document.getElementById(`runNowText-${id}`);
+
+    if (!btn || btn.dataset.running === 'true') return;
+
+    // Enter loading state
+    btn.dataset.running = 'true';
+    icon.classList.add('hidden');
+    spinner.classList.remove('hidden');
+    text.textContent = 'Queuing…';
+
+    try {
+        const res  = await fetch(`/Dashboard/Settings/TargetSettings/RunNow/${id}`, { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok || !data.success) throw new Error(data.message || 'Failed to trigger scan.');
+
+        showAlert(`"${name}" scan has been queued and will start shortly.`, 'success');
+    } catch (err) {
+        showAlert(err.message || 'Failed to trigger scan. Please try again.', 'error');
+    } finally {
+        // Restore button after a short delay so the user gets feedback
+        setTimeout(() => {
+            if (!btn) return;
+            btn.dataset.running = 'false';
+            icon.classList.remove('hidden');
+            spinner.classList.add('hidden');
+            text.textContent = 'Run Now';
+        }, 1500);
+    }
 }
 
 // ── Target Type ────────────────────────────────────────────────────────
@@ -1239,24 +1301,8 @@ function formatBytes(bytes) {
 
 // ══════════════════════════════════════════════════════════════════════
 // FIELD MAPPINGS
-//
-// Rules:
-//   'name'    → unrestricted; multiple rows may all select it.
-//   'email',
-//   'phone',
-//   'address' → exclusive; only ONE row across the entire scope may
-//               hold each of these at a time.
-//
-// When an exclusive field is taken by row A, its pill button is visually
-// disabled (pill-taken) in every OTHER row. Removing row A or
-// de-selecting its pill immediately releases the field so another row
-// can claim it.
 // ══════════════════════════════════════════════════════════════════════
 
-/**
- * Returns the row ID that currently owns a given exclusive field within
- * a scope ('db' | 'doc'), or null if the field is unclaimed.
- */
 function getExclusivePillOwner(scope, field) {
     if (!EXCLUSIVE_FIELDS.has(field)) return null;
     const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
@@ -1269,16 +1315,11 @@ function getExclusivePillOwner(scope, field) {
     return null;
 }
 
-/**
- * After any pill change, refresh the disabled state of exclusive pills
- * across all rows in the same scope so users clearly see what's taken.
- */
 function refreshExclusivePillStates(scope) {
     const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
     const container   = document.getElementById(containerId);
 
-    // Build a map of which exclusive fields are currently claimed and by whom
-    const claimed = {}; // field → rowId
+    const claimed = {};
     for (const row of container.children) {
         const matchAs = row.dataset.matchAs;
         if (matchAs && EXCLUSIVE_FIELDS.has(matchAs)) {
@@ -1286,7 +1327,6 @@ function refreshExclusivePillStates(scope) {
         }
     }
 
-    // Walk every row and update pill disabled states
     for (const row of container.children) {
         const rowId  = parseInt(row.id.replace('fieldRow-', ''));
         const pillsDiv = document.getElementById(`pills-${rowId}`);
@@ -1294,7 +1334,7 @@ function refreshExclusivePillStates(scope) {
 
         for (const btn of pillsDiv.children) {
             const field = btn.dataset.field;
-            if (!EXCLUSIVE_FIELDS.has(field)) continue; // 'name' is never disabled
+            if (!EXCLUSIVE_FIELDS.has(field)) continue;
 
             const owner = claimed[field];
             const isTakenByOther = owner !== undefined && owner !== rowId;
@@ -1354,24 +1394,13 @@ function addFieldMapping(scope, columnName = '', matchAs = '') {
     document.getElementById(containerId).appendChild(row);
     document.getElementById(hintId).classList.add('hidden');
 
-    // Pre-select pill when loading from saved data
     if (matchAs && SCAN_FIELDS.includes(matchAs)) {
         row.dataset.matchAs = matchAs;
     }
 
-    // Refresh disabled states now that a new row has been added
     refreshExclusivePillStates(scope);
 }
 
-/**
- * Handles pill selection with exclusivity enforcement.
- *
- * - 'name': freely togglable on any row; no cross-row restrictions.
- * - 'email' / 'phone' / 'address': if another row already owns it, the
- *   pill is visually disabled (pill-taken) and the click is a no-op.
- *   Clicking the already-selected pill on the owning row deselects it,
- *   releasing the field for others.
- */
 function selectPill(btn) {
     const field  = btn.dataset.field;
     const rowId  = parseInt(btn.dataset.rowid);
@@ -1380,27 +1409,22 @@ function selectPill(btn) {
     const prevMatch = row.dataset.matchAs;
     const pillsDiv  = document.getElementById(`pills-${rowId}`);
 
-    // If this pill is taken by a different row, reject the click
     if (EXCLUSIVE_FIELDS.has(field)) {
         const owner = getExclusivePillOwner(scope, field);
-        if (owner !== null && owner !== rowId) return; // another row owns it
+        if (owner !== null && owner !== rowId) return;
     }
 
-    // Clear all highlights for this row
     [...pillsDiv.children].forEach(b =>
         b.classList.remove('selected-name','selected-email','selected-phone','selected-address')
     );
 
     if (prevMatch === field) {
-        // Same pill clicked again — deselect
         row.dataset.matchAs = '';
     } else {
-        // Select the new pill
         row.dataset.matchAs = field;
         btn.classList.add(PILL_COLORS[field]);
     }
 
-    // Refresh disabled states across all rows in this scope
     refreshExclusivePillStates(scope);
 }
 
@@ -1418,15 +1442,9 @@ function removeFieldRow(id) {
         document.getElementById(hintId).classList.remove('hidden');
     }
 
-    // Release any exclusive field this row held, refreshing sibling rows
     refreshExclusivePillStates(scope);
 }
 
-/**
- * Collects field mappings from the container.
- * Returns array of { column_name, match_as }.
- * Rows missing either a column name or a selected pill are silently skipped.
- */
 function collectFieldMappings(scope) {
     const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
     return [...document.getElementById(containerId).children].map(row => ({
@@ -1566,7 +1584,6 @@ async function saveTarget() {
             };
         }
     } else {
-        // Document target
         if (!uploadedFileInfo) { showModalAlert('Please upload an Excel document.', 'error'); return; }
 
         const docIdColumn = document.getElementById('fDocIdColumn').value.trim();
