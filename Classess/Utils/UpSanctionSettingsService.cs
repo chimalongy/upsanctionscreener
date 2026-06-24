@@ -190,6 +190,19 @@ namespace Upsanctionscreener.Classess.Utils
 
         [JsonPropertyName("day_of_month")]
         public int DayOfMonth { get; set; }
+
+        [JsonPropertyName("track_time")]
+        public bool TrackTime { get; set; }
+
+        [JsonPropertyName("time_column")]
+        public string TimeColumn { get; set; } = "";
+
+        // ✅ NEW: Custom query fields
+        [JsonPropertyName("use_custom_query")]
+        public bool UseCustomQuery { get; set; }
+
+        [JsonPropertyName("custom_query")]
+        public string CustomQuery { get; set; } = "";
     }
 
     public class UpsertTargetRequest
@@ -228,6 +241,11 @@ namespace Upsanctionscreener.Classess.Utils
         [JsonPropertyName("start_time")] public string StartTime { get; set; } = "02:00";
         [JsonPropertyName("weekday")] public int Weekday { get; set; }
         [JsonPropertyName("day_of_month")] public int DayOfMonth { get; set; }
+        [JsonPropertyName("track_time")] public bool TrackTime { get; set; }
+        [JsonPropertyName("time_column")] public string TimeColumn { get; set; } = "";
+        // ✅ NEW
+        [JsonPropertyName("use_custom_query")] public bool UseCustomQuery { get; set; }
+        [JsonPropertyName("custom_query")] public string CustomQuery { get; set; } = "";
     }
 
     public class TargetSettingEntry
@@ -381,7 +399,11 @@ namespace Upsanctionscreener.Classess.Utils
                 IntervalHours = req.IntervalHours,
                 StartTime = req.StartTime ?? "02:00",
                 Weekday = req.Weekday,
-                DayOfMonth = req.DayOfMonth
+                DayOfMonth = req.DayOfMonth,
+                TrackTime = req.TrackTime,       // ✅ ADD THIS
+                TimeColumn = req.TimeColumn,      // ✅ ADD THIS
+                 UseCustomQuery = req.UseCustomQuery,      // ✅
+                CustomQuery = req.CustomQuery ?? ""       // ✅
             };
         }
 

@@ -294,24 +294,24 @@
                         </div>
                         <div>
                             <label class="field-label">Port <span class="text-red-400">*</span></label>
-                            <input id="fPort" type="number" placeholder="5432" class="field-input" oninput="resetConnectionTest()" />
+                            <input id="fPort" type="number" placeholder="5432" class="field-input" data-reset-conn="true" />
                         </div>
                         <div class="col-span-2">
                             <label class="field-label">Host <span class="text-red-400">*</span></label>
-                            <input id="fHost" type="text" placeholder="192.168.1.1" class="field-input" oninput="resetConnectionTest()" />
+                            <input id="fHost" type="text" placeholder="192.168.1.1" class="field-input" data-reset-conn="true" />
                         </div>
                         <div class="col-span-2">
                             <label class="field-label">Database Name <span class="text-red-400">*</span></label>
-                            <input id="fDbName" type="text" placeholder="merchant_db" class="field-input" oninput="resetConnectionTest()" />
+                            <input id="fDbName" type="text" placeholder="merchant_db" class="field-input" data-reset-conn="true" />
                         </div>
                         <div>
                             <label class="field-label">Username <span class="text-red-400">*</span></label>
-                            <input id="fUsername" type="text" placeholder="db_user" class="field-input" oninput="resetConnectionTest()" />
+                            <input id="fUsername" type="text" placeholder="db_user" class="field-input" data-reset-conn="true" />
                         </div>
                         <div id="passwordRow">
                             <label class="field-label">Password <span class="text-red-400">*</span></label>
                             <div class="relative">
-                                <input id="fPassword" type="password" placeholder="••••••••" class="field-input pr-9" oninput="resetConnectionTest()" />
+                                <input id="fPassword" type="password" placeholder="••••••••" class="field-input pr-9" data-reset-conn="true" />
                                 <button type="button" onclick="togglePwd()" tabindex="-1"
                                         class="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors">
                                     <svg id="pwdEye" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -588,6 +588,26 @@
                             <input id="fMonthlyTime" type="time" value="02:00" class="field-input" />
                         </div>
                     </div>
+
+                    @* ── Track Time (database + minutely/hourly only) ── *@
+                    <div id="trackTimeSection" class="hidden pt-2 border-t border-border">
+                        <div class="flex items-center gap-3 mb-3">
+                            <button type="button" id="trackTimeToggle" onclick="toggleTrackTime()"
+                                    class="relative w-10 h-5 rounded-full transition-colors duration-200 bg-border focus:outline-none">
+                                <span id="trackTimeThumb"
+                                      class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"></span>
+                            </button>
+                            <div>
+                                <span id="trackTimeLabel" class="text-sm text-text-secondary">Track scan time</span>
+                                <p class="text-xs text-text-muted">Only scan records where the time column is within the last interval period.</p>
+                            </div>
+                        </div>
+                        <div id="trackTimeColumnSection" class="hidden">
+                            <label class="field-label">Time Column <span class="text-red-400">*</span></label>
+                            <input id="fTimeColumn" type="text" placeholder="e.g. created_at, updated_at" class="field-input" />
+                            <p class="text-xs text-text-muted mt-1">Enter the name of the timestamp column in your database table (does not need to be mapped).</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -648,6 +668,14 @@ const PILL_COLORS = {
     address: 'selected-address'
 };
 
+// ── Attach inline event listeners after DOM ready ────────────────────
+function attachInlineListeners() {
+    document.querySelectorAll('[data-reset-conn="true"]').forEach(el => {
+        el.addEventListener('input', resetConnectionTest);
+        el.removeAttribute('data-reset-conn');
+    });
+}
+
 // ── State ──────────────────────────────────────────────────────────────
 let allTargets       = [];
 let editingId        = null;
@@ -657,6 +685,7 @@ let automate         = false;
 let frequency        = 'daily';
 let fieldRowId       = 0;
 let currentTargetType = 'database';
+let trackTime = false;
 
 // File upload state
 let uploadedFileInfo = null;
@@ -669,7 +698,8 @@ async function loadTargets() {
         const data = await res.json();
         allTargets = data.success ? (data.data ?? []) : [];
         renderCards();
-    } catch {
+     } catch (err) {
+        console.error('[loadTargets] Failed:', err);
         document.getElementById('targetsGrid').innerHTML = `
             <div class="bg-surface-card border border-border rounded-2xl p-8 text-center text-xs text-text-muted">
                 Failed to load targets. Please refresh the page.
@@ -730,6 +760,14 @@ function renderCards() {
                 scheduleText = `Monthly — day ${auto.day_of_month} at ${auto.start_time}`;
         }
 
+        // Track time badge for database targets with minutely/hourly
+        const trackTimeBadge = (!isDoc && auto.automate && (auto.frequency === 'minutely' || auto.frequency === 'hourly') && auto.track_time)
+            ? `<span class="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-100" title="Time column: ${escHtml(auto.time_column)}">⏱ Track: ${escHtml(auto.time_column)}</span>`
+            : '';
+
+        // Track time badge for database targets with minutely/hourly
+
+
         const fields      = ds.other_fields ?? [];
         const fieldBadges = fields.slice(0, 3).map(f =>
             `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-surface border border-border text-text-secondary">
@@ -776,6 +814,7 @@ function renderCards() {
                                 ${auto.automate ? '⏱ Automated' : 'Manual'}
                             </span>
                             ${notifBadge}
+                            ${trackTimeBadge}
                         </div>
                         ${connLine}
                     </div>
@@ -899,6 +938,8 @@ function setTargetType(type) {
 
     document.getElementById('section-database').classList.toggle('hidden', type !== 'database');
     document.getElementById('section-document').classList.toggle('hidden', type !== 'document');
+
+    refreshTrackTimeVisibility();
 }
 
 // ── Open modal (add) ───────────────────────────────────────────────────
@@ -1084,6 +1125,11 @@ function resetForm() {
         document.getElementById(`freq-${f}`).classList.remove('active');
         document.getElementById(`opts-${f}`).classList.add('hidden');
     });
+
+    // Reset track time
+    trackTime = false;
+    syncTrackTimeToggle();
+    document.getElementById('fTimeColumn').value = '';
 }
 
 // ── Password eye toggle ────────────────────────────────────────────────
@@ -1121,9 +1167,58 @@ function syncAutomateToggle() {
         btn.classList.replace('bg-brand-500', 'bg-border');
         thumb.style.transform = 'translateX(0)';
         label.textContent = 'Run manually only';
+        label.classList.replace('text-text-secondary', 'text-text-secondary');
+    }
+    refreshTrackTimeVisibility();
+}
+
+// ── Track Time Toggle ──────────────────────────────────────────────────
+function toggleTrackTime() {
+    trackTime = !trackTime;
+    syncTrackTimeToggle();
+}
+
+function syncTrackTimeToggle() {
+    const btn   = document.getElementById('trackTimeToggle');
+    const thumb = document.getElementById('trackTimeThumb');
+    const label = document.getElementById('trackTimeLabel');
+    const colSection = document.getElementById('trackTimeColumnSection');
+
+    if (trackTime) {
+        btn.classList.replace('bg-border', 'bg-brand-500');
+        thumb.style.transform = 'translateX(20px)';
+        label.classList.replace('text-text-secondary', 'text-brand-600');
+        colSection.classList.remove('hidden');
+    } else {
+        btn.classList.replace('bg-brand-500', 'bg-border');
+        thumb.style.transform = 'translateX(0)';
         label.classList.replace('text-brand-600', 'text-text-secondary');
+        colSection.classList.add('hidden');
+        document.getElementById('fTimeColumn').value = '';
     }
 }
+
+function refreshTrackTimeVisibility() {
+    const section = document.getElementById('trackTimeSection');
+    if (!section) return;
+
+    // Only show for database targets with minutely or hourly frequency when automate is on
+    const isDb = currentTargetType === 'database';
+    const isMinutelyOrHourly = frequency === 'minutely' || frequency === 'hourly';
+    const shouldShow = isDb && automate && isMinutelyOrHourly;
+
+    if (shouldShow) {
+        section.classList.remove('hidden');
+    } else {
+        section.classList.add('hidden');
+        trackTime = false;
+        syncTrackTimeToggle();
+    }
+}
+
+
+
+
 
 // ── Frequency tabs ─────────────────────────────────────────────────────
 function setFrequency(f) {
@@ -1132,6 +1227,7 @@ function setFrequency(f) {
         document.getElementById(`freq-${x}`).classList.toggle('active', x === f);
         document.getElementById(`opts-${x}`).classList.toggle('hidden', x !== f);
     });
+    refreshTrackTimeVisibility();
 }
 
 // ── Connection test ────────────────────────────────────────────────────
@@ -1517,6 +1613,21 @@ async function saveTarget() {
         }
     }
 
+    // ── Track time (database + minutely/hourly only) ───────────────────
+    let trackTimeVal = false;
+    let timeColumnVal = '';
+
+    if (currentTargetType === 'database' && automate && (frequency === 'minutely' || frequency === 'hourly')) {
+        trackTimeVal = trackTime;
+        if (trackTimeVal) {
+            timeColumnVal = document.getElementById('fTimeColumn').value.trim();
+            if (!timeColumnVal) {
+                showModalAlert('Please select a time column when track time is enabled.', 'error');
+                return;
+            }
+        }
+    }
+
     const automationSettings = {
         automate,
         frequency:        automate ? frequency : 'daily',
@@ -1524,7 +1635,9 @@ async function saveTarget() {
         weekday,
         day_of_month:     dayOfMonth,
         interval_minutes: intervalMinutes,
-        interval_hours:   intervalHours
+        interval_hours:   intervalHours,
+        track_time:       trackTimeVal,
+        time_column:      timeColumnVal
     };
 
     // ── Build type-specific payload ───────────────────────────────────
@@ -1722,6 +1835,7 @@ document.getElementById('confirmModal').addEventListener('click', function(e) {
     if (e.target === this) closeConfirm();
 });
 
+attachInlineListeners();
 loadTargets();
 </script>
 }

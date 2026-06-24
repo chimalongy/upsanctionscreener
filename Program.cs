@@ -122,7 +122,7 @@ builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3000, listenOptions =>
     {
-        listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
+        //listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
     });
 });
 

@@ -238,7 +238,7 @@ return BadRequest(new { message = error });
         }
 
 
-      
+
 
 
         [HttpPost]
@@ -263,11 +263,62 @@ return BadRequest(new { message = error });
                 }
             }
 
+            // ── Guard: track_time validation for database targets with minutely/hourly ──
+            if (target.TargetType == "database" && target.AutomationSettings is not null)
+            {
+                var freq = target.AutomationSettings.Frequency?.ToLowerInvariant();
+                if ((freq == "minutely" || freq == "hourly") && target.AutomationSettings.TrackTime)
+                {
+                    if (string.IsNullOrWhiteSpace(target.AutomationSettings.TimeColumn))
+                    {
+                        return BadRequest(new { success = false, message = "time_column is required when track_time is enabled for minutely or hourly database targets." });
+                    }
+                }
+            }
+
+            // ── Guard: custom_query validation for daily/weekly/monthly ───────────
+            if (target.TargetType == "database" && target.AutomationSettings is not null)
+            {
+                var freq = target.AutomationSettings.Frequency?.ToLowerInvariant();
+                var allowedCustomQueryFreqs = new[] { "daily", "weekly", "monthly" };
+
+                if (target.AutomationSettings.UseCustomQuery)
+                {
+                    if (!allowedCustomQueryFreqs.Contains(freq))
+                    {
+                        return BadRequest(new { success = false, message = "Custom query is only available for daily, weekly, or monthly frequencies." });
+                    }
+
+                    var query = (target.AutomationSettings.CustomQuery ?? "").Trim();
+                    if (string.IsNullOrWhiteSpace(query))
+                    {
+                        return BadRequest(new { success = false, message = "Custom query cannot be empty when enabled." });
+                    }
+
+                    // Must start with SELECT
+                    if (!query.StartsWith("select", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return BadRequest(new { success = false, message = "Custom query must start with SELECT." });
+                    }
+
+                    // Block dangerous SQL keywords using word boundaries
+                    var forbiddenKeywords = new[] { "create", "drop", "alter", "truncate", "insert", "update", "delete", "grant", "revoke" };
+                    var queryLower = query.ToLowerInvariant();
+
+                    foreach (var keyword in forbiddenKeywords)
+                    {
+                        var pattern = $@"\b{keyword}\b";
+                        if (System.Text.RegularExpressions.Regex.IsMatch(queryLower, pattern))
+                        {
+                            return BadRequest(new { success = false, message = $"Custom query contains forbidden keyword: '{keyword.ToUpperInvariant()}'. Only SELECT statements are allowed." });
+                        }
+                    }
+                }
+            }
+
             var svc = new UpSanctionSettingsService(_db);
 
             // ── Resolve the ID that the service will assign ───────────────────────
-            // UpsertTargetAsync returns bool, not the saved entity, so we compute
-            // the new ID the same way the service does — before the save.
             int resolvedId = target.Id;
             if (target.Id == 0)
             {
@@ -294,7 +345,11 @@ return BadRequest(new { message = error });
                     Weekday = target.AutomationSettings.Weekday,
                     DayOfMonth = target.AutomationSettings.DayOfMonth,
                     IntervalMinutes = target.AutomationSettings.IntervalMinutes,
-                    IntervalHours = target.AutomationSettings.IntervalHours
+                    IntervalHours = target.AutomationSettings.IntervalHours,
+                    TrackTime = target.AutomationSettings.TrackTime,
+                    TimeColumn = target.AutomationSettings.TimeColumn,
+                    UseCustomQuery = target.AutomationSettings.UseCustomQuery,
+                    CustomQuery = target.AutomationSettings.CustomQuery
                 };
 
                 await _targetScheduler.ScheduleOrUpdateTargetAsync(
@@ -308,7 +363,6 @@ return BadRequest(new { message = error });
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var email = User.FindFirstValue(ClaimTypes.Email);
 
-            // e.g. log who fetched the audit logs
             await AuditLogger.LogAsync(
                 db: _db,
                 eventName: $"{email} - UPSERTED TARGET SETTINGS {target.TargetName}",
@@ -319,8 +373,6 @@ return BadRequest(new { message = error });
 
             return Json(new { success = true });
         }
-
-
 
 
 
