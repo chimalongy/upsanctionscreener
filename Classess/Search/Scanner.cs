@@ -47,7 +47,18 @@ namespace Upsanctionscreener.Classess.Search
 
 
 
+    public class TargetScanTimeTracker
+    {
+        public int Id { get; set; }
 
+        public int TargetId { get; set; }
+
+        public string TargetName { get; set; } = string.Empty;
+
+        public string StartTime { get; set; } = string.Empty;
+
+        public string StopTime { get; set; } = string.Empty;
+    }
 
 
 
@@ -55,9 +66,17 @@ namespace Upsanctionscreener.Classess.Search
     public static class Scanner
     {
         internal static readonly object _multiscantaskFileLock = new object();
+        internal static readonly object _targetScanTimeTrackerLock = new object();
 
         private static string TasksFilePath =>
           System.IO.Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanDB", "multiscantasks.json");
+
+        private static string TargetScanTimeTrackerFilePath =>
+        System.IO.Path.Combine(
+            GlobalVariables.root_folder,
+            "Targets",
+            "TargetTracker",
+            "target_scan_time_tracker.json");
 
 
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
@@ -65,6 +84,9 @@ namespace Upsanctionscreener.Classess.Search
             WriteIndented = true,
             PropertyNameCaseInsensitive = true
         };
+
+
+
 
         // ── Private helpers (always called inside lock) ───────────────────────
 
@@ -210,6 +232,189 @@ namespace Upsanctionscreener.Classess.Search
 
 
 
+
+        //time tracker methods would go here
+
+        // ── Private helpers (always called inside lock) ───────────────────────
+
+        private static List<TargetScanTimeTracker> ReadTargetScanTimeTrackers()
+        {
+            var path = TargetScanTimeTrackerFilePath;
+
+            if (!File.Exists(path))
+                return new List<TargetScanTimeTracker>();
+
+            try
+            {
+                using var stream = new FileStream(
+                    path,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read);
+
+                using var reader = new StreamReader(stream);
+
+                var json = reader.ReadToEnd();
+
+                return JsonSerializer.Deserialize<List<TargetScanTimeTracker>>(json, _jsonOptions)
+                       ?? new List<TargetScanTimeTracker>();
+            }
+            catch
+            {
+                return new List<TargetScanTimeTracker>();
+            }
+        }
+
+        private static void WriteTargetScanTimeTrackers(
+            List<TargetScanTimeTracker> trackers)
+        {
+            var path = TargetScanTimeTrackerFilePath;
+
+            Directory.CreateDirectory(
+                System.IO.Path.GetDirectoryName(path)!);
+
+            using var stream = new FileStream(
+                path,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None);
+
+            using var writer = new StreamWriter(stream);
+
+            writer.Write(
+                JsonSerializer.Serialize(trackers, _jsonOptions));
+        }
+
+
+
+        public static int AddTargetScanTimeTracker(TargetScanTimeTracker tracker)
+        {
+            lock (_targetScanTimeTrackerLock)
+            {
+                var trackers = ReadTargetScanTimeTrackers();
+
+                int newId = trackers.Any()
+                    ? trackers.Max(t => t.Id) + 1
+                    : 1;
+
+                tracker.Id = newId;
+
+                trackers.Add(tracker);
+
+                WriteTargetScanTimeTrackers(trackers);
+
+                return newId;
+            }
+        }
+
+        public static void DeleteTargetScanTimeTracker(int id)
+        {
+            lock (_targetScanTimeTrackerLock)
+            {
+                var trackers = ReadTargetScanTimeTrackers();
+
+                trackers = trackers
+                    .Where(t => t.Id != id)
+                    .ToList();
+
+                WriteTargetScanTimeTrackers(trackers);
+            }
+        }
+
+
+        public static void UpdateTargetScanTimeTrackerField(
+    int id,
+    string fieldName,
+    object? newValue)
+        {
+            lock (_targetScanTimeTrackerLock)
+            {
+                try
+                {
+                    var trackers = ReadTargetScanTimeTrackers();
+
+                    var tracker = trackers.FirstOrDefault(t => t.Id == id);
+
+                    if (tracker == null)
+                        return;
+
+                    var prop = typeof(TargetScanTimeTracker).GetProperty(
+                        fieldName,
+                        BindingFlags.Public |
+                        BindingFlags.Instance |
+                        BindingFlags.IgnoreCase);
+
+                    if (prop == null || !prop.CanWrite)
+                        return;
+
+                    object? convertedValue = newValue;
+
+                    if (newValue != null &&
+                        prop.PropertyType != newValue.GetType())
+                    {
+                        convertedValue =
+                            Convert.ChangeType(newValue, prop.PropertyType);
+                    }
+
+                    prop.SetValue(tracker, convertedValue);
+
+                    WriteTargetScanTimeTrackers(trackers);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        public static TargetScanTimeTracker? GetTargetScanTimeTracker(
+    int targetId)
+        {
+            lock (_targetScanTimeTrackerLock)
+            {
+                return ReadTargetScanTimeTrackers()
+                    .FirstOrDefault(t => t.TargetId == targetId);
+            }
+        }
+
+
+
+        public static void UpdateTargetScanTimeTracker(TargetScanTimeTracker updatedTracker)
+        {
+            lock (_targetScanTimeTrackerLock)
+            {
+                var trackers = ReadTargetScanTimeTrackers();
+
+                var tracker = trackers.FirstOrDefault(t => t.Id == updatedTracker.Id);
+
+                if (tracker == null)
+                    return;
+
+                tracker.TargetId = updatedTracker.TargetId;
+                tracker.TargetName = updatedTracker.TargetName;
+                tracker.StartTime = updatedTracker.StartTime;
+                tracker.StopTime = updatedTracker.StopTime;
+
+                WriteTargetScanTimeTrackers(trackers);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        //==============================================================================================================================================
 
 
 
@@ -433,174 +638,7 @@ namespace Upsanctionscreener.Classess.Search
 
 
 
-        public static async System.Threading.Tasks.Task TargetScanScreenerNoRetry(
-     int targetID, string targetName, object targetfrequency, IServiceScopeFactory scopeFactory)
-        {
-            string log_folder = string.Empty;   
-            string log_file = string.Empty;
-
-            try
-            {
-
-                using var scope = scopeFactory.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-
-
-
-
-                string folderName = System.IO.Path.Combine(
-                    GlobalVariables.root_folder, "Logs", "TargetScanLogs");
-                log_folder = folderName;
-
-                // Each trigger gets a uniquely named log file
-                string fileName = BuildLogFileName(targetName, targetfrequency.ToString());
-                log_file = fileName;
-
-                // Ensure folder exists
-                Directory.CreateDirectory(folderName);
-                string fullPath = System.IO.Path.Combine(folderName, fileName + ".log");
-
-                // Write opening entry
-                Logger.LogToFile(folderName, fileName, $"[START] Target: {targetName} (ID: {targetID}) | Frequency: {targetfrequency} | {DateTime.Now:O}{Environment.NewLine}");
-                Logger.LogToFile(folderName, fileName, $"[STEP 1]: GET SANCTION PORTAL SETTINGS AND TARGET DETAILS");
-                var svc = new UpSanctionSettingsService(db);
-                var allSanctionSettings = await svc.GetAllAsync();
-
-                if (!allSanctionSettings.Success)
-                {
-                    throw new Exception($"Error fetching sanction portal settings:\n\n {allSanctionSettings.Error} ");
-                }
-
-                var targets = allSanctionSettings.Data.Targets;
-
-                var target = targets.FirstOrDefault(t => t.Id == targetID);
-                if (target is null)
-                {
-                    throw new Exception($"Could not find target ");
-                }
-
-                var scansettings = allSanctionSettings.Data.ScanSettings;
-                if (scansettings is null)
-                {
-                    throw new Exception($"Could not find scan settings ");
-                }
-                Logger.LogToFile(folderName, fileName, $"[STEP 1 - COMPLETED]: PORTAL SETTINGS AND TARGET DETAILS RETRIEVED. ");
-
-                Logger.LogToFile(folderName, fileName, $"[STEP 2]: FETCH DATA TO SCAN");
-                TaskFileReadResult file_read_result = new TaskFileReadResult();
-                DatabaseReadResult database_read_result = new DatabaseReadResult();
-                DataTable data_to_scan = new DataTable();
-                DataTable unique_items = new DataTable();
-                DataTable NormalizedDataToScan = new DataTable();
-
-                if (target.TargetType == "document")
-                {
-                    file_read_result = GlobalFunctions.ReadTargetFile(target.DocumentSettings.UploadPath, target.DocumentSettings.IdColumn, target.DocumentSettings.OtherFields);
-                    if (!file_read_result.Success)
-                    {
-                        throw new Exception(file_read_result.Error);
-                    }
-                    data_to_scan = file_read_result.Data;
-                    unique_items = GlobalFunctions.DeduplicateDatatbaleById(data_to_scan, target.DocumentSettings.IdColumn);
-                    NormalizedDataToScan = GlobalFunctions.NormaLizeNamesinTargetColumn(unique_items, target.DocumentSettings.OtherFields, "name");
-                }
-                else
-                {
-                    string Query = DatabaseDataReader.DatabaseQueryBuilder.BuildSelectQuery(target.DatabaseSettings.DataSettings);
-                     Logger.LogToFile(folderName, fileName, $"Orignal Constructed Query:\n\n {Query}");
-                    database_read_result = await DatabaseDataReader.ReadDatabaseRecords(Query, target.DatabaseSettings, folderName, fileName);
-                    if (!database_read_result.Successful)
-                    {
-                        throw new Exception(database_read_result.Message);
-                    }
-                    data_to_scan = database_read_result.Data;
-                    unique_items = GlobalFunctions.DeduplicateDatatbaleById(data_to_scan, target.DatabaseSettings.DataSettings.IdColumn);
-                    NormalizedDataToScan = GlobalFunctions.NormaLizeNamesinTargetColumn(unique_items, target.DatabaseSettings.DataSettings.OtherFields, "name");
-                }
-
-
-                
-                data_to_scan = NormalizedDataToScan;
-               
-
-
-                Logger.LogToFile(folderName, fileName, $"[STEP 2 - COMPLETED]:  {data_to_scan.Rows.Count} Items Fetched, {unique_items.Rows.Count} Unique Items, normalized by ID");
-                Logger.LogToFile(folderName, fileName, $"[STEP 3]: LOAD SANCTION ENTRIES AND SEARCH TREE");
-                unique_items = null;
-                NormalizedDataToScan = null;
-
-                List<SanctionEntry> sanction_entries = SanctionExcelReader.LoadFromExcel(GlobalVariables.base_sanction_db_path);
-                var normalized_sanction_entries = GlobalFunctions.NormalizeSanctionListNames(sanction_entries);
-                var tree = new SanctionNamesBKTree(threshold: (scansettings.ScanThreshold / 100.00), caseSensitive: false);
-                tree.Load(normalized_sanction_entries);
-                Logger.LogToFile(folderName, fileName, $"[STEP 3 - COMPLETED]: SEARCH TREE LOADED");
-                unique_items = null;
-                NormalizedDataToScan = null;
-                Logger.LogToFile(folderName, fileName, $"[STEP 4]: BEGIN SCAN");
-
-                List<TargetScanResult> TargetScreenResults = ParallelTargetScan(tree, data_to_scan, sanction_entries, folderName, fileName, target.TargetType== "document" ? target.DocumentSettings.IdColumn: target.DatabaseSettings.DataSettings.IdColumn, target.TargetType == "document" ? target.DocumentSettings.OtherFields : target.DatabaseSettings.DataSettings.OtherFields);
-               
-                Logger.LogToFile(folderName, fileName, $"[STEP 4 - COMPLETED]: SCAN COMPLETED");
-
-                //  Build output path ─────────────────────────────────────────────────────
-                Logger.LogToFile(folderName, fileName, $"[STEP 5]: EXPORTING SCAN RESULT");
-                string outputDir = System.IO.Path.Combine(GlobalVariables.root_folder, "Targets", "TargetReports");
-                Directory.CreateDirectory(outputDir);
-
-                string outputPath = System.IO.Path.Combine(outputDir, $"{fileName}.xlsx");
-               
-
-                TargetScanResultExporter.ExportToExcel(
-                    TargetScreenResults,
-                    scanType: "Target Scan",
-                    outputPath: outputPath);
-
-                Logger.LogToFile(folderName, fileName, $"[STEP 5 - COMPLETED]: SCAN RESULTS EXPORTED TO: {outputPath}");
-
-
-                if (target.NotificationSettings.Enabled)
-                {
-                    Logger.LogToFile(folderName, fileName, $"[STEP 6]: SENDING EMAIL NOTIFICATION");
-                    // CALL EMAIL SENDING SERVICE HERE...
-
-                    Logger.LogToFile(folderName, fileName, $"[STEP 6 - COMPLETED]: EMAIL NOTIFICATION SENT");
-                }
-
-
-
-                // ── Your scan logic goes here ──────────────────────────────────
-                // e.g. await ScanAsync(target, fullPath);
-                // ──────────────────────────────────────────────────────────────
-                Logger.LogToFile(folderName, fileName, $"[END]   Target: {targetName} (ID: {targetID}) | {DateTime.Now:O}{Environment.NewLine}");
-
-
-
-
-            }
-            catch (Exception ex)
-            {
-
-                if (ex is AggregateException agg)
-                {
-                    foreach (var inner in agg.InnerExceptions)
-                    {
-                        Logger.LogToFile(log_folder, log_file, $"[ERROR] -  {inner.Message}");
-                      
-                    }
-                        
-                }
-                else
-                {
-                    Logger.LogToFile(log_folder, log_file, $"[ERROR] -  {ex.Message}");
-                   
-                }
-
-                
-
-            }
-        }
-
+     
 
 
         public static async System.Threading.Tasks.Task TargetScanScreener(
@@ -624,6 +662,7 @@ namespace Upsanctionscreener.Classess.Search
 
                 Directory.CreateDirectory(folderName);
                 string fullPath = System.IO.Path.Combine(folderName, fileName + ".log");
+
 
                 Logger.LogToFile(folderName, fileName, $"[START] Target: {targetName} (ID: {targetID}) | Frequency: {targetfrequency} | {DateTime.Now:O}{Environment.NewLine}");
                 Logger.LogToFile(folderName, fileName, $"[STEP 1]: GET SANCTION PORTAL SETTINGS AND TARGET DETAILS");
@@ -677,7 +716,25 @@ namespace Upsanctionscreener.Classess.Search
                 }
                 else
                 {
-                    string Query = DatabaseDataReader.DatabaseQueryBuilder.BuildSelectQuery(target.DatabaseSettings.DataSettings);
+                    string lasttrackedtime = string.Empty;  
+
+                    if (target.AutomationSettings.TrackTime)
+                    {
+                        TargetScanTimeTracker? targettracker = GetTargetScanTimeTracker(targetID);
+
+                        if (targettracker == null)
+                        {
+                            /// Create a new tracker if it doesn't exist
+                        }
+                        else
+                        {
+                            lasttrackedtime = targettracker.StopTime;
+                        }
+                    }
+                   
+                    
+                    
+                    string Query = DatabaseDataReader.DatabaseQueryBuilder.BuildSelectQuery(target.DatabaseSettings.DataSettings, target.AutomationSettings, lasttrackedtime);
                     Logger.LogToFile(folderName, fileName, $"Original Constructed Query:\n\n {Query}");
 
                     database_read_result = await DatabaseDataReader.ReadDatabaseRecords(Query, target.DatabaseSettings, folderName, fileName);
@@ -688,6 +745,34 @@ namespace Upsanctionscreener.Classess.Search
                     }
 
                     data_to_scan = database_read_result.Data;
+
+                    DateTime? startTime = data_to_scan.AsEnumerable().Min(row => row.Field<DateTime?>(target.AutomationSettings.TimeColumn));
+
+                    DateTime? stopTime = data_to_scan.AsEnumerable().Max(row => row.Field<DateTime?>(target.AutomationSettings.TimeColumn));
+
+                    //check if the target is already tracked
+                    var tracker = GetTargetScanTimeTracker(targetID);
+
+                    if (tracker == null)
+                    {
+                        var targetTracker = new TargetScanTimeTracker
+                        {
+                            TargetId = targetID,
+                            TargetName = target.TargetName,
+                            StartTime = startTime?.ToString("o"),
+                            StopTime = stopTime?.ToString("o")
+                        };
+
+                        AddTargetScanTimeTracker(targetTracker);
+                    }
+                    else
+                    {
+                        tracker.StartTime = startTime?.ToString("o");
+                        tracker.StopTime = stopTime?.ToString("o");
+
+                        UpdateTargetScanTimeTracker(tracker);
+                    }
+
                     unique_items = GlobalFunctions.DeduplicateDatatbaleById(data_to_scan, target.DatabaseSettings.DataSettings.IdColumn);
                     NormalizedDataToScan = GlobalFunctions.NormaLizeNamesinTargetColumn(unique_items, target.DatabaseSettings.DataSettings.OtherFields, "name");
                 }

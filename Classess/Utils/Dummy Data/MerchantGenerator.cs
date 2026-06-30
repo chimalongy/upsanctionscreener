@@ -70,18 +70,19 @@ public static class MerchantGenerator
 
         for (int i = 1; i <= count; i++)
         {
-            // Business name: prefix + suffix (no person name)
             var prefix = businessPrefixes[random.Next(businessPrefixes.Length)];
             var suffix = businessSuffixes[random.Next(businessSuffixes.Length)];
             string merchantName = $"{prefix} {suffix}";
 
-            // Contact name: just a person's name (no business words)
             var firstName = firstNames[random.Next(firstNames.Length)];
             var lastName = lastNames[random.Next(lastNames.Length)];
             string contactName = $"{firstName} {lastName}";
 
             string address = $"{random.Next(1, 300)} {streets[random.Next(streets.Length)]}, {cities[random.Next(cities.Length)]}";
-            string email = $"{firstName.ToLower()}.{lastName.ToLower()}{i}@mail.com";
+
+            // Use Guid to guarantee uniqueness across multiple runs
+            string email = $"{firstName.ToLower()}.{lastName.ToLower()}.{Guid.NewGuid():N}@mail.com";
+
             string phone = $"+234{random.Next(700000000, 809999999)}";
 
             merchants.Add(new Merchant
@@ -132,9 +133,11 @@ public static class MerchantGenerator
 
         try
         {
+            // ON CONFLICT DO NOTHING skips rows with duplicate emails instead of throwing
             string sql = @"
                 INSERT INTO merchants (merchant_name, merchant_contact_name, email, address, phone)
-                VALUES (@merchantName, @merchantContactName, @email, @address, @phone);
+                VALUES (@merchantName, @merchantContactName, @email, @address, @phone)
+                ON CONFLICT (email) DO NOTHING;
             ";
 
             foreach (var merchant in merchants)
@@ -167,9 +170,19 @@ public static class MerchantGenerator
 
         try
         {
+            // Oracle equivalent of ON CONFLICT DO NOTHING using MERGE
             string sql = @"
-                INSERT INTO merchants (merchant_name, merchant_contact_name, email, address, phone)
-                VALUES (:merchantName, :merchantContactName, :email, :address, :phone)
+                MERGE INTO merchants t
+                USING (SELECT :merchantName AS merchant_name,
+                              :merchantContactName AS merchant_contact_name,
+                              :email AS email,
+                              :address AS address,
+                              :phone AS phone
+                       FROM dual) s
+                ON (t.email = s.email)
+                WHEN NOT MATCHED THEN
+                    INSERT (merchant_name, merchant_contact_name, email, address, phone)
+                    VALUES (s.merchant_name, s.merchant_contact_name, s.email, s.address, s.phone)
             ";
 
             foreach (var merchant in merchants)

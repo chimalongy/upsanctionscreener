@@ -54,6 +54,14 @@
     }
     .field-input::placeholder { color: var(--color-text-muted, #94a3b8); }
 
+    .field-input-readonly {
+        width: 100%; padding: 9px 12px;
+        background: var(--color-surface, #f1f5f9);
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: 10px; font-size: 0.8rem;
+        color: var(--color-text-muted, #64748b);
+    }
+
     .entry-row { transition: background-color 0.15s ease; }
     .entry-row:hover { background: var(--color-surface, #f8fafc); }
 
@@ -249,11 +257,20 @@
             @* ── Core fields ── *@
             <div>
                 <p class="text-xs font-semibold text-text-muted uppercase tracking-widest mb-3">Core Information</p>
-                <div class="grid grid-cols-2 gap-3">
+
+                @* ID + Source are system-controlled — shown read-only for reference in edit mode only, never sent by the client. *@
+                <div id="systemInfoRow" class="hidden grid grid-cols-2 gap-3 mb-3">
                     <div>
                         <label class="field-label">Entry ID</label>
-                        <input id="fID" type="text" placeholder="Auto-generated if empty" class="field-input" />
+                        <div id="fIDDisplay" class="field-input-readonly">—</div>
                     </div>
+                    <div>
+                        <label class="field-label">Source</label>
+                        <div class="field-input-readonly">Nigeria Sanctions List</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="field-label">Subject Type <span class="text-red-400">*</span></label>
                         <select id="fSubjectType" class="field-input">
@@ -263,10 +280,6 @@
                             <option value="Vessel">Vessel</option>
                             <option value="Other">Other</option>
                         </select>
-                    </div>
-                    <div>
-                        <label class="field-label">Source <span class="text-red-400">*</span></label>
-                        <input id="fSource" type="text" placeholder="e.g. ONSA" class="field-input" />
                     </div>
                     <div>
                         <label class="field-label">Reference Number</label>
@@ -703,8 +716,10 @@
         editingId = null;
         document.getElementById('modalTitle').textContent = 'Add New Entry';
         resetForm();
+        // ID is not known yet (server assigns it on save) — keep the system info row hidden.
+        document.getElementById('systemInfoRow').classList.add('hidden');
         document.getElementById('entryModal').classList.add('open');
-        document.getElementById('fID').focus();
+        document.getElementById('fSubjectType').focus();
     }
 
     // ── Open modal (edit) ──────────────────────────────────────────────────
@@ -716,9 +731,11 @@
         document.getElementById('modalTitle').textContent = 'Edit Entry';
         resetForm();
 
-        document.getElementById('fID').value               = e.id                    ?? '';
+        // Show ID / Source read-only for reference — never editable, never sent back to the server.
+        document.getElementById('fIDDisplay').textContent = e.id ?? '—';
+        document.getElementById('systemInfoRow').classList.remove('hidden');
+
         document.getElementById('fSubjectType').value      = e.subjectType           ?? '';
-        document.getElementById('fSource').value           = e.source                ?? '';
         document.getElementById('fReferenceNumber').value  = e.referenceNumber       ?? '';
         document.getElementById('fDateDesignated').value   = e.dateDesignated        ?? '';
         document.getElementById('fSanctionImposed').value  = e.sanctionImposed       ?? '';
@@ -746,7 +763,7 @@
 
     // ── Reset form ─────────────────────────────────────────────────────────
     function resetForm() {
-        ['fID','fSubjectType','fSource','fReferenceNumber','fDateDesignated',
+        ['fSubjectType','fReferenceNumber','fDateDesignated',
          'fSanctionImposed','fComments','fCallSign','fVesselType','fVesselFlag',
          'fVesselOwner','fGrossRegisteredTonnage'].forEach(id => {
             const el = document.getElementById(id);
@@ -756,6 +773,7 @@
          'emailsContainer','positionsContainer','idListContainer'].forEach(id => {
             document.getElementById(id).innerHTML = '';
         });
+        document.getElementById('fIDDisplay').textContent = '—';
         document.getElementById('vesselSection').classList.add('hidden');
         document.getElementById('modalAlert').classList.add('hidden');
         listRowId = 0;
@@ -801,17 +819,16 @@
         if (!document.getElementById('fSubjectType').value) {
             showModalAlert('Subject type is required.', 'error'); return;
         }
-        if (!document.getElementById('fSource').value.trim()) {
-            showModalAlert('Source is required.', 'error'); return;
-        }
 
         const subjectType = document.getElementById('fSubjectType').value;
         const isVessel    = subjectType === 'Vessel';
 
+        // Note: id and source are intentionally omitted — the server assigns the ID
+        // (auto-incremented from the last index) and always sets Source to
+        // "Nigeria Sanctions List". originalId tells the server which record to
+        // update when editing.
         const payload = {
-            id:                   document.getElementById('fID').value.trim() || null,
             subjectType,
-            source:               document.getElementById('fSource').value.trim(),
             referenceNumber:      document.getElementById('fReferenceNumber').value.trim(),
             dateDesignated:       document.getElementById('fDateDesignated').value.trim(),
             sanctionImposed:      document.getElementById('fSanctionImposed').value.trim(),

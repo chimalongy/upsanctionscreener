@@ -1072,13 +1072,87 @@ return BadRequest(new { message = error });
             }
         }
 
+        //[HttpPost]
+        //[Route("Dashboard/List/NigerianSanctionList/Upsert")]
+        //public async Task<IActionResult> NigerianSanctionListUpsert([FromBody] SanctionEntryUpsertRequest req)
+        //{
+        //    try
+        //    {
+        //        var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "NIGERIANSANCTIONLIST.json");
+
+        //        List<SanctionEntry> entries;
+        //        try { entries = NigerianSanctionListReader.LoadFromFile(filePath); }
+        //        catch { entries = new List<SanctionEntry>(); }
+
+        //        if (req.IsEdit && req.OriginalId is not null)
+        //            entries = entries.Where(e => e.ID != req.OriginalId).ToList();
+
+        //        var newId = string.IsNullOrWhiteSpace(req.Id)
+        //            ? $"NSL-{Guid.NewGuid().ToString("N")[..8].ToUpper()}"
+        //            : req.Id.Trim();
+
+        //        if (!req.IsEdit && entries.Any(e => e.ID == newId))
+        //            return BadRequest(new { success = false, message = $"An entry with ID '{newId}' already exists." });
+
+        //        var entry = new SanctionEntry
+        //        {
+        //            ID = newId,
+        //            SubjectType = req.SubjectType ?? string.Empty,
+        //            Source = req.Source ?? string.Empty,
+        //            ReferenceNumber = req.ReferenceNumber ?? string.Empty,
+        //            DateDesignated = req.DateDesignated ?? string.Empty,
+        //            SanctionImposed = req.SanctionImposed ?? string.Empty,
+        //            Comments = req.Comments ?? string.Empty,
+        //            Names = req.Names ?? new(),
+        //            Addresses = req.Addresses ?? new(),
+        //            PhoneNumbers = req.PhoneNumbers ?? new(),
+        //            EmailAddresses = req.EmailAddresses ?? new(),
+        //            Positions = req.Positions ?? new(),
+        //            IdList = req.IdList ?? new(),
+        //            CallSign = req.CallSign,
+        //            VesselType = req.VesselType,
+        //            VesselFlag = req.VesselFlag,
+        //            VesselOwner = req.VesselOwner,
+        //            GrossRegisteredTonnage = req.GrossRegisteredTonnage
+        //        };
+
+        //        entries.Add(entry);
+
+        //        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+        //        var json = System.Text.Json.JsonSerializer.Serialize(entries, new System.Text.Json.JsonSerializerOptions
+        //        {
+        //            WriteIndented = true,
+        //            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        //        });
+        //        await System.IO.File.WriteAllTextAsync(filePath, json);
+
+        //        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        //        var email = User.FindFirstValue(ClaimTypes.Email);
+
+        //        // e.g. log who fetched the audit logs
+        //        await AuditLogger.LogAsync(
+        //            db: _db,
+        //            eventName: $"{email} - UPDATED NIGERIAN SANCTION LIST",
+        //            userId: userId,
+        //            ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+        //            pageUrl: HttpContext.Request.Path
+        //        );
+
+        //        return Json(new { success = true, id = newId });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return BadRequest(new { success = false, message = ex.Message });
+        //    }
+        //}
+
         [HttpPost]
         [Route("Dashboard/List/NigerianSanctionList/Upsert")]
         public async Task<IActionResult> NigerianSanctionListUpsert([FromBody] SanctionEntryUpsertRequest req)
         {
             try
             {
-                var filePath = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase", "NigerianSanctionList.json");
+                var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "NIGERIANSANCTIONLIST.json");
 
                 List<SanctionEntry> entries;
                 try { entries = NigerianSanctionListReader.LoadFromFile(filePath); }
@@ -1087,18 +1161,35 @@ return BadRequest(new { message = error });
                 if (req.IsEdit && req.OriginalId is not null)
                     entries = entries.Where(e => e.ID != req.OriginalId).ToList();
 
-                var newId = string.IsNullOrWhiteSpace(req.Id)
-                    ? $"NSL-{Guid.NewGuid().ToString("N")[..8].ToUpper()}"
-                    : req.Id.Trim();
+                string newId;
+                if (req.IsEdit)
+                {
+                    // Edits keep the original ID — it's not user-editable either.
+                    newId = req.OriginalId!;
+                }
+                else
+                {
+                    // Auto-generate from the last index, e.g. NSL-0001, NSL-0002, ...
+                    const string prefix = "NSL-";
+                    var lastIndex = entries
+                        .Select(e => e.ID)
+                        .Where(id => !string.IsNullOrWhiteSpace(id) && id.StartsWith(prefix))
+                        .Select(id =>
+                        {
+                            var suffix = id.Substring(prefix.Length);
+                            return int.TryParse(suffix, out var n) ? n : 0;
+                        })
+                        .DefaultIfEmpty(0)
+                        .Max();
 
-                if (!req.IsEdit && entries.Any(e => e.ID == newId))
-                    return BadRequest(new { success = false, message = $"An entry with ID '{newId}' already exists." });
+                    newId = $"{prefix}{(lastIndex + 1):D4}";
+                }
 
                 var entry = new SanctionEntry
                 {
                     ID = newId,
-                    SubjectType = req.SubjectType ?? string.Empty,
-                    Source = req.Source ?? string.Empty,
+                    SubjectType = req.SubjectType.ToUpperInvariant() ?? string.Empty,
+                    Source = "Nigeria Sanctions List", // fixed — never trust client input here
                     ReferenceNumber = req.ReferenceNumber ?? string.Empty,
                     DateDesignated = req.DateDesignated ?? string.Empty,
                     SanctionImposed = req.SanctionImposed ?? string.Empty,
@@ -1129,7 +1220,6 @@ return BadRequest(new { message = error });
                 var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
                 var email = User.FindFirstValue(ClaimTypes.Email);
 
-                // e.g. log who fetched the audit logs
                 await AuditLogger.LogAsync(
                     db: _db,
                     eventName: $"{email} - UPDATED NIGERIAN SANCTION LIST",
@@ -1146,13 +1236,14 @@ return BadRequest(new { message = error });
             }
         }
 
+
         [HttpPost]
         [Route("Dashboard/List/NigerianSanctionList/Delete/{id}")]
         public async Task<IActionResult> NigerianSanctionListDelete(string id)
         {
             try
             {
-                var filePath = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase", "NigerianSanctionList.json");
+                var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "NIGERIANSANCTIONLIST.json");
                 var entries = NigerianSanctionListReader.LoadFromFile(filePath);
                 var entry = entries.Where(e => e.ID == id).ToList();
                 var before = entries.Count;

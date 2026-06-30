@@ -1,11 +1,9 @@
 ﻿using Upsanctionscreener.Classess.Interfaces;
 using Upsanctionscreener.Models;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml.Linq;
+
 namespace Upsanctionscreener.Classess.Parsers
 {
     public class UnSanctionParser : ISanctionParser
@@ -24,64 +22,113 @@ namespace Upsanctionscreener.Classess.Parsers
             foreach (var node in individuals.Concat(entities))
             {
                 var isIndividual = node.Name.LocalName == "INDIVIDUAL";
+
                 var entry = new SanctionEntry
                 {
                     Source = Source,
                     SubjectType = isIndividual ? "Individual" : "Entity",
-                    ID = node.Element(ns + "DATAID")?.Value,
-                    ReferenceNumber = node.Element(ns + "REFERENCE_NUMBER")?.Value,
-                    DateDesignated = node.Element(ns + "LISTED_ON")?.Value,
-                    Comments = node.Element(ns + "COMMENTS1")?.Value,
+                    ID = GetValue(node, ns, "DATAID"),
+                    ReferenceNumber = GetValue(node, ns, "REFERENCE_NUMBER"),
+                    DateDesignated = GetValue(node, ns, "LISTED_ON"),
+                    Comments = GetValue(node, ns, "COMMENTS1"),
                 };
 
-                // Names
-                foreach (var nameNode in node.Elements(ns + (isIndividual ? "INDIVIDUAL_ALIAS" : "ENTITY_ALIAS"))
-                    .Prepend(node)) // include primary name
-                {
-                    string? name = isIndividual
-                        ? string.Join(" ", new[]
-                        {
-                            nameNode.Element(ns + "FIRST_NAME")?.Value,
-                            nameNode.Element(ns + "SECOND_NAME")?.Value,
-                            nameNode.Element(ns + "THIRD_NAME")?.Value,
-                            nameNode.Element(ns + "FOURTH_NAME")?.Value,
-                        }.Where(s => !string.IsNullOrWhiteSpace(s)))
-                        : nameNode.Element(ns + "FIRST_NAME")?.Value
-                          ?? nameNode.Element(ns + "ALIAS_NAME")?.Value;
+                // ── NAMES ────────────────────────────────────────────────
+                var primaryName = BuildPrimaryName(node, ns, isIndividual);
+                if (!string.IsNullOrWhiteSpace(primaryName))
+                    entry.Names.Add(primaryName);
 
-                    if (!string.IsNullOrWhiteSpace(name))
-                        entry.Names.Add(name);
+                // BUG 2 FIX: aliases use <ALIAS_NAME>, not FIRST/SECOND/THIRD_NAME
+                var aliasTag = isIndividual ? "INDIVIDUAL_ALIAS" : "ENTITY_ALIAS";
+                foreach (var aliasNode in node.Elements(ns + aliasTag))
+                {
+                    var aliasName = GetValue(aliasNode, ns, "ALIAS_NAME");
+                    if (!string.IsNullOrWhiteSpace(aliasName) && !entry.Names.Contains(aliasName))
+                        entry.Names.Add(aliasName);
                 }
 
-                // Addresses
-                foreach (var addr in node.Elements(ns + "INDIVIDUAL_ADDRESS")
-                    .Concat(node.Elements(ns + "ENTITY_ADDRESS")))
+                // ── ADDRESSES ────────────────────────────────────────────
+                var addrTag = isIndividual ? "INDIVIDUAL_ADDRESS" : "ENTITY_ADDRESS";
+                foreach (var addr in node.Elements(ns + addrTag))
                 {
                     var parts = new[]
                     {
-                        addr.Element(ns + "STREET")?.Value,
-                        addr.Element(ns + "CITY")?.Value,
-                        addr.Element(ns + "STATE_PROVINCE")?.Value,
-                        addr.Element(ns + "ZIP_CODE")?.Value,
-                        addr.Element(ns + "COUNTRY")?.Value
+                        GetValue(addr, ns, "STREET"),
+                        GetValue(addr, ns, "CITY"),
+                        GetValue(addr, ns, "STATE_PROVINCE"),
+                        GetValue(addr, ns, "ZIP_CODE"),
+                        GetValue(addr, ns, "COUNTRY"),
                     }.Where(s => !string.IsNullOrWhiteSpace(s));
+
                     var addrStr = string.Join(", ", parts);
                     if (!string.IsNullOrWhiteSpace(addrStr))
                         entry.Addresses.Add(addrStr);
                 }
 
-                // Document IDs
-                foreach (var doc2 in node.Elements(ns + "INDIVIDUAL_DOCUMENT"))
+                // ── DOCUMENT IDs ─────────────────────────────────────────
+                // BUG 3 FIX: no DATE_OF_ISSUE field — use NOTE for extra info
+                var docTag = isIndividual ? "INDIVIDUAL_DOCUMENT" : "ENTITY_DOCUMENT";
+                foreach (var docNode in node.Elements(ns + docTag))
                 {
-                    var id = $"{doc2.Element(ns + "TYPE_OF_DOCUMENT")?.Value}: {doc2.Element(ns + "NUMBER")?.Value}";
-                    if (!string.IsNullOrWhiteSpace(id.Trim(':', ' ')))
-                        entry.IdList.Add(id);
+                    var docType = GetValue(docNode, ns, "TYPE_OF_DOCUMENT");
+                    var docNumber = GetValue(docNode, ns, "NUMBER");
+                    var docCountry = GetValue(docNode, ns, "ISSUING_COUNTRY");
+                    var docNote = GetValue(docNode, ns, "NOTE");
+
+                    var parts = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(docType)) parts.Add(docType);
+                    if (!string.IsNullOrWhiteSpace(docNumber)) parts.Add(docNumber);
+                    if (!string.IsNullOrWhiteSpace(docCountry)) parts.Add($"Country: {docCountry}");
+                    if (!string.IsNullOrWhiteSpace(docNote)) parts.Add($"Note: {docNote}");
+
+                    var idStr = string.Join(", ", parts);
+                    if (!string.IsNullOrWhiteSpace(idStr))
+                        entry.IdList.Add(idStr);
+                }
+
+                // ── DESIGNATION / POSITIONS ──────────────────────────────
+                // BUG 1 FIX: <DESIGNATION> wraps <VALUE>, not direct text
+                foreach (var valEl in node.Elements(ns + "DESIGNATION")
+                                          .SelectMany(d => d.Elements(ns + "VALUE")))
+                {
+                    var val = valEl.Value?.Trim();
+                    if (!string.IsNullOrWhiteSpace(val))
+                        entry.Positions.Add(val);
                 }
 
                 entries.Add(entry);
             }
 
             return entries;
+        }
+
+        /// <summary>Gets direct child element text, trimmed.</summary>
+        private static string GetValue(XElement parent, XNamespace ns, string elementName)
+            => parent.Element(ns + elementName)?.Value?.Trim() ?? string.Empty;
+
+        /// <summary>
+        /// Builds primary name.
+        /// Individuals: FIRST_NAME + SECOND_NAME + THIRD_NAME + FOURTH_NAME (on the entity itself).
+        /// Entities: FIRST_NAME holds the full organisation name.
+        /// </summary>
+        private static string BuildPrimaryName(XElement node, XNamespace ns, bool isIndividual)
+        {
+            if (isIndividual)
+            {
+                var parts = new[]
+                {
+                    GetValue(node, ns, "FIRST_NAME"),
+                    GetValue(node, ns, "SECOND_NAME"),
+                    GetValue(node, ns, "THIRD_NAME"),
+                    GetValue(node, ns, "FOURTH_NAME"),
+                }.Where(s => !string.IsNullOrWhiteSpace(s));
+
+                return string.Join(" ", parts);
+            }
+            else
+            {
+                return GetValue(node, ns, "FIRST_NAME");
+            }
         }
     }
 }

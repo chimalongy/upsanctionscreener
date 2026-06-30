@@ -203,12 +203,13 @@
    ADD / EDIT TARGET MODAL
 ══════════════════════════════════════════════════════════════════ *@
 <div id="targetModal"
-     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-start justify-center px-4 py-6 overflow-y-auto">
+     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm items-center justify-center px-4 py-6">
     <div id="targetModalBox"
-         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-xl mx-auto my-auto">
+         class="bg-surface-card border border-border rounded-2xl shadow-xl w-full max-w-xl mx-auto my-auto
+                h-[90vh] max-h-[90vh] flex flex-col overflow-hidden">
 
         @* Modal header *@
-        <div class="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
             <h2 id="modalTitle" class="text-text-primary font-semibold text-base">Add New Target</h2>
             <button onclick="closeModal()"
                     class="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted
@@ -220,7 +221,7 @@
         </div>
 
         @* Modal body *@
-        <div class="px-6 py-5 space-y-5">
+        <div class="px-6 py-5 space-y-5 flex-1 overflow-y-auto">
             <div id="modalAlert" class="hidden"></div>
 
             @* ── Section: Identity ── *@
@@ -608,12 +609,37 @@
                             <p class="text-xs text-text-muted mt-1">Enter the name of the timestamp column in your database table (does not need to be mapped).</p>
                         </div>
                     </div>
+
+                    @* ── Custom Query (database + daily/weekly/monthly only) ── *@
+                    <div id="customQuerySection" class="hidden pt-2 border-t border-border">
+                        <div class="flex items-center gap-3 mb-3">
+                            <button type="button" id="customQueryToggle" onclick="toggleCustomQuery()"
+                                    class="relative w-10 h-5 rounded-full transition-colors duration-200 bg-border focus:outline-none">
+                                <span id="customQueryThumb"
+                                      class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"></span>
+                            </button>
+                            <div>
+                                <span id="customQueryLabel" class="text-sm text-text-secondary">Use custom query</span>
+                                <p class="text-xs text-text-muted">Run a custom SELECT statement instead of the default table scan. Available for Daily, Weekly, and Monthly schedules only.</p>
+                            </div>
+                        </div>
+                        <div id="customQueryTextareaSection" class="hidden">
+                            <label class="field-label">Custom SQL Query <span class="text-red-400">*</span></label>
+                            <textarea id="fCustomQuery" rows="4"
+                                      placeholder="SELECT id, name, email FROM merchants WHERE updated_at > now() - interval '1 day'"
+                                      class="field-input font-mono" style="resize: vertical;"></textarea>
+                            <p class="text-xs text-text-muted mt-1">
+                                Must be a single <strong>SELECT</strong> statement.
+                                <strong>CREATE, DROP, ALTER, TRUNCATE, INSERT, UPDATE, DELETE, GRANT, REVOKE</strong> are not allowed.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         @* Modal footer *@
-        <div class="px-6 py-4 border-t border-border flex justify-end gap-3">
+        <div class="px-6 py-4 border-t border-border flex justify-end gap-3 flex-shrink-0">
             <button onclick="closeModal()"
                     class="px-4 py-2 text-sm text-text-secondary hover:text-text-primary
                            border border-border rounded-xl transition-colors">
@@ -686,6 +712,7 @@ let frequency        = 'daily';
 let fieldRowId       = 0;
 let currentTargetType = 'database';
 let trackTime = false;
+let useCustomQuery = false;
 
 // File upload state
 let uploadedFileInfo = null;
@@ -765,8 +792,10 @@ function renderCards() {
             ? `<span class="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-100" title="Time column: ${escHtml(auto.time_column)}">⏱ Track: ${escHtml(auto.time_column)}</span>`
             : '';
 
-        // Track time badge for database targets with minutely/hourly
-
+        // Custom query badge for database targets with daily/weekly/monthly
+        const customQueryBadge = (!isDoc && auto.automate && ['daily','weekly','monthly'].includes(auto.frequency) && auto.use_custom_query)
+            ? `<span class="text-xs px-2 py-0.5 rounded-full border bg-indigo-50 text-indigo-700 border-indigo-100" title="Custom query scan enabled">🔎 Custom Query</span>`
+            : '';
 
         const fields      = ds.other_fields ?? [];
         const fieldBadges = fields.slice(0, 3).map(f =>
@@ -815,6 +844,7 @@ function renderCards() {
                             </span>
                             ${notifBadge}
                             ${trackTimeBadge}
+                            ${customQueryBadge}
                         </div>
                         ${connLine}
                     </div>
@@ -940,6 +970,7 @@ function setTargetType(type) {
     document.getElementById('section-document').classList.toggle('hidden', type !== 'document');
 
     refreshTrackTimeVisibility();
+    refreshCustomQueryVisibility();
 }
 
 // ── Open modal (add) ───────────────────────────────────────────────────
@@ -1027,6 +1058,11 @@ function openEditModal(id) {
         document.getElementById('fMonthlyTime').value     = auto.start_time ?? '02:00';
         document.getElementById('fWeekday').value         = auto.weekday      ?? 1;
         document.getElementById('fDayOfMonth').value      = auto.day_of_month ?? 15;
+
+        // Custom query — only meaningful for database targets
+        useCustomQuery = (!isDoc && (auto.use_custom_query ?? false));
+        document.getElementById('fCustomQuery').value = isDoc ? '' : (auto.custom_query ?? '');
+        syncCustomQueryToggle();
     }
 
     document.getElementById('targetModal').classList.add('open');
@@ -1130,6 +1166,11 @@ function resetForm() {
     trackTime = false;
     syncTrackTimeToggle();
     document.getElementById('fTimeColumn').value = '';
+
+    // Reset custom query
+    useCustomQuery = false;
+    syncCustomQueryToggle();
+    document.getElementById('fCustomQuery').value = '';
 }
 
 // ── Password eye toggle ────────────────────────────────────────────────
@@ -1170,6 +1211,7 @@ function syncAutomateToggle() {
         label.classList.replace('text-text-secondary', 'text-text-secondary');
     }
     refreshTrackTimeVisibility();
+    refreshCustomQueryVisibility();
 }
 
 // ── Track Time Toggle ──────────────────────────────────────────────────
@@ -1216,9 +1258,49 @@ function refreshTrackTimeVisibility() {
     }
 }
 
+// ── Custom Query Toggle ─────────────────────────────────────────────────
+function toggleCustomQuery() {
+    useCustomQuery = !useCustomQuery;
+    syncCustomQueryToggle();
+}
 
+function syncCustomQueryToggle() {
+    const btn       = document.getElementById('customQueryToggle');
+    const thumb     = document.getElementById('customQueryThumb');
+    const label     = document.getElementById('customQueryLabel');
+    const taSection = document.getElementById('customQueryTextareaSection');
 
+    if (useCustomQuery) {
+        btn.classList.replace('bg-border', 'bg-brand-500');
+        thumb.style.transform = 'translateX(20px)';
+        label.classList.replace('text-text-secondary', 'text-brand-600');
+        taSection.classList.remove('hidden');
+    } else {
+        btn.classList.replace('bg-brand-500', 'bg-border');
+        thumb.style.transform = 'translateX(0)';
+        label.classList.replace('text-brand-600', 'text-text-secondary');
+        taSection.classList.add('hidden');
+        document.getElementById('fCustomQuery').value = '';
+    }
+}
 
+function refreshCustomQueryVisibility() {
+    const section = document.getElementById('customQuerySection');
+    if (!section) return;
+
+    // Only show for database targets with daily, weekly, or monthly frequency when automate is on
+    const isDb = currentTargetType === 'database';
+    const isDailyWeeklyMonthly = ['daily', 'weekly', 'monthly'].includes(frequency);
+    const shouldShow = isDb && automate && isDailyWeeklyMonthly;
+
+    if (shouldShow) {
+        section.classList.remove('hidden');
+    } else {
+        section.classList.add('hidden');
+        useCustomQuery = false;
+        syncCustomQueryToggle();
+    }
+}
 
 // ── Frequency tabs ─────────────────────────────────────────────────────
 function setFrequency(f) {
@@ -1228,6 +1310,7 @@ function setFrequency(f) {
         document.getElementById(`opts-${x}`).classList.toggle('hidden', x !== f);
     });
     refreshTrackTimeVisibility();
+    refreshCustomQueryVisibility();
 }
 
 // ── Connection test ────────────────────────────────────────────────────
@@ -1628,6 +1711,36 @@ async function saveTarget() {
         }
     }
 
+    // ── Custom query (database + daily/weekly/monthly only) ────────────
+    let useCustomQueryVal = false;
+    let customQueryVal = '';
+
+    if (currentTargetType === 'database' && automate && ['daily','weekly','monthly'].includes(frequency)) {
+        useCustomQueryVal = useCustomQuery;
+        if (useCustomQueryVal) {
+            customQueryVal = document.getElementById('fCustomQuery').value.trim();
+
+            if (!customQueryVal) {
+                showModalAlert('Please enter a custom query when custom query is enabled.', 'error');
+                return;
+            }
+            if (!customQueryVal.toLowerCase().startsWith('select')) {
+                showModalAlert('Custom query must start with SELECT.', 'error');
+                return;
+            }
+
+            const forbiddenKeywords = ['create','drop','alter','truncate','insert','update','delete','grant','revoke'];
+            const queryLower = customQueryVal.toLowerCase();
+            for (const keyword of forbiddenKeywords) {
+                const pattern = new RegExp(`\\b${keyword}\\b`);
+                if (pattern.test(queryLower)) {
+                    showModalAlert(`Custom query contains forbidden keyword: '${keyword.toUpperCase()}'. Only SELECT statements are allowed.`, 'error');
+                    return;
+                }
+            }
+        }
+    }
+
     const automationSettings = {
         automate,
         frequency:        automate ? frequency : 'daily',
@@ -1637,7 +1750,9 @@ async function saveTarget() {
         interval_minutes: intervalMinutes,
         interval_hours:   intervalHours,
         track_time:       trackTimeVal,
-        time_column:      timeColumnVal
+        time_column:      timeColumnVal,
+        use_custom_query: useCustomQueryVal,
+        custom_query:     customQueryVal
     };
 
     // ── Build type-specific payload ───────────────────────────────────

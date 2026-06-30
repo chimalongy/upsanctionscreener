@@ -22,19 +22,19 @@ await SingleScreenReportGenerator.EnsureBrowserAsync();
 
 
 
-//List<Merchant> merchants = MerchantGenerator.GenerateMerchants(5000);
+//List<Merchant> merchants = MerchantGenerator.GenerateMerchants(50000);
 //await MerchantGenerator.InsertMerchantsAsync(
 //DatabaseType.Postgres,
 // "PvhvuxtEzWuiFUwdqcLCddmDuSbpdNBV1rpYp8m1ezlBQaHc9AOxKRhbmVELA5El4cyvS6oaVrn+CAZvRBzVtFcJuQGUjZGfFIlhtD6bO4E=",
 //merchants);
-
-//string connstr = "T28FmqXWeDjp02iuw0BLAgIHLBW5JXc7hOrlMtpFDPUm/J7VrpdQ+7h47NZf1TjKzXOjZ+Wme4FBQaHc9AOxKa932ifaeO/Rr5aoHyVLtaJlMkok9fvzdtdBjiVLDf8V";
+//string connstr = "jsyuRZJQPpHLg9EcVnk13vQHH8LKxs5AkyGngaqx7XoENtCcv9bRHq4w3uJBB28DCvsyU0p0+xEekqdCkyROx642+j+m8p2cdD68iD44R7H5XTt9D8V+Vg==";
 //string decryptedConnStr = Cryptor.Decrypt(connstr, true);
-//string newconstring = "Host=172.27.148.17;Port=1700;Database=upsanction;Username=upsanction;Password=Comp@2025A";
+//string newconstring = "Host=10.220.8.24;Port=1700;Database=upsanction;Username=upsanction;Password=Comp@2025A";
 //string newencryped = Cryptor.Encrypt(newconstring, true);
 
 
 var builder = WebApplication.CreateBuilder(args);
+AppConfigFetcher.Initialize(builder.Configuration);
 
 // ── Quartz ────────────────────────────────────────────────────────────────────
 builder.Services.AddQuartz(q =>
@@ -122,7 +122,7 @@ builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3000, listenOptions =>
     {
-        //listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
+        listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
     });
 });
 
