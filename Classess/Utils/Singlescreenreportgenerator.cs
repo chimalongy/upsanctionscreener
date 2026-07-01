@@ -15,7 +15,15 @@
     {
         public static async Task EnsureBrowserAsync()
         {
-            await new BrowserFetcher().DownloadAsync();
+            Console.WriteLine("Creating BrowserFetcher");
+
+            var fetcher = new BrowserFetcher();
+
+            Console.WriteLine("Starting DownloadAsync");
+
+            await fetcher.DownloadAsync();
+
+            Console.WriteLine("Download finished");
         }
 
         public static async Task<string> GenerateAsync(

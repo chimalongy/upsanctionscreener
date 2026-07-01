@@ -1,50 +1,14 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\",
+  "WorkspaceRootPath": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\colegeme\\source\\repos\\upsanctionscreener\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\colegeme\\source\\repos\\upsanctionscreener\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\colegeme\\source\\repos\\upsanctionscreener\\classess\\utils\\databasedatareader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\utils\\databasedatareader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\colegeme\\source\\repos\\upsanctionscreener\\classess\\search\\scanner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\search\\scanner.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\colegeme\\source\\repos\\upsanctionscreener\\classess\\utils\\dummy data\\merchantgenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\utils\\dummy data\\merchantgenerator.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\colegeme\\source\\repos\\upsanctionscreener\\jobs\\targetscanjob.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:jobs\\targetscanjob.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\colegeme\\source\\repos\\upsanctionscreener\\package.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:package.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\colegeme\\source\\repos\\upsanctionscreener\\classess\\parsers\\eusanctionparser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\parsers\\eusanctionparser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\colegeme\\source\\repos\\upsanctionscreener\\classess\\parsers\\unsanctionparser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\parsers\\unsanctionparser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\colegeme\\source\\repos\\upsanctionscreener\\classess\\utils\\sanctiondownloader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:classess\\utils\\sanctiondownloader.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\colegeme\\source\\repos\\upsanctionscreener\\services\\sanctionlistrefreshservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:services\\sanctionlistrefreshservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|c:\\users\\dell\\source\\repos\\upsanctionscreener\\controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5DF38411-DB85-1FBB-8865-5514286D3345}|Upsanctionscreener.csproj|solutionrelative:controllers\\dashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -54,149 +18,37 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 1,
           "Children": [
             {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "Scanner.cs",
-              "DocumentMoniker": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Search\\Scanner.cs",
-              "RelativeDocumentMoniker": "Classess\\Search\\Scanner.cs",
-              "ToolTip": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Search\\Scanner.cs",
-              "RelativeToolTip": "Classess\\Search\\Scanner.cs",
-              "ViewState": "AgIAAMUCAAAAAAAAAAAswOMCAABXAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-29T15:09:56.655Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "MerchantGenerator.cs",
-              "DocumentMoniker": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Utils\\Dummy Data\\MerchantGenerator.cs",
-              "RelativeDocumentMoniker": "Classess\\Utils\\Dummy Data\\MerchantGenerator.cs",
-              "ToolTip": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Utils\\Dummy Data\\MerchantGenerator.cs",
-              "RelativeToolTip": "Classess\\Utils\\Dummy Data\\MerchantGenerator.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAMAAAABfAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-29T15:06:54.318Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "package.json",
-              "DocumentMoniker": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\package.json",
-              "RelativeDocumentMoniker": "package.json",
-              "ToolTip": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\package.json",
-              "RelativeToolTip": "package.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-06-29T14:44:38.111Z",
-              "EditorCaption": ""
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\appsettings.json",
-              "RelativeDocumentMoniker": "appsettings.json",
-              "ToolTip": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\appsettings.json",
-              "RelativeToolTip": "appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABMAAAADAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-06-29T14:25:27.774Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "DatabaseDataReader.cs",
-              "DocumentMoniker": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Utils\\DatabaseDataReader.cs",
-              "RelativeDocumentMoniker": "Classess\\Utils\\DatabaseDataReader.cs",
-              "ToolTip": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Utils\\DatabaseDataReader.cs",
-              "RelativeToolTip": "Classess\\Utils\\DatabaseDataReader.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAAACkAAAARAAAAAAAAAA==",
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Program.cs",
+              "RelativeDocumentMoniker": "Program.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Program.cs*",
+              "RelativeToolTip": "Program.cs*",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAAABYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-29T13:45:02.213Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "TargetScanJob.cs",
-              "DocumentMoniker": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Jobs\\TargetScanJob.cs",
-              "RelativeDocumentMoniker": "Jobs\\TargetScanJob.cs",
-              "ToolTip": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Jobs\\TargetScanJob.cs",
-              "RelativeToolTip": "Jobs\\TargetScanJob.cs",
-              "ViewState": "AgIAABEAAAAAAAAAAAAqwCEAAAAwAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-29T13:44:44.374Z",
+              "WhenOpened": "2026-07-01T07:09:27.486Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Program.cs",
-              "RelativeDocumentMoniker": "Program.cs",
-              "ToolTip": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Program.cs",
-              "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAAHIAAAAAAAAAAAAAAHwAAAAHAAAAAAAAAA==",
+              "Title": "DashboardController.cs",
+              "DocumentMoniker": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\DashboardController.cs",
+              "RelativeDocumentMoniker": "Controllers\\DashboardController.cs",
+              "ToolTip": "C:\\Users\\dell\\source\\repos\\upsanctionscreener\\Controllers\\DashboardController.cs",
+              "RelativeToolTip": "Controllers\\DashboardController.cs",
+              "ViewState": "AgIAAAoGAAAAAAAAAAAiwG4GAAAQAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-29T12:46:34.867Z",
+              "WhenOpened": "2026-06-30T11:46:07.22Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 8,
-              "Title": "UnSanctionParser.cs",
-              "DocumentMoniker": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Parsers\\UnSanctionParser.cs",
-              "RelativeDocumentMoniker": "Classess\\Parsers\\UnSanctionParser.cs",
-              "ToolTip": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Parsers\\UnSanctionParser.cs",
-              "RelativeToolTip": "Classess\\Parsers\\UnSanctionParser.cs",
-              "ViewState": "AgIAAGEAAAAAAAAAAAAQwIUAAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-29T11:59:36.926Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "EuSanctionParser.cs",
-              "DocumentMoniker": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Parsers\\EuSanctionParser.cs",
-              "RelativeDocumentMoniker": "Classess\\Parsers\\EuSanctionParser.cs",
-              "ToolTip": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Parsers\\EuSanctionParser.cs",
-              "RelativeToolTip": "Classess\\Parsers\\EuSanctionParser.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAJAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-29T11:56:41.452Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "SanctionDownloader.cs",
-              "DocumentMoniker": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Utils\\SanctionDownloader.cs",
-              "RelativeDocumentMoniker": "Classess\\Utils\\SanctionDownloader.cs",
-              "ToolTip": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Classess\\Utils\\SanctionDownloader.cs",
-              "RelativeToolTip": "Classess\\Utils\\SanctionDownloader.cs",
-              "ViewState": "AgIAABIAAAAAAAAAAAAuwCgAAABzAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-29T11:54:49.259Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 10,
-              "Title": "SanctionListRefreshService.cs",
-              "DocumentMoniker": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Services\\SanctionListRefreshService.cs",
-              "RelativeDocumentMoniker": "Services\\SanctionListRefreshService.cs",
-              "ToolTip": "C:\\Users\\colegeme\\source\\repos\\upsanctionscreener\\Services\\SanctionListRefreshService.cs",
-              "RelativeToolTip": "Services\\SanctionListRefreshService.cs",
-              "ViewState": "AgIAAAYAAAAAAAAAAAAAAA0AAAArAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-06-29T11:54:40.311Z"
             }
           ]
         }

@@ -16,20 +16,25 @@ using Upsanctionscreener.Jobs;
 using Upsanctionscreener.Services;
 using Upsanctionscreener.Services;
 
+Console.WriteLine("1");
+
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+Console.WriteLine("2");
 await SingleScreenReportGenerator.EnsureBrowserAsync();
 
+Console.WriteLine("3");
 
 
 
-//List<Merchant> merchants = MerchantGenerator.GenerateMerchants(50000);
+//List<Merchant> merchants = MerchantGenerator.GenerateMerchants(300000);
 //await MerchantGenerator.InsertMerchantsAsync(
-//DatabaseType.Postgres,
-// "PvhvuxtEzWuiFUwdqcLCddmDuSbpdNBV1rpYp8m1ezlBQaHc9AOxKRhbmVELA5El4cyvS6oaVrn+CAZvRBzVtFcJuQGUjZGfFIlhtD6bO4E=",
+//DatabaseType.Oracle,
+// "p05CfML0aukekqdCkyROx7kbY/tWqLIWPVDsIzA+HZeS0gmupdOkOx8ekyCLskrR/1T924G8OsaZ/cN/LDv13042hiX2vn9u",
 //merchants);
 //string connstr = "jsyuRZJQPpHLg9EcVnk13vQHH8LKxs5AkyGngaqx7XoENtCcv9bRHq4w3uJBB28DCvsyU0p0+xEekqdCkyROx642+j+m8p2cdD68iD44R7H5XTt9D8V+Vg==";
 //string decryptedConnStr = Cryptor.Decrypt(connstr, true);
-//string newconstring = "Host=10.220.8.24;Port=1700;Database=upsanction;Username=upsanction;Password=Comp@2025A";
+
+//string newconstring = "User Id=upsanctions;Password=1;Data Source=localhost:1521/XEPDB1;";
 //string newencryped = Cryptor.Encrypt(newconstring, true);
 
 
@@ -122,7 +127,8 @@ builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3000, listenOptions =>
     {
-        listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
+        // listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
+        listenOptions.UseHttps();
     });
 });
 

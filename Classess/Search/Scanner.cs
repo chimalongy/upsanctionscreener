@@ -746,32 +746,43 @@ namespace Upsanctionscreener.Classess.Search
 
                     data_to_scan = database_read_result.Data;
 
-                    DateTime? startTime = data_to_scan.AsEnumerable().Min(row => row.Field<DateTime?>(target.AutomationSettings.TimeColumn));
-
-                    DateTime? stopTime = data_to_scan.AsEnumerable().Max(row => row.Field<DateTime?>(target.AutomationSettings.TimeColumn));
-
-                    //check if the target is already tracked
-                    var tracker = GetTargetScanTimeTracker(targetID);
-
-                    if (tracker == null)
+                    DateTime? startTime = null;
+                    DateTime? stopTime = null;
+                    
+                    if (target.AutomationSettings.TrackTime)
                     {
-                        var targetTracker = new TargetScanTimeTracker
+                        startTime = data_to_scan.AsEnumerable().Min(row => row.Field<DateTime?>(target.AutomationSettings.TimeColumn));
+
+                        stopTime = data_to_scan.AsEnumerable().Max(row => row.Field<DateTime?>(target.AutomationSettings.TimeColumn));
+
+                        //check if the target is already tracked
+                        var tracker = GetTargetScanTimeTracker(targetID);
+
+                        if (tracker == null)
                         {
-                            TargetId = targetID,
-                            TargetName = target.TargetName,
-                            StartTime = startTime?.ToString("o"),
-                            StopTime = stopTime?.ToString("o")
-                        };
+                            var targetTracker = new TargetScanTimeTracker
+                            {
+                                TargetId = targetID,
+                                TargetName = target.TargetName,
+                                StartTime = startTime?.ToString("o"),
+                                StopTime = stopTime?.ToString("o")
+                            };
 
-                        AddTargetScanTimeTracker(targetTracker);
-                    }
-                    else
-                    {
-                        tracker.StartTime = startTime?.ToString("o");
-                        tracker.StopTime = stopTime?.ToString("o");
+                            AddTargetScanTimeTracker(targetTracker);
+                        }
+                        else
+                        {
+                            tracker.StartTime = startTime?.ToString("o");
+                            tracker.StopTime = stopTime?.ToString("o");
 
-                        UpdateTargetScanTimeTracker(tracker);
+                            UpdateTargetScanTimeTracker(tracker);
+                        }
                     }
+
+
+                  
+
+                   
 
                     unique_items = GlobalFunctions.DeduplicateDatatbaleById(data_to_scan, target.DatabaseSettings.DataSettings.IdColumn);
                     NormalizedDataToScan = GlobalFunctions.NormaLizeNamesinTargetColumn(unique_items, target.DatabaseSettings.DataSettings.OtherFields, "name");

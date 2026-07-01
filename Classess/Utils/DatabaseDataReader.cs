@@ -514,7 +514,7 @@ namespace Upsanctionscreener.Classess.Utils
                     return automation_settings.CustomQuery;
                 }
                 string columnList = string.Join($",{Environment.NewLine}  ", columns);
-                return $"SELECT{Environment.NewLine}  {columnList}{Environment.NewLine}FROM {settings.TableName}";
+                return $"SELECT{Environment.NewLine}  {columnList}{Environment.NewLine}FROM {settings.TableName}{Environment.NewLine}ORDER BY {Quote(settings.IdColumn)}";
 
             }
         }
