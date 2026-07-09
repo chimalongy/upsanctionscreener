@@ -461,6 +461,8 @@ namespace Upsanctionscreener.Classess.Utils
             {
                 "PostgreSQL" =>
                     $"Host={req.Host};Port={req.Port};Database={req.DatabaseName};Username={req.UserName};Password={req.Password};",
+                "MSSQL" =>
+                    $"Server={req.Host},{req.Port};Database={req.DatabaseName};User Id={req.UserName};Password={req.Password};TrustServerCertificate=True;",
                 "Oracle" =>
                     $"User Id={req.UserName};Password={req.Password};Data Source={req.Host}:{req.Port}/{req.DatabaseName};",
                 _ => throw new InvalidOperationException($"Unsupported database type: '{req.DatabaseType}'.")

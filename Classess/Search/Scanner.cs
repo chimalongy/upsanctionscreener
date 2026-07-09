@@ -734,7 +734,7 @@ namespace Upsanctionscreener.Classess.Search
                    
                     
                     
-                    string Query = DatabaseDataReader.DatabaseQueryBuilder.BuildSelectQuery(target.DatabaseSettings.DataSettings, target.AutomationSettings, lasttrackedtime);
+                    string Query = DatabaseDataReader.DatabaseQueryBuilder.BuildSelectQuery(target.DatabaseSettings, target.AutomationSettings, lasttrackedtime);
                     Logger.LogToFile(folderName, fileName, $"Original Constructed Query:\n\n {Query}");
 
                     database_read_result = await DatabaseDataReader.ReadDatabaseRecords(Query, target.DatabaseSettings, folderName, fileName);

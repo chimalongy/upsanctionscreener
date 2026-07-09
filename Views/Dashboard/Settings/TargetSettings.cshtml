@@ -291,6 +291,7 @@
                                 <option value="">— Select —</option>
                                 <option value="PostgreSQL">PostgreSQL</option>
                                 <option value="Oracle">Oracle</option>
+                                <option value="MSSQL">Microsoft SQL Server (MSSQL)</option>
                             </select>
                         </div>
                         <div>
@@ -694,6 +695,22 @@ const PILL_COLORS = {
     address: 'selected-address'
 };
 
+// ── Database type → badge color helper ──────────────────────────────────
+// Returns the Tailwind badge classes for a given database_type value.
+// PostgreSQL = blue, Oracle = orange, MSSQL = purple, unknown = slate.
+function dbTypeBadgeClass(dbType) {
+    switch (dbType) {
+        case 'PostgreSQL':
+            return 'bg-blue-50 text-blue-700 border-blue-100';
+        case 'Oracle':
+            return 'bg-orange-50 text-orange-700 border-orange-100';
+        case 'MSSQL':
+            return 'bg-purple-50 text-purple-700 border-purple-100';
+        default:
+            return 'bg-slate-50 text-slate-700 border-slate-100';
+    }
+}
+
 // ── Attach inline event listeners after DOM ready ────────────────────
 function attachInlineListeners() {
     document.querySelectorAll('[data-reset-conn="true"]').forEach(el => {
@@ -768,9 +785,7 @@ function renderCards() {
 
         const typeBadge = isDoc
             ? 'bg-green-50 text-green-700 border-green-100'
-            : (db.database_type === 'PostgreSQL'
-                ? 'bg-blue-50 text-blue-700 border-blue-100'
-                : 'bg-orange-50 text-orange-700 border-orange-100');
+            : dbTypeBadgeClass(db.database_type);
         const typeLabel = isDoc ? 'Document' : (db.database_type || '—');
 
         let scheduleText = 'Manual only';

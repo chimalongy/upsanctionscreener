@@ -17,6 +17,7 @@ using Upsanctionscreener.Data;
 using Upsanctionscreener.Models;
 using Upsanctionscreener.Models.ViewModels;
 using Upsanctionscreener.Services;
+using Microsoft.Data.SqlClient;
 
 
 using static Upsanctionscreener.Classess.Search.PEPBKTree;
@@ -471,6 +472,8 @@ return BadRequest(new { message = error });
                         $"Host={req.Host};Port={req.Port};Database={req.DbName};Username={req.Username};Password={req.Password};Timeout=5;CommandTimeout=5",
                     "Oracle" =>
                         $"Data Source={req.Host}:{req.Port}/{req.DbName};User Id={req.Username};Password={req.Password};Connection Timeout=5",
+                    "MSSQL" =>
+                        $"Server={req.Host},{req.Port};Database={req.DbName};User Id={req.Username};Password={req.Password};TrustServerCertificate=True;Connect Timeout=5",
                     _ => throw new Exception("Unsupported database type.")
                 };
 
@@ -482,6 +485,11 @@ return BadRequest(new { message = error });
                 else if (req.DbType == "Oracle")
                 {
                     await using var conn = new Oracle.ManagedDataAccess.Client.OracleConnection(connStr);
+                    await conn.OpenAsync();
+                }
+                else if (req.DbType == "MSSQL")
+                {
+                    await using var conn = new SqlConnection(connStr);
                     await conn.OpenAsync();
                 }
 
