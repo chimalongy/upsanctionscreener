@@ -3,9 +3,8 @@ using Upsanctionscreener.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml.Linq;
+
 namespace Upsanctionscreener.Classess.Parsers
 {
     public class UkSanctionParser : ISanctionParser
@@ -23,30 +22,60 @@ namespace Upsanctionscreener.Classess.Parsers
                 var entry = new SanctionEntry
                 {
                     Source = Source,
-                    SubjectType = des.Element(ns + "GroupType")?.Value,
+                    SubjectType = des.Element(ns + "IndividualEntityShip")?.Value ?? string.Empty,
                     ID = des.Element(ns + "UniqueID")?.Value,
-                    ReferenceNumber = des.Element(ns + "UKSanctionsListRef")?.Value,
+                    ReferenceNumber = des.Element(ns + "UNReferenceNumber")?.Value
+                                   ?? des.Element(ns + "OFSIGroupID")?.Value
+                                   ?? string.Empty,
                     DateDesignated = des.Element(ns + "DateDesignated")?.Value,
                     SanctionImposed = des.Element(ns + "RegimeName")?.Value,
                     Comments = des.Element(ns + "OtherInformation")?.Value,
                 };
 
-                // Names
-                foreach (var nameNode in des.Descendants(ns + "Name"))
-                {
-                    var fullName = nameNode.Element(ns + "FullName")?.Value
-                        ?? string.Join(" ", new[]
-                        {
-                            nameNode.Element(ns + "Title")?.Value,
-                            nameNode.Element(ns + "GivenName")?.Value,
-                            nameNode.Element(ns + "FamilyName")?.Value,
-                        }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                // ── Names ────────────────────────────────────────────────
+                // Structure: <Names><Name><Name1>..<Name6> + <NameType>Primary Name/Alias</NameType></Name></Names>
+                var primaryNames = new List<string>();
+                var aliasNames = new List<string>();
 
-                    if (!string.IsNullOrWhiteSpace(fullName))
-                        entry.Names.Add(fullName);
+                foreach (var nameNode in des.Element(ns + "Names")?.Elements(ns + "Name") ?? Enumerable.Empty<XElement>())
+                {
+                    var fullName = string.Join(" ", new[]
+                    {
+                        nameNode.Element(ns + "Name1")?.Value,
+                        nameNode.Element(ns + "Name2")?.Value,
+                        nameNode.Element(ns + "Name3")?.Value,
+                        nameNode.Element(ns + "Name4")?.Value,
+                        nameNode.Element(ns + "Name5")?.Value,
+                        nameNode.Element(ns + "Name6")?.Value,
+                    }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+                    if (string.IsNullOrWhiteSpace(fullName))
+                        continue;
+
+                    var nameType = nameNode.Element(ns + "NameType")?.Value ?? string.Empty;
+
+                    // NameType casing/wording is inconsistent in the feed
+                    // (seen: "Primary Name", "Primary name", "Primary Name Variation", "Alias", "ALias")
+                    if (nameType.Trim().Equals("Primary Name", StringComparison.OrdinalIgnoreCase)
+                        || nameType.Trim().Equals("Primary name", StringComparison.OrdinalIgnoreCase))
+                    {
+                        primaryNames.Add(fullName);
+                    }
+                    else
+                    {
+                        aliasNames.Add(fullName);
+                    }
                 }
 
-                // Addresses
+                // Primary name(s) first, so PrimaryName (Names.FirstOrDefault()) is correct
+                foreach (var n in primaryNames.Concat(aliasNames))
+                {
+                    if (!entry.Names.Contains(n))
+                        entry.Names.Add(n);
+                }
+
+                // ── Addresses ────────────────────────────────────────────
+                // Include AddressLine4-6, which often carry city/district/province
                 foreach (var addr in des.Descendants(ns + "Address"))
                 {
                     var parts = new[]
@@ -54,36 +83,65 @@ namespace Upsanctionscreener.Classess.Parsers
                         addr.Element(ns + "AddressLine1")?.Value,
                         addr.Element(ns + "AddressLine2")?.Value,
                         addr.Element(ns + "AddressLine3")?.Value,
+                        addr.Element(ns + "AddressLine4")?.Value,
+                        addr.Element(ns + "AddressLine5")?.Value,
+                        addr.Element(ns + "AddressLine6")?.Value,
                         addr.Element(ns + "AddressPostalCode")?.Value,
                         addr.Element(ns + "AddressCountry")?.Value,
                     }.Where(s => !string.IsNullOrWhiteSpace(s));
+
                     var addrStr = string.Join(", ", parts);
                     if (!string.IsNullOrWhiteSpace(addrStr))
                         entry.Addresses.Add(addrStr);
                 }
 
-                // Phone numbers
+                // ── Phone numbers ────────────────────────────────────────
                 foreach (var phone in des.Descendants(ns + "PhoneNumber"))
                     if (!string.IsNullOrWhiteSpace(phone.Value))
                         entry.PhoneNumbers.Add(phone.Value);
 
-                // Emails
+                // ── Emails ────────────────────────────────────────────────
                 foreach (var email in des.Descendants(ns + "EmailAddress"))
                     if (!string.IsNullOrWhiteSpace(email.Value))
                         entry.EmailAddresses.Add(email.Value);
 
-                // Positions
+                // ── Positions ─────────────────────────────────────────────
                 foreach (var pos in des.Descendants(ns + "Position"))
                     if (!string.IsNullOrWhiteSpace(pos.Value))
                         entry.Positions.Add(pos.Value);
 
-                // IDs
-                foreach (var id in des.Descendants(ns + "IndividualDocument")
-                    .Concat(des.Descendants(ns + "EntityDocument")))
+                // ── ID documents ──────────────────────────────────────────
+                // Passports (individuals)
+                foreach (var passport in des.Descendants(ns + "Passport"))
                 {
-                    var idVal = $"{id.Element(ns + "DocumentType")?.Value}: {id.Element(ns + "DocumentNumber")?.Value}";
-                    if (!string.IsNullOrWhiteSpace(idVal.Trim(':', ' ')))
-                        entry.IdList.Add(idVal);
+                    var number = passport.Element(ns + "PassportNumber")?.Value;
+                    var info = passport.Element(ns + "PassportAdditionalInformation")?.Value;
+
+                    var parts = new List<string> { "Passport" };
+                    if (!string.IsNullOrWhiteSpace(number)) parts.Add(number);
+                    if (!string.IsNullOrWhiteSpace(info)) parts.Add(info);
+
+                    var idStr = string.Join(": ", parts.Take(2)) + (parts.Count > 2 ? $" ({parts[2]})" : "");
+                    if (!string.IsNullOrWhiteSpace(idStr))
+                        entry.IdList.Add(idStr);
+                }
+
+                // National identifiers (individuals)
+                foreach (var natId in des.Descendants(ns + "NationalIdentifier"))
+                {
+                    var number = natId.Element(ns + "NationalIdentifierNumber")?.Value;
+                    var info = natId.Element(ns + "NationalIdentifierAdditionalInformation")?.Value;
+
+                    var idStr = $"National ID: {number} {info}".Trim();
+                    if (!string.IsNullOrWhiteSpace(number))
+                        entry.IdList.Add(idStr);
+                }
+
+                // Business registration numbers (entities)
+                foreach (var brn in des.Descendants(ns + "BusinessRegistrationNumber"))
+                {
+                    if (!string.IsNullOrWhiteSpace(brn.Value))
+                        entry.IdList.Add($"Business Registration: {brn.Value.Trim()}");
                 }
 
                 entries.Add(entry);

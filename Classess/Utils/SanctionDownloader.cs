@@ -174,6 +174,47 @@ namespace Upsanctionscreener.Classess
         }
 
         // Convenience method: download, parse, and export in one call
+        //public async Task DownloadParseAndExportAsyncold(UpSanctionSettingsService settingsService)
+        //{
+        //    var outputDir = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase");
+        //    Directory.CreateDirectory(outputDir);
+
+        //    var result = await DownloadAndParseAsync();
+        //    dynamic response = result;
+        //    List<SanctionEntry> entries = response.data;
+        //    var status = response.status;
+
+
+        //    List<SanctionEntry> nigerianEntries = await NigerianSanctionListReader.LoadFromFileAsync(Path.Combine(GlobalVariables.nigerian_sanction_list_path, "NIGERIANSANCTIONLIST.json"));
+        //    entries.AddRange(nigerianEntries);
+
+        //    var excelPath = Path.Combine(outputDir,
+        //       $"UPSanctionDB-{DateTime.UtcNow:dd-MM-yyyy}.xlsx");
+
+
+        //    await ExportToExcelAsync(entries, excelPath);
+
+        //    Console.WriteLine($"Exported {entries.Count} entries to {excelPath}");
+
+        //    // ── 3. Overwrite base source file ────────────────────────────────────
+        //    if (status == "all")
+        //    {
+        //        var baseSourcePath = Path.Combine(
+        //       GlobalVariables.root_folder,
+        //       "SanctionDatabase", "basesource",
+        //       "UPSanctionDB.xlsx");
+
+        //        await ExportToExcelAsync(entries, baseSourcePath);
+        //        Console.WriteLine($"Base source file updated: {baseSourcePath}");
+        //    }
+           
+
+
+           
+
+        //}
+
+
         public async Task DownloadParseAndExportAsync(UpSanctionSettingsService settingsService)
         {
             var outputDir = Path.Combine(GlobalVariables.root_folder, "SanctionDatabase");
@@ -184,13 +225,18 @@ namespace Upsanctionscreener.Classess
             List<SanctionEntry> entries = response.data;
             var status = response.status;
 
-
-            List<SanctionEntry> nigerianEntries = await NigerianSanctionListReader.LoadFromFileAsync(Path.Combine(GlobalVariables.nigerian_sanction_list_path, "NIGERIANSANCTIONLIST.json"));
+            List<SanctionEntry> nigerianEntries = await NigerianSanctionListReader.LoadFromFileAsync(
+                Path.Combine(GlobalVariables.nigerian_sanction_list_path, "NIGERIANSANCTIONLIST.json"));
             entries.AddRange(nigerianEntries);
+
+            // ── Replace source-native IDs with our own continuous, guaranteed-unique ID ──
+            for (int i = 0; i < entries.Count; i++)
+            {
+                entries[i].ID = (i + 1).ToString();
+            }
 
             var excelPath = Path.Combine(outputDir,
                $"UPSanctionDB-{DateTime.UtcNow:dd-MM-yyyy}.xlsx");
-
 
             await ExportToExcelAsync(entries, excelPath);
 
@@ -200,19 +246,15 @@ namespace Upsanctionscreener.Classess
             if (status == "all")
             {
                 var baseSourcePath = Path.Combine(
-               GlobalVariables.root_folder,
-               "SanctionDatabase", "basesource",
-               "UPSanctionDB.xlsx");
+                   GlobalVariables.root_folder,
+                   "SanctionDatabase", "basesource",
+                   "UPSanctionDB.xlsx");
 
                 await ExportToExcelAsync(entries, baseSourcePath);
                 Console.WriteLine($"Base source file updated: {baseSourcePath}");
             }
-           
-
-
-           
-
         }
+
 
         private async Task<string> DownloadUkXmlAsync()
         {

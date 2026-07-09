@@ -908,168 +908,7 @@ namespace Upsanctionscreener.Classess.Search
         }
 
 
-        //  public static List<TargetScanResult> ParallelTargetScan(
-        //SanctionNamesBKTree sanctionTree,
-        //DataTable data_to_scan,
-        //List<SanctionEntry> sanction_entries,
-        //string folderName,
-        //string fileName,
-        //string idColumn,
-        //List<FieldMapping> mappings)
-        //  {
-        //      if (sanctionTree == null) throw new ArgumentNullException(nameof(sanctionTree));
-        //      if (data_to_scan == null) throw new ArgumentNullException(nameof(data_to_scan));
-        //      if (sanction_entries == null) throw new ArgumentNullException(nameof(sanction_entries));
-        //      if (string.IsNullOrWhiteSpace(idColumn))
-        //          throw new ArgumentException("ID column name cannot be empty.", nameof(idColumn));
-        //      if (mappings == null || mappings.Count == 0)
-        //          throw new ArgumentException("Mappings cannot be null or empty.", nameof(mappings));
-
-        //      // Validate ID column exists
-        //      if (!data_to_scan.Columns.Contains(idColumn))
-        //      {
-        //          Logger.LogToFile(folderName, fileName, $"DataTable must contain an '{idColumn}' column.");
-        //          throw new ArgumentException($"DataTable must contain an '{idColumn}' column.");
-        //      }
-
-        //      // Resolve dynamic columns from mappings (case-insensitive)
-        //      var nameColumns = mappings
-        //          .Where(m => string.Equals(m.MatchAs, "name", StringComparison.OrdinalIgnoreCase))
-        //          .Select(m => m.ColumnName)
-        //          .Distinct(StringComparer.OrdinalIgnoreCase)
-        //          .ToList();
-
-        //      var addressColumns = mappings
-        //          .Where(m => string.Equals(m.MatchAs, "address", StringComparison.OrdinalIgnoreCase))
-        //          .Select(m => m.ColumnName)
-        //          .Distinct(StringComparer.OrdinalIgnoreCase)
-        //          .ToList();
-
-        //      bool hasName = nameColumns.Any();
-        //      bool hasAddress = addressColumns.Any();
-
-        //      // Validate mapped columns exist in DataTable
-        //      foreach (var col in nameColumns.Concat(addressColumns))
-        //      {
-        //          if (!data_to_scan.Columns.Contains(col))
-        //              throw new ArgumentException($"Mapped column '{col}' does not exist in the DataTable.");
-        //      }
-
-        //      var rows = data_to_scan.Rows.Cast<DataRow>().ToArray();
-        //      var results = new TargetScanResult[rows.Length];
-
-        //      var sanctionLookup = sanction_entries
-        //          .Where(e => !string.IsNullOrEmpty(e.ID))
-        //          .ToDictionary(e => e.ID, e => e);
-
-        //      Parallel.ForEach(
-        //          rows.Select((row, index) => (row, index)),
-        //          new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
-        //          item =>
-        //          {
-        //              var rowId = item.row[idColumn]?.ToString()?.Trim();
-
-        //              var resolvedHits = new List<SanctionNamesBKTree.BKSearchResult>();
-        //              var resolvedEntries = new List<SanctionEntry>();
-        //              string matchedColumn = null;
-        //              string matchedNameValue = null;
-
-        //              // Check ALL columns mapped to "name" — each is a candidate
-        //              if (hasName)
-        //              {
-        //                  foreach (var nameCol in nameColumns)
-        //                  {
-        //                      var nameValue = item.row[nameCol]?.ToString()?.Trim() ?? string.Empty;
-        //                      if (string.IsNullOrWhiteSpace(nameValue))
-        //                          continue;
-
-        //                      var nameHits = sanctionTree.Search(nameValue);
-
-        //                      foreach (var hit in nameHits)
-        //                      {
-        //                          if (!sanctionLookup.TryGetValue(hit.EntryId, out var sanctionEntry))
-        //                              continue;
-
-        //                          bool addressMatched = false;
-
-        //                          if (hasAddress)
-        //                          {
-        //                              // Check ALL address columns for any match
-        //                              foreach (var addrCol in addressColumns)
-        //                              {
-        //                                  string scanAddress = item.row[addrCol]?.ToString()?.Trim() ?? string.Empty;
-
-        //                                  if (!string.IsNullOrEmpty(scanAddress) && sanctionEntry.Addresses.Count > 0)
-        //                                  {
-        //                                      var words = scanAddress.Split(
-        //                                          new[] { ' ', ',', '.', '-' },
-        //                                          StringSplitOptions.RemoveEmptyEntries);
-
-        //                                      bool matchFound = words.Any(word =>
-        //                                          sanctionEntry.Addresses.Any(addr =>
-        //                                              addr.Contains(word, StringComparison.OrdinalIgnoreCase)));
-
-        //                                      if (matchFound)
-        //                                      {
-        //                                          addressMatched = true;
-        //                                          break; // Found address match, no need to check other address columns
-        //                                      }
-        //                                  }
-        //                                  else
-        //                                  {
-        //                                      // No address to compare — treat as match
-        //                                      addressMatched = true;
-        //                                      break;
-        //                                  }
-        //                              }
-        //                          }
-        //                          else
-        //                          {
-        //                              // No address mapping — name hit is sufficient
-        //                              addressMatched = true;
-        //                          }
-
-        //                          if (addressMatched)
-        //                          {
-        //                              resolvedHits.Add(hit);
-        //                              resolvedEntries.Add(sanctionEntry);
-        //                              matchedColumn = nameCol;      // Track which column matched
-        //                              matchedNameValue = nameValue; // Track the value that matched
-        //                          }
-        //                      }
-
-        //                      // If you want ONLY the first matching column per row, break here:
-        //                      // if (resolvedHits.Count > 0) break;
-        //                  }
-        //              }
-
-        //              // Build result only if there were hits
-        //              if (resolvedHits.Count > 0)
-        //              {
-        //                  // Concatenate all name values for reference (or just use the matched one)
-        //                  var allNameValues = nameColumns
-        //                      .Select(c => item.row[c]?.ToString()?.Trim())
-        //                      .Where(v => !string.IsNullOrWhiteSpace(v));
-
-        //                  var allAddressValues = addressColumns
-        //                      .Select(c => item.row[c]?.ToString()?.Trim())
-        //                      .Where(v => !string.IsNullOrWhiteSpace(v));
-
-        //                  results[item.index] = new TargetScanResult
-        //                  {
-        //                      RowId = rowId,
-        //                      Name = matchedNameValue ?? string.Join("; ", allNameValues),
-        //                      Address = string.Join("; ", allAddressValues),
-        //                      MatchedColumn = matchedColumn,
-        //                      Hits = resolvedHits,
-        //                      ResolvedSanctionEntries = resolvedEntries
-        //                  };
-        //              }
-        //          });
-
-        //      return results.Where(r => r != null).ToList();
-        //  }
-
+   
         public static List<TargetScanResult> ParallelTargetScan(
     SanctionNamesBKTree sanctionTree,
     DataTable data_to_scan,
@@ -1082,6 +921,8 @@ namespace Upsanctionscreener.Classess.Search
             if (sanctionTree == null) throw new ArgumentNullException(nameof(sanctionTree));
             if (data_to_scan == null) throw new ArgumentNullException(nameof(data_to_scan));
             if (sanction_entries == null) throw new ArgumentNullException(nameof(sanction_entries));
+
+            
             if (string.IsNullOrWhiteSpace(idColumn))
                 throw new ArgumentException("ID column name cannot be empty.", nameof(idColumn));
             if (mappings == null || mappings.Count == 0)
@@ -1128,10 +969,13 @@ namespace Upsanctionscreener.Classess.Search
             var rows = data_to_scan.Rows.Cast<DataRow>().ToArray();
             var results = new TargetScanResult[rows.Length];
 
+
+            Logger.LogToFile(folderName, fileName, $"           creating sanction lookup");
             var sanctionLookup = sanction_entries
                 .Where(e => !string.IsNullOrEmpty(e.ID))
                 .ToDictionary(e => e.ID, e => e);
 
+            Logger.LogToFile(folderName, fileName, $"           now scanning in parallel.");
             Parallel.ForEach(
                 rows.Select((row, index) => (row, index)),
                 new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },

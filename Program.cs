@@ -16,10 +16,10 @@ using Upsanctionscreener.Jobs;
 using Upsanctionscreener.Services;
 using Upsanctionscreener.Services;
 
-Console.WriteLine("1");
+Console.WriteLine("Starting Application");
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-Console.WriteLine("2");
+Console.WriteLine("EnsuringBrowserAsync");
 await SingleScreenReportGenerator.EnsureBrowserAsync();
 
 Console.WriteLine("3");
@@ -127,8 +127,8 @@ builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3000, listenOptions =>
     {
-        // listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
-        listenOptions.UseHttps();
+         listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
+        //listenOptions.UseHttps();
     });
 });
 
