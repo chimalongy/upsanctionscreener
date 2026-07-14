@@ -20,7 +20,7 @@ Console.WriteLine("Starting Application");
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 Console.WriteLine("EnsuringBrowserAsync");
-//await SingleScreenReportGenerator.EnsureBrowserAsync();
+await SingleScreenReportGenerator.EnsureBrowserAsync();
 
 Console.WriteLine("3");
 
@@ -127,8 +127,8 @@ builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3000, listenOptions =>
     {
-        // listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
-        listenOptions.UseHttps();
+        listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
+        //listenOptions.UseHttps();
     });
 });
 
