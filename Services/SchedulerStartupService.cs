@@ -3,11 +3,6 @@ using Upsanctionscreener.Data;
 
 namespace Upsanctionscreener.Services
 {
-    /// <summary>
-    /// Runs on application startup and restores all automated target schedules
-    /// from the database. Required because Quartz uses an in-memory store,
-    /// so all jobs are lost when the application restarts.
-    /// </summary>
     public class SchedulerStartupService : IHostedService
     {
         private readonly IServiceScopeFactory _scopeFactory;
@@ -30,8 +25,6 @@ namespace Upsanctionscreener.Services
             var schedulerSvc = scope.ServiceProvider.GetRequiredService<TargetSchedulerService>();
             var settingsSvc = new UpSanctionSettingsService(db);
 
-            // GetTargetSettingsAsync returns List<TargetSetting> which already has
-            // AutomationSettings fully typed — no re-deserialization needed
             var result = await settingsSvc.GetTargetSettingsAsync();
 
             if (!result.Success || result.Data is null)
@@ -41,12 +34,12 @@ namespace Upsanctionscreener.Services
                 return;
             }
 
-            int restored = 0;
+            int restoredLocal = 0;
+            int restoredTxn = 0;
             int skipped = 0;
 
             foreach (var target in result.Data)
             {
-                // AutomationSettings is never null on TargetSetting (initialised with new())
                 if (!target.AutomationSettings.Automate)
                 {
                     skipped++;
@@ -60,9 +53,13 @@ namespace Upsanctionscreener.Services
                         target.TargetName,
                         target.TargetType,
                         target.AutomationSettings.Frequency,
-                        target.AutomationSettings);
+                        target.AutomationSettings,
+                        target.TransactionScan);
 
-                    restored++;
+                    if (target.TransactionScan)
+                        restoredTxn++;
+                    else
+                        restoredLocal++;
                 }
                 catch (Exception ex)
                 {
@@ -73,8 +70,8 @@ namespace Upsanctionscreener.Services
             }
 
             _logger.LogInformation(
-                "[SchedulerStartup] Done — {Restored} schedule(s) restored, {Skipped} manual target(s) skipped.",
-                restored, skipped);
+                "[SchedulerStartup] Done — {Local} Quartz schedule(s) restored, {Txn} transaction-scan job(s) restarted, {Skipped} manual target(s) skipped.",
+                restoredLocal, restoredTxn, skipped);
         }
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

@@ -70,6 +70,9 @@ namespace Upsanctionscreener.Classess.Utils
         [JsonPropertyName("target_type")]
         public string TargetType { get; set; } = "database";
 
+        [JsonPropertyName("transaction_scan")]
+        public bool TransactionScan { get; set; }
+
         [JsonPropertyName("database_settings")]
         public DatabaseSettings? DatabaseSettings { get; set; }
 
@@ -216,6 +219,9 @@ namespace Upsanctionscreener.Classess.Utils
         [JsonPropertyName("target_type")]
         public string TargetType { get; set; } = "database";
 
+        [JsonPropertyName("transaction_scan")]
+        public bool TransactionScan { get; set; }
+
         [JsonPropertyName("db_settings_changed")]
         public bool DbSettingsChanged { get; set; }
 
@@ -255,6 +261,8 @@ namespace Upsanctionscreener.Classess.Utils
 
         [JsonPropertyName("target_type")]
         public string? TargetType { get; set; }
+        [JsonPropertyName("transaction_scan")]
+        public bool TransactionScan { get; set; }
 
         [JsonPropertyName("document_settings")]
         public TargetDocumentSettingsEntry? DocumentSettings { get; set; }
@@ -744,6 +752,7 @@ namespace Upsanctionscreener.Classess.Utils
                 {
                     target = targets[existing];
                     target.TargetName = request.TargetName;
+                    target.TransactionScan = request.TransactionScan;   // ← add this line
                     target.AutomationSettings = MapAutomation(request.AutomationSettings);
                     target.NotificationSettings = MapNotification(request.NotificationSettings);
 
@@ -795,6 +804,7 @@ namespace Upsanctionscreener.Classess.Utils
                         Id = newId,
                         TargetName = request.TargetName,
                         TargetType = request.TargetType,
+                        TransactionScan = request.TransactionScan,       // ← add this line
                         AutomationSettings = MapAutomation(request.AutomationSettings),
                         NotificationSettings = MapNotification(request.NotificationSettings)
                     };

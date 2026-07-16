@@ -261,6 +261,19 @@
                             </button>
                         </div>
                     </div>
+
+                    @* Transaction Scan Toggle — sits right after Target Type *@
+                    <div class="flex items-center gap-3 pt-1">
+                        <button type="button" id="transactionScanToggle" onclick="toggleTransactionScan()"
+                                class="relative w-10 h-5 rounded-full transition-colors duration-200 bg-border focus:outline-none">
+                            <span id="transactionScanThumb"
+                                  class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"></span>
+                        </button>
+                        <div>
+                            <span id="transactionScanLabel" class="text-sm text-text-secondary">Transaction Scan</span>
+                            <p class="text-xs text-text-muted">Flag this target as a transaction-based scan (vs. a customer/entity scan).</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -730,6 +743,7 @@ let fieldRowId       = 0;
 let currentTargetType = 'database';
 let trackTime = false;
 let useCustomQuery = false;
+let transactionScan = false;
 
 // File upload state
 let uploadedFileInfo = null;
@@ -812,6 +826,11 @@ function renderCards() {
             ? `<span class="text-xs px-2 py-0.5 rounded-full border bg-indigo-50 text-indigo-700 border-indigo-100" title="Custom query scan enabled">🔎 Custom Query</span>`
             : '';
 
+        // Transaction scan badge
+        const transactionScanBadge = t.transaction_scan
+            ? `<span class="text-xs px-2 py-0.5 rounded-full border bg-cyan-50 text-cyan-700 border-cyan-100" title="This target is flagged as a transaction scan">💱 Transaction Scan</span>`
+            : '';
+
         const fields      = ds.other_fields ?? [];
         const fieldBadges = fields.slice(0, 3).map(f =>
             `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-surface border border-border text-text-secondary">
@@ -860,6 +879,7 @@ function renderCards() {
                             ${notifBadge}
                             ${trackTimeBadge}
                             ${customQueryBadge}
+                            ${transactionScanBadge}
                         </div>
                         ${connLine}
                     </div>
@@ -1015,6 +1035,10 @@ function openEditModal(id) {
 
     const isDoc = t.target_type === 'document';
     setTargetType(isDoc ? 'document' : 'database');
+
+    // Transaction scan
+    transactionScan = t.transaction_scan ?? false;
+    syncTransactionScanToggle();
 
     if (isDoc) {
         const doc = t.document_settings ?? {};
@@ -1186,6 +1210,10 @@ function resetForm() {
     useCustomQuery = false;
     syncCustomQueryToggle();
     document.getElementById('fCustomQuery').value = '';
+
+    // Reset transaction scan
+    transactionScan = false;
+    syncTransactionScanToggle();
 }
 
 // ── Password eye toggle ────────────────────────────────────────────────
@@ -1227,6 +1255,28 @@ function syncAutomateToggle() {
     }
     refreshTrackTimeVisibility();
     refreshCustomQueryVisibility();
+}
+
+// ── Transaction Scan Toggle ───────────────────────────────────────────
+function toggleTransactionScan() {
+    transactionScan = !transactionScan;
+    syncTransactionScanToggle();
+}
+
+function syncTransactionScanToggle() {
+    const btn   = document.getElementById('transactionScanToggle');
+    const thumb = document.getElementById('transactionScanThumb');
+    const label = document.getElementById('transactionScanLabel');
+
+    if (transactionScan) {
+        btn.classList.replace('bg-border', 'bg-brand-500');
+        thumb.style.transform = 'translateX(20px)';
+        label.classList.replace('text-text-secondary', 'text-brand-600');
+    } else {
+        btn.classList.replace('bg-brand-500', 'bg-border');
+        thumb.style.transform = 'translateX(0)';
+        label.classList.replace('text-brand-600', 'text-text-secondary');
+    }
 }
 
 // ── Track Time Toggle ──────────────────────────────────────────────────
@@ -1802,6 +1852,7 @@ async function saveTarget() {
                 id: editingId ?? 0,
                 target_name: targetName,
                 target_type: 'database',
+                transaction_scan: transactionScan,
                 db_settings_changed: true,
                 database_settings: {
                     database_type: dbType, host, port,
@@ -1818,6 +1869,7 @@ async function saveTarget() {
                 id: editingId ?? 0,
                 target_name: targetName,
                 target_type: 'database',
+                transaction_scan: transactionScan,
                 db_settings_changed: false,
                 database_settings: {
                     data_settings: { table_name: tableName, id_column: idColumn, other_fields: mappings }
@@ -1842,6 +1894,7 @@ async function saveTarget() {
             id: editingId ?? 0,
             target_name: targetName,
             target_type: 'document',
+            transaction_scan: transactionScan,
             document_settings: {
                 file_name:      uploadedFileInfo.fileName,
                 upload_path:    uploadedFileInfo.uploadPath,

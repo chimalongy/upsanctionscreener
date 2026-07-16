@@ -335,8 +335,14 @@ return BadRequest(new { message = error });
             if (!result.Success)
                 return BadRequest(new { success = false, message = result.Error });
 
-            // ── Schedule / reschedule the Quartz job ──────────────────────────────
-            if (target.AutomationSettings is not null)
+            // ── Schedule the scan — local Quartz OR the transaction screener app ──
+            if (target.TransactionScan)
+            {
+                // Transaction-scan targets are not scheduled via Quartz at all.
+                // Delegate entirely to the transaction screener app.
+                await _targetScheduler.StartTransactionJobAsync(resolvedId, target.TargetName);
+            }
+            else if (target.AutomationSettings is not null)
             {
                 var automation = new AutomationSettings
                 {
@@ -358,7 +364,8 @@ return BadRequest(new { message = error });
                     target.TargetName,
                     target.TargetType,
                     target.AutomationSettings.Frequency,
-                    automation);
+                    automation,
+                    transactionScan: false);
             }
 
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -378,52 +385,54 @@ return BadRequest(new { message = error });
 
 
 
-
         [HttpPost]
         [Route("Dashboard/Settings/TargetSettings/Delete/{id:int}")]
         public async Task<IActionResult> TargetSettingsDelete(int id)
         {
             var svc = new UpSanctionSettingsService(_db);
 
-            // ── Clean up uploaded document file if applicable ─────────────────────
             var getAllResult = await svc.GetTargetSettingsAsync();
+            bool isTransactionScan = false;
+
             if (getAllResult.Success && getAllResult.Data is not null)
             {
                 var target = getAllResult.Data.FirstOrDefault(t => t.Id == id);
-                if (target?.TargetType == "document")
+                if (target is not null)
                 {
-                    var uploadPath = target.DocumentSettings?.UploadPath;
-                    if (!string.IsNullOrWhiteSpace(uploadPath) && System.IO.File.Exists(uploadPath))
-                    {
-                        var uploadRoot = Path.GetFullPath(
-                            Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
-                        var resolvedPath = Path.GetFullPath(uploadPath);
+                    isTransactionScan = target.TransactionScan;   // ← capture before delete
 
-                        if (resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
+                    if (target.TargetType == "document")
+                    {
+                        var uploadPath = target.DocumentSettings?.UploadPath;
+                        if (!string.IsNullOrWhiteSpace(uploadPath) && System.IO.File.Exists(uploadPath))
                         {
-                            try { System.IO.File.Delete(uploadPath); }
-                            catch (Exception ex)
+                            var uploadRoot = Path.GetFullPath(
+                                Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
+                            var resolvedPath = Path.GetFullPath(uploadPath);
+
+                            if (resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
                             {
-                                // Non-fatal — log and continue
-                             Console.WriteLine($"{ex}- \\n[TargetDelete] Could not delete uploaded file for target .");
+                                try { System.IO.File.Delete(uploadPath); }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"{ex}- \\n[TargetDelete] Could not delete uploaded file for target .");
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // ── Delete from database ──────────────────────────────────────────────
             var result = await svc.DeleteTargetAsync(id);
             if (!result.Success)
                 return BadRequest(new { success = false, message = result.Error });
 
-            // ── Remove the Quartz job ─────────────────────────────────────────────
-            await _targetScheduler.RemoveTargetScheduleAsync(id);
+            // ── Remove the schedule — local Quartz OR stop-job on the txn screener ──
+            await _targetScheduler.RemoveTargetScheduleAsync(id, isTransactionScan);   // ← pass flag
 
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var email = User.FindFirstValue(ClaimTypes.Email);
 
-            // e.g. log who fetched the audit logs
             await AuditLogger.LogAsync(
                 db: _db,
                 eventName: $"{email} - DELETED TARGET {id}",
@@ -434,7 +443,6 @@ return BadRequest(new { message = error });
 
             return Json(new { success = true });
         }
-
 
 
 
@@ -803,9 +811,19 @@ return BadRequest(new { message = error });
 
             try
             {
-        
-                Task.Run(async () =>{Scanner.TargetScanScreener(target.Id, target.TargetName, target.AutomationSettings?.Frequency ?? "manual", _scopeFactory);});
+                if (target.TransactionScan)
+                {
+                    // ── Delegate to the transaction screener app ──────────────────
+                    var (success, message) = await _targetScheduler.RunTransactionJobNowAsync(id);
 
+                    if (!success)
+                        return BadRequest(new { success = false, message });
+                }
+                else
+                {
+                    // ── Existing local scan trigger ────────────────────────────────
+                    Task.Run(async () => { Scanner.TargetScanScreener(target.Id, target.TargetName, target.AutomationSettings?.Frequency ?? "manual", _scopeFactory); });
+                }
 
                 var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
                 var email = User.FindFirstValue(ClaimTypes.Email);
@@ -824,7 +842,6 @@ return BadRequest(new { message = error });
                 return BadRequest(new { success = false, message = $"Failed to trigger scan: {ex.Message}" });
             }
         }
-
 
 
 

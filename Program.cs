@@ -25,7 +25,11 @@ await SingleScreenReportGenerator.EnsureBrowserAsync();
 Console.WriteLine("3");
 
 
-
+List<Transaction> transactions = TransactionGenerator.GenerateTransactions(50);
+await TransactionGenerator.InsertTransactionsAsync(
+    DatabaseType.Postgres,
+    "PvhvuxtEzWuiFUwdqcLCddmDuSbpdNBV1rpYp8m1ezl/XajUjlJH5zxnYNh8lglMZQdsnQFXF4KSiTX0lczG6TiFxUEUte+HHCDyGZkNmCfXQY4lSw3/FQ==",
+    transactions);
 //List<Merchant> merchants = MerchantGenerator.GenerateMerchants(300000);
 //await MerchantGenerator.InsertMerchantsAsync(
 //DatabaseType.Oracle,
@@ -34,7 +38,7 @@ Console.WriteLine("3");
 //string connstr = "jsyuRZJQPpHLg9EcVnk13vQHH8LKxs5AkyGngaqx7XoENtCcv9bRHq4w3uJBB28DCvsyU0p0+xEekqdCkyROx642+j+m8p2cdD68iD44R7H5XTt9D8V+Vg==";
 //string decryptedConnStr = Cryptor.Decrypt(connstr, true);
 
-//string newconstring = "User Id=upsanctions;Password=1;Data Source=localhost:1521/XEPDB1;";
+//string newconstring = "Host=localhost;Port=5432;Database=transactions_mock;Username=postgres;Password=1";
 //string newencryped = Cryptor.Encrypt(newconstring, true);
 
 
@@ -122,7 +126,11 @@ builder.Services.AddHttpClient<SanctionDownloader>(client =>
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<UpSanctionSettingsService>();
-
+builder.Services.AddHttpClient("TransactionScreenerApi", client =>
+{
+    client.BaseAddress = new Uri("http://localhost:3001");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3000, listenOptions =>
