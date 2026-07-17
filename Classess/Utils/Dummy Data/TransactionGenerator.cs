@@ -1,7 +1,9 @@
 ﻿using Npgsql;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Upsanctionscreener.Classess.Utils;
 
@@ -195,6 +197,55 @@ public static class TransactionGenerator
         {
             await transactionScope.RollbackAsync();
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Runs indefinitely, generating and inserting a batch of transactions
+    /// every `interval` until `cancellationToken` is cancelled. Intended to be
+    /// started as a background task (or wrapped in a BackgroundService) rather
+    /// than awaited inline, since it never completes on its own.
+    /// </summary>
+    /// <param name="dbType">Target database type (currently only Postgres is implemented).</param>
+    /// <param name="connectionString">Encrypted connection string (decrypted internally).</param>
+    /// <param name="cancellationToken">Token used to stop the loop, e.g. on app shutdown.</param>
+    /// <param name="batchSize">Number of transactions inserted per tick. Defaults to 1.</param>
+    /// <param name="interval">Time between batches. Defaults to 3 seconds.</param>
+    /// <param name="schemaTable">Target table, e.g. "public.transactions2".</param>
+    public static async Task RunPeriodicallyAsync(
+        DatabaseType dbType,
+        string connectionString,
+        CancellationToken cancellationToken,
+        int batchSize = 1,
+        TimeSpan? interval = null,
+        string schemaTable = "public.transactions2")
+    {
+        interval ??= TimeSpan.FromSeconds(3);
+
+        using var timer = new PeriodicTimer(interval.Value);
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                try
+                {
+                    var batch = GenerateTransactions(batchSize);
+                    await InsertTransactionsAsync(dbType, connectionString, batch, schemaTable);
+                    Console.WriteLine($"{batchSize} transactions inserted to the transaction database at {DateTime.Now}");
+
+                }
+                catch (Exception ex)
+                {
+                    // Don't let a single failed batch kill the loop — log and keep going.
+                    Console.WriteLine($"[TransactionGenerator] batch insert failed: {ex.Message}");
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on shutdown — swallow so callers don't need a try/catch
+            // around the fire-and-forget task.
         }
     }
 }

@@ -20,16 +20,23 @@ Console.WriteLine("Starting Application");
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 Console.WriteLine("EnsuringBrowserAsync");
-await SingleScreenReportGenerator.EnsureBrowserAsync();
+//await SingleScreenReportGenerator.EnsureBrowserAsync();
 
 Console.WriteLine("3");
 
+// ── Periodic transaction generation ─────────────────────────────────────────
+// Replaces the old one-shot GenerateTransactions(50)/InsertTransactionsAsync
+// call with a background loop that inserts a batch every 3 seconds.
+// txnGenCts is cancelled on app shutdown further down (app.Lifetime.ApplicationStopping).
+var txnGenCts = new CancellationTokenSource();
 
-List<Transaction> transactions = TransactionGenerator.GenerateTransactions(50);
-await TransactionGenerator.InsertTransactionsAsync(
+_ = TransactionGenerator.RunPeriodicallyAsync(
     DatabaseType.Postgres,
     "PvhvuxtEzWuiFUwdqcLCddmDuSbpdNBV1rpYp8m1ezl/XajUjlJH5zxnYNh8lglMZQdsnQFXF4KSiTX0lczG6TiFxUEUte+HHCDyGZkNmCfXQY4lSw3/FQ==",
-    transactions);
+    txnGenCts.Token,
+    batchSize: 1,
+    interval: TimeSpan.FromSeconds(3));
+
 //List<Merchant> merchants = MerchantGenerator.GenerateMerchants(300000);
 //await MerchantGenerator.InsertMerchantsAsync(
 //DatabaseType.Oracle,
@@ -135,14 +142,15 @@ builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3000, listenOptions =>
     {
-        listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
-        //listenOptions.UseHttps();
+        //listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
+        listenOptions.UseHttps();
     });
 });
 
 var app = builder.Build();
 
-
+// Stop the periodic transaction generator when the host starts shutting down.
+app.Lifetime.ApplicationStopping.Register(() => txnGenCts.Cancel());
 
 
 if (!app.Environment.IsDevelopment())
@@ -158,7 +166,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseMiddleware<Upsanctionscreener.Middleware.ApiKeyAuthMiddleware>(); 
+app.UseMiddleware<Upsanctionscreener.Middleware.ApiKeyAuthMiddleware>();
 
 
 app.MapControllerRoute(
