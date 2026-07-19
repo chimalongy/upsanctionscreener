@@ -1,5 +1,4 @@
 ﻿using Quartz;
-using System.Net.Http.Json;
 using Upsanctionscreener.Classess.Utils;
 
 namespace Upsanctionscreener.Services
@@ -8,40 +7,23 @@ namespace Upsanctionscreener.Services
     {
         private readonly ISchedulerFactory _schedulerFactory;
         private readonly ILogger<TargetSchedulerService> _logger;
-        private readonly IHttpClientFactory _httpClientFactory;
-
-        // Named HttpClient registered in Program.cs, pointed at the
-        // transaction screener app (http://localhost:3001).
-        private const string TxnScreenerClientName = "TransactionScreenerApi";
 
         public TargetSchedulerService(
             ISchedulerFactory schedulerFactory,
-            ILogger<TargetSchedulerService> logger,
-            IHttpClientFactory httpClientFactory)
+            ILogger<TargetSchedulerService> logger)
         {
             _schedulerFactory = schedulerFactory;
             _logger = logger;
-            _httpClientFactory = httpClientFactory;
         }
 
         // ── Schedule or reschedule a target ───────────────────────────────────
-        // transactionScan = true  → delegate to the transaction screener app
-        //                           (POST /api/start-job) instead of Quartz.
-        // transactionScan = false → existing Quartz behaviour.
         public async Task ScheduleOrUpdateTargetAsync(
             int targetId,
             string targetName,
             string targetType,
             string frequency,
-            AutomationSettings automation,
-            bool transactionScan = false)
+            AutomationSettings automation)
         {
-            if (transactionScan)
-            {
-                await StartTransactionJobAsync(targetId, targetName);
-                return;
-            }
-
             var scheduler = await _schedulerFactory.GetScheduler();
             var jobKey = new JobKey($"target-scan-{targetId}", "target-scans");
 
@@ -87,14 +69,8 @@ namespace Upsanctionscreener.Services
         }
 
         // ── Remove a target's schedule entirely ────────────────────────────────
-        public async Task RemoveTargetScheduleAsync(int targetId, bool transactionScan = false)
+        public async Task RemoveTargetScheduleAsync(int targetId)
         {
-            if (transactionScan)
-            {
-                await StopTransactionJobAsync(targetId);
-                return;
-            }
-
             var scheduler = await _schedulerFactory.GetScheduler();
             var jobKey = new JobKey($"target-scan-{targetId}", "target-scans");
             var deleted = await scheduler.DeleteJob(jobKey);
@@ -103,99 +79,6 @@ namespace Upsanctionscreener.Services
                 _logger.LogInformation("[Scheduler] Removed schedule for target [{Id}].", targetId);
             else
                 _logger.LogDebug("[Scheduler] No schedule found for target [{Id}] — nothing to remove.", targetId);
-        }
-
-        // ══════════════════════════════════════════════════════════════════════
-        // TRANSACTION SCREENER APP — HTTP calls to localhost:3001
-        // ══════════════════════════════════════════════════════════════════════
-
-        public async Task StartTransactionJobAsync(int targetId, string targetName)
-        {
-            try
-            {
-                var client = _httpClientFactory.CreateClient(TxnScreenerClientName);
-                var response = await client.PostAsJsonAsync("/api/start-job", new { target_id = targetId });
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var body = await SafeReadBodyAsync(response);
-                    _logger.LogError(
-                        "[TxnScreener] start-job failed for target [{Id}] '{Name}'. Status: {Status}. Body: {Body}",
-                        targetId, targetName, (int)response.StatusCode, body);
-                    return;
-                }
-
-                _logger.LogInformation(
-                    "[TxnScreener] start-job succeeded for target [{Id}] '{Name}'.", targetId, targetName);
-            }
-            catch (Exception ex)
-            {
-                // Non-fatal — target settings are already saved; log and continue
-                // so a transaction screener outage doesn't block Upsert.
-                _logger.LogError(ex,
-                    "[TxnScreener] Could not reach transaction screener app to start job for target [{Id}] '{Name}'.",
-                    targetId, targetName);
-            }
-        }
-
-        public async Task StopTransactionJobAsync(int targetId)
-        {
-            try
-            {
-                var client = _httpClientFactory.CreateClient(TxnScreenerClientName);
-                var response = await client.PostAsJsonAsync("/api/stop-job", new { target_id = targetId });
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var body = await SafeReadBodyAsync(response);
-                    _logger.LogError(
-                        "[TxnScreener] stop-job failed for target [{Id}]. Status: {Status}. Body: {Body}",
-                        targetId, (int)response.StatusCode, body);
-                    return;
-                }
-
-                _logger.LogInformation("[TxnScreener] stop-job succeeded for target [{Id}].", targetId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "[TxnScreener] Could not reach transaction screener app to stop job for target [{Id}].",
-                    targetId);
-            }
-        }
-
-        public async Task<(bool Success, string Message)> RunTransactionJobNowAsync(int targetId)
-        {
-            try
-            {
-                var client = _httpClientFactory.CreateClient(TxnScreenerClientName);
-                var response = await client.PostAsJsonAsync("/api/run-job", new { target_id = targetId });
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var body = await SafeReadBodyAsync(response);
-                    _logger.LogError(
-                        "[TxnScreener] run-job failed for target [{Id}]. Status: {Status}. Body: {Body}",
-                        targetId, (int)response.StatusCode, body);
-                    return (false, $"Transaction screener returned {(int)response.StatusCode}: {body}");
-                }
-
-                _logger.LogInformation("[TxnScreener] run-job succeeded for target [{Id}].", targetId);
-                return (true, "Transaction scan job triggered.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "[TxnScreener] Could not reach transaction screener app to run job for target [{Id}].",
-                    targetId);
-                return (false, "Could not reach the transaction screener app.");
-            }
-        }
-
-        private static async Task<string> SafeReadBodyAsync(HttpResponseMessage response)
-        {
-            try { return await response.Content.ReadAsStringAsync(); }
-            catch { return "<unreadable body>"; }
         }
 
         // ── Build the correct Quartz trigger from AutomationSettings ──────────

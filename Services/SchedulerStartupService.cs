@@ -19,6 +19,7 @@ namespace Upsanctionscreener.Services
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("[SchedulerStartup] Restoring target schedules…");
+            Console.WriteLine("[SchedulerStartup] Restoring target schedules…");
 
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -31,11 +32,11 @@ namespace Upsanctionscreener.Services
             {
                 _logger.LogWarning(
                     "[SchedulerStartup] Could not load targets: {Error}", result.Error);
+                Console.WriteLine($"[SchedulerStartup] Could not load targets: {result.Error}");
                 return;
             }
 
-            int restoredLocal = 0;
-            int restoredTxn = 0;
+            int restored = 0;
             int skipped = 0;
 
             foreach (var target in result.Data)
@@ -53,25 +54,23 @@ namespace Upsanctionscreener.Services
                         target.TargetName,
                         target.TargetType,
                         target.AutomationSettings.Frequency,
-                        target.AutomationSettings,
-                        target.TransactionScan);
+                        target.AutomationSettings);
 
-                    if (target.TransactionScan)
-                        restoredTxn++;
-                    else
-                        restoredLocal++;
+                    restored++;
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex,
                         "[SchedulerStartup] Failed to restore schedule for target [{Id}] '{Name}'.",
                         target.Id, target.TargetName);
+                    Console.WriteLine($"[SchedulerStartup] Failed to restore schedule for target [{target.Id}] '{target.TargetName}'.");
                 }
             }
 
             _logger.LogInformation(
-                "[SchedulerStartup] Done — {Local} Quartz schedule(s) restored, {Txn} transaction-scan job(s) restarted, {Skipped} manual target(s) skipped.",
-                restoredLocal, restoredTxn, skipped);
+                "[SchedulerStartup] Done — {Restored} Quartz schedule(s) restored, {Skipped} manual target(s) skipped.",
+                restored, skipped);
+            Console.WriteLine($"[SchedulerStartup] Done — {restored} Quartz schedule(s) restored, {skipped} manual target(s) skipped.");
         }
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

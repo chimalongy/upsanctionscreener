@@ -121,12 +121,13 @@
         color: var(--color-brand-600, #2563eb);
         background: #eff6ff;
     }
-    .field-type-btn.selected-name   { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
-    .field-type-btn.selected-email  { background: #faf5ff; color: #7c3aed; border-color: #c4b5fd; }
-    .field-type-btn.selected-phone  { background: #f0fdf4; color: #15803d; border-color: #86efac; }
-    .field-type-btn.selected-address{ background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+    .field-type-btn.selected-name    { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
+    .field-type-btn.selected-email   { background: #faf5ff; color: #7c3aed; border-color: #c4b5fd; }
+    .field-type-btn.selected-phone   { background: #f0fdf4; color: #15803d; border-color: #86efac; }
+    .field-type-btn.selected-address { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+    .field-type-btn.selected-dob     { background: #f0fdfa; color: #0f766e; border-color: #5eead4; }
 
-    /* Disabled (claimed by another row) exclusive pill */
+    /* Disabled (claimed by another row/sub-field) exclusive pill */
     .field-type-btn.pill-taken {
         opacity: 0.35;
         cursor: not-allowed;
@@ -385,7 +386,8 @@
                                 <p class="text-xs font-medium text-text-secondary">Field Mappings <span class="text-red-400">*</span></p>
                                 <p class="text-xs text-text-muted mt-0.5">
                                     <strong>Name</strong> can be mapped to multiple columns.
-                                    <strong>Email, Phone, Address</strong> are limited to one column each.
+                                    <strong>Email, Phone, Address, DOB</strong> are limited to one column (or sub-field) each.
+                                    Mark a column as JSON to extract multiple sub-fields from it.
                                 </p>
                             </div>
                             <button type="button" onclick="addFieldMapping('db')"
@@ -485,7 +487,8 @@
                                 <p class="text-xs font-medium text-text-secondary">Field Mappings <span class="text-red-400">*</span></p>
                                 <p class="text-xs text-text-muted mt-0.5">
                                     <strong>Name</strong> can be mapped to multiple columns.
-                                    <strong>Email, Phone, Address</strong> are limited to one column each.
+                                    <strong>Email, Phone, Address, DOB</strong> are limited to one column (or sub-field) each.
+                                    Mark a column as JSON to extract multiple sub-fields from it.
                                 </p>
                             </div>
                             <button type="button" onclick="addFieldMapping('doc')"
@@ -695,22 +698,25 @@
 @section Scripts {
 <script>
 // ── Constants ──────────────────────────────────────────────────────────
-const SCAN_FIELDS = ['name', 'email', 'phone', 'address'];
+const SCAN_FIELDS = ['name', 'email', 'phone', 'address', 'dob'];
 
-// Fields that allow only ONE column mapping across all rows.
+// Fields that allow only ONE column/sub-field mapping across all rows.
 // 'name' is intentionally absent — it is unrestricted (multi-column allowed).
-const EXCLUSIVE_FIELDS = new Set(['email', 'phone', 'address']);
+const EXCLUSIVE_FIELDS = new Set(['email', 'phone', 'address', 'dob']);
 
 const PILL_COLORS = {
     name:    'selected-name',
     email:   'selected-email',
     phone:   'selected-phone',
-    address: 'selected-address'
+    address: 'selected-address',
+    dob:     'selected-dob'
 };
 
+function fieldLabel(f) {
+    return f === 'dob' ? 'DOB' : (f.charAt(0).toUpperCase() + f.slice(1));
+}
+
 // ── Database type → badge color helper ──────────────────────────────────
-// Returns the Tailwind badge classes for a given database_type value.
-// PostgreSQL = blue, Oracle = orange, MSSQL = purple, unknown = slate.
 function dbTypeBadgeClass(dbType) {
     switch (dbType) {
         case 'PostgreSQL':
@@ -740,6 +746,7 @@ let dbEditUnlocked   = false;
 let automate         = false;
 let frequency        = 'daily';
 let fieldRowId       = 0;
+let subFieldRowId    = 0;
 let currentTargetType = 'database';
 let trackTime = false;
 let useCustomQuery = false;
@@ -816,29 +823,37 @@ function renderCards() {
                 scheduleText = `Monthly — day ${auto.day_of_month} at ${auto.start_time}`;
         }
 
-        // Track time badge for database targets with minutely/hourly
         const trackTimeBadge = (!isDoc && auto.automate && (auto.frequency === 'minutely' || auto.frequency === 'hourly') && auto.track_time)
             ? `<span class="text-xs px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-100" title="Time column: ${escHtml(auto.time_column)}">⏱ Track: ${escHtml(auto.time_column)}</span>`
             : '';
 
-        // Custom query badge for database targets with daily/weekly/monthly
         const customQueryBadge = (!isDoc && auto.automate && ['daily','weekly','monthly'].includes(auto.frequency) && auto.use_custom_query)
             ? `<span class="text-xs px-2 py-0.5 rounded-full border bg-indigo-50 text-indigo-700 border-indigo-100" title="Custom query scan enabled">🔎 Custom Query</span>`
             : '';
 
-        // Transaction scan badge
         const transactionScanBadge = t.transaction_scan
             ? `<span class="text-xs px-2 py-0.5 rounded-full border bg-cyan-50 text-cyan-700 border-cyan-100" title="This target is flagged as a transaction scan">💱 Transaction Scan</span>`
             : '';
 
         const fields      = ds.other_fields ?? [];
-        const fieldBadges = fields.slice(0, 3).map(f =>
-            `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-surface border border-border text-text-secondary">
-                <span class="text-text-muted">${escHtml(f.column_name)}</span>
-                <svg class="w-2.5 h-2.5 text-text-muted flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                <span class="font-medium text-brand-600">${escHtml(f.match_as)}</span>
-            </span>`
-        ).join('');
+        const fieldBadges = fields.slice(0, 3).map(f => {
+            if (f.is_json) {
+                const subs = (f.sub_fields || [])
+                    .map(sf => sf.as ? `${sf.match_as}→${escHtml(sf.as)}` : sf.match_as)
+                    .join(', ');
+                return `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-surface border border-border text-text-secondary">
+                            <span class="text-text-muted">${escHtml(f.column_name)}</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100 font-medium">JSON</span>
+                            <svg class="w-2.5 h-2.5 text-text-muted flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            <span class="font-medium text-brand-600">${subs || 'none'}</span>
+                        </span>`;
+            }
+            return `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-surface border border-border text-text-secondary">
+                        <span class="text-text-muted">${escHtml(f.column_name)}</span>
+                        <svg class="w-2.5 h-2.5 text-text-muted flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        <span class="font-medium text-brand-600">${escHtml(f.match_as)}</span>
+                    </span>`;
+        }).join('');
         const extraFields = fields.length > 3
             ? `<span class="text-xs text-text-muted">+${fields.length - 3} more</span>` : '';
 
@@ -963,7 +978,6 @@ async function runNow(id, name) {
 
     if (!btn || btn.dataset.running === 'true') return;
 
-    // Enter loading state
     btn.dataset.running = 'true';
     icon.classList.add('hidden');
     spinner.classList.remove('hidden');
@@ -979,7 +993,6 @@ async function runNow(id, name) {
     } catch (err) {
         showAlert(err.message || 'Failed to trigger scan. Please try again.', 'error');
     } finally {
-        // Restore button after a short delay so the user gets feedback
         setTimeout(() => {
             if (!btn) return;
             btn.dataset.running = 'false';
@@ -1036,7 +1049,6 @@ function openEditModal(id) {
     const isDoc = t.target_type === 'document';
     setTargetType(isDoc ? 'document' : 'database');
 
-    // Transaction scan
     transactionScan = t.transaction_scan ?? false;
     syncTransactionScanToggle();
 
@@ -1054,7 +1066,8 @@ function openEditModal(id) {
         }
 
         document.getElementById('fDocIdColumn').value = ds.id_column ?? '';
-        (ds.other_fields ?? []).forEach(f => addFieldMapping('doc', f.column_name, f.match_as));
+        (ds.other_fields ?? []).forEach(f =>
+            addFieldMapping('doc', f.column_name, f.match_as, f.is_json, f.sub_fields));
 
     } else {
         const db = t.database_settings ?? {};
@@ -1067,7 +1080,8 @@ function openEditModal(id) {
         document.getElementById('fUsername').value  = db.user_name     ?? '';
         document.getElementById('fTableName').value = ds.table_name    ?? '';
         document.getElementById('fIdColumn').value  = ds.id_column     ?? '';
-        (ds.other_fields ?? []).forEach(f => addFieldMapping('db', f.column_name, f.match_as));
+        (ds.other_fields ?? []).forEach(f =>
+            addFieldMapping('db', f.column_name, f.match_as, f.is_json, f.sub_fields));
 
         document.getElementById('editDbToggleBtn').classList.remove('hidden');
         document.getElementById('editDbBtnText').textContent = 'Edit DB Settings';
@@ -1076,14 +1090,12 @@ function openEditModal(id) {
         setDbFieldsLocked(true);
     }
 
-    // Email
     const notif = t.notification_settings ?? {};
     if (notif.enabled && notif.recipients?.length) {
         document.getElementById('fNotifEmail').value = notif.recipients.join(', ');
     }
 
-    // Automation
-    const auto = t.automation_settings ?? {};
+const auto = t.automation_settings ?? {};   // ← this line, already there
     if (auto.automate) {
         automate = true;
         syncAutomateToggle();
@@ -1097,6 +1109,13 @@ function openEditModal(id) {
         document.getElementById('fMonthlyTime').value     = auto.start_time ?? '02:00';
         document.getElementById('fWeekday').value         = auto.weekday      ?? 1;
         document.getElementById('fDayOfMonth').value      = auto.day_of_month ?? 15;
+
+        // ✅ ADD THE NEW BLOCK HERE
+        if (!isDoc && (auto.frequency === 'minutely' || auto.frequency === 'hourly')) {
+            trackTime = auto.track_time ?? false;
+            document.getElementById('fTimeColumn').value = auto.time_column ?? '';
+            syncTrackTimeToggle();
+        }
 
         // Custom query — only meaningful for database targets
         useCustomQuery = (!isDoc && (auto.use_custom_query ?? false));
@@ -1186,6 +1205,7 @@ function resetForm() {
     document.getElementById('docNoFieldsHint').classList.remove('hidden');
 
     fieldRowId = 0;
+    subFieldRowId = 0;
 
     // Reset file upload
     uploadedFileInfo = null;
@@ -1309,7 +1329,6 @@ function refreshTrackTimeVisibility() {
     const section = document.getElementById('trackTimeSection');
     if (!section) return;
 
-    // Only show for database targets with minutely or hourly frequency when automate is on
     const isDb = currentTargetType === 'database';
     const isMinutelyOrHourly = frequency === 'minutely' || frequency === 'hourly';
     const shouldShow = isDb && automate && isMinutelyOrHourly;
@@ -1353,7 +1372,6 @@ function refreshCustomQueryVisibility() {
     const section = document.getElementById('customQuerySection');
     if (!section) return;
 
-    // Only show for database targets with daily, weekly, or monthly frequency when automate is on
     const isDb = currentTargetType === 'database';
     const isDailyWeeklyMonthly = ['daily', 'weekly', 'monthly'].includes(frequency);
     const shouldShow = isDb && automate && isDailyWeeklyMonthly;
@@ -1544,50 +1562,10 @@ function formatBytes(bytes) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// FIELD MAPPINGS
+// FIELD MAPPINGS (with JSON sub-field extraction)
 // ══════════════════════════════════════════════════════════════════════
 
-function getExclusivePillOwner(scope, field) {
-    if (!EXCLUSIVE_FIELDS.has(field)) return null;
-    const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
-    const container   = document.getElementById(containerId);
-    for (const row of container.children) {
-        if (row.dataset.scope === scope && row.dataset.matchAs === field) {
-            return parseInt(row.id.replace('fieldRow-', ''));
-        }
-    }
-    return null;
-}
-
-function refreshExclusivePillStates(scope) {
-    const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
-    const container   = document.getElementById(containerId);
-
-    const claimed = {};
-    for (const row of container.children) {
-        const matchAs = row.dataset.matchAs;
-        if (matchAs && EXCLUSIVE_FIELDS.has(matchAs)) {
-            claimed[matchAs] = parseInt(row.id.replace('fieldRow-', ''));
-        }
-    }
-
-    for (const row of container.children) {
-        const rowId  = parseInt(row.id.replace('fieldRow-', ''));
-        const pillsDiv = document.getElementById(`pills-${rowId}`);
-        if (!pillsDiv) continue;
-
-        for (const btn of pillsDiv.children) {
-            const field = btn.dataset.field;
-            if (!EXCLUSIVE_FIELDS.has(field)) continue;
-
-            const owner = claimed[field];
-            const isTakenByOther = owner !== undefined && owner !== rowId;
-            btn.classList.toggle('pill-taken', isTakenByOther);
-        }
-    }
-}
-
-function addFieldMapping(scope, columnName = '', matchAs = '') {
+function addFieldMapping(scope, columnName = '', matchAs = '', isJson = false, subFields = []) {
     const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
     const hintId      = scope === 'doc' ? 'docNoFieldsHint'           : 'dbNoFieldsHint';
 
@@ -1596,18 +1574,20 @@ function addFieldMapping(scope, columnName = '', matchAs = '') {
     row.id              = `fieldRow-${id}`;
     row.dataset.scope   = scope;
     row.dataset.matchAs = '';
+    row.dataset.isJson  = isJson ? 'true' : 'false';
     row.className = 'field-mapping-row bg-surface border border-border rounded-xl p-3 space-y-2';
 
     const pillsHtml = SCAN_FIELDS.map(f => {
         const isSelected = f === matchAs;
         const colorCls   = isSelected ? PILL_COLORS[f] : '';
         return `<button type="button"
+                        data-kind="top"
                         data-field="${f}"
                         data-rowid="${id}"
                         data-scope="${scope}"
                         onclick="selectPill(this)"
                         class="field-type-btn ${colorCls}">
-                    ${f.charAt(0).toUpperCase() + f.slice(1)}
+                    ${fieldLabel(f)}
                 </button>`;
     }).join('');
 
@@ -1628,48 +1608,273 @@ function addFieldMapping(scope, columnName = '', matchAs = '') {
                 </svg>
             </button>
         </div>
-        <div>
+
+        <div class="flex items-center gap-2 pt-0.5">
+            <button type="button" id="jsonToggle-${id}" onclick="toggleJsonMode(${id})"
+                    class="relative w-9 h-5 rounded-full transition-colors duration-200 ${isJson ? 'bg-brand-500' : 'bg-border'} focus:outline-none flex-shrink-0">
+                <span id="jsonThumb-${id}"
+                      class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+                      style="transform: translateX(${isJson ? '16px' : '0'});"></span>
+            </button>
+            <span class="text-xs text-text-secondary">This column holds JSON — extract sub-fields</span>
+        </div>
+
+        <div id="matchAsWrap-${id}" class="${isJson ? 'hidden' : ''}">
             <p class="text-xs text-text-muted mb-1.5">Match as:</p>
             <div class="mapping-pills" id="pills-${id}">
                 ${pillsHtml}
             </div>
+        </div>
+
+        <div id="subfieldsWrap-${id}" class="${isJson ? '' : 'hidden'} pl-3 border-l-2 border-dashed border-border space-y-2">
+            <p class="text-xs text-text-muted">
+                Extract sub-fields from the JSON stored in this column. Each sub-field can optionally be renamed with an <strong>As</strong> alias.
+            </p>
+            <div id="subfieldsContainer-${id}" class="space-y-2"></div>
+            <button type="button" onclick="addSubField(${id})"
+                    class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border
+                           border-border text-text-secondary hover:border-brand-300
+                           hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Add Sub-field
+            </button>
         </div>`;
 
     document.getElementById(containerId).appendChild(row);
     document.getElementById(hintId).classList.add('hidden');
 
-    if (matchAs && SCAN_FIELDS.includes(matchAs)) {
+    if (!isJson && matchAs && SCAN_FIELDS.includes(matchAs)) {
         row.dataset.matchAs = matchAs;
+    }
+
+    if (isJson && Array.isArray(subFields)) {
+        subFields.forEach(sf => addSubField(id, sf.key, sf.match_as, sf.as));
     }
 
     refreshExclusivePillStates(scope);
 }
 
+function toggleJsonMode(rowId) {
+    const row = document.getElementById(`fieldRow-${rowId}`);
+    if (!row) return;
+    const isJson = row.dataset.isJson === 'true';
+    const next = !isJson;
+    row.dataset.isJson = next ? 'true' : 'false';
+
+    const btn       = document.getElementById(`jsonToggle-${rowId}`);
+    const thumb     = document.getElementById(`jsonThumb-${rowId}`);
+    const matchWrap = document.getElementById(`matchAsWrap-${rowId}`);
+    const subWrap   = document.getElementById(`subfieldsWrap-${rowId}`);
+
+    if (next) {
+        btn.classList.replace('bg-border', 'bg-brand-500');
+        thumb.style.transform = 'translateX(16px)';
+        matchWrap.classList.add('hidden');
+        subWrap.classList.remove('hidden');
+
+        // Clear top-level match when switching to JSON mode
+        row.dataset.matchAs = '';
+        const pillsDiv = document.getElementById(`pills-${rowId}`);
+        [...pillsDiv.children].forEach(b =>
+            b.classList.remove('selected-name','selected-email','selected-phone','selected-address','selected-dob'));
+    } else {
+        btn.classList.replace('bg-brand-500', 'bg-border');
+        thumb.style.transform = 'translateX(0)';
+        subWrap.classList.add('hidden');
+        matchWrap.classList.remove('hidden');
+
+        // Clear sub-fields when switching back to a direct match
+        document.getElementById(`subfieldsContainer-${rowId}`).innerHTML = '';
+    }
+
+    refreshExclusivePillStates(row.dataset.scope);
+}
+
+// ── Sub-fields ─────────────────────────────────────────────────────────
+function addSubField(parentId, key = '', matchAs = '', asVal = '') {
+    const parentRow = document.getElementById(`fieldRow-${parentId}`);
+    if (!parentRow) return;
+    const scope = parentRow.dataset.scope;
+
+    const subId  = ++subFieldRowId;
+    const subRow = document.createElement('div');
+    subRow.id              = `subRow-${subId}`;
+    subRow.dataset.parent  = parentId;
+    subRow.dataset.scope   = scope;
+    subRow.dataset.matchAs = '';
+    subRow.className = 'bg-surface-card border border-border rounded-lg p-2.5 space-y-2';
+
+    const pillsHtml = SCAN_FIELDS.map(f => {
+        const isSelected = f === matchAs;
+        const colorCls   = isSelected ? PILL_COLORS[f] : '';
+        return `<button type="button"
+                        data-kind="sub"
+                        data-field="${f}"
+                        data-rowid="${parentId}"
+                        data-subid="${subId}"
+                        data-scope="${scope}"
+                        onclick="selectPill(this)"
+                        class="field-type-btn ${colorCls}">
+                    ${fieldLabel(f)}
+                </button>`;
+    }).join('');
+
+    subRow.innerHTML = `
+        <div class="flex items-center gap-2">
+            <input type="text" value="${escHtml(key)}" placeholder="json.key.path"
+                   data-field="key" class="mapping-col-input text-xs" />
+            <input type="text" value="${escHtml(asVal)}" placeholder="Rename as (optional)"
+                   data-field="as" class="mapping-col-input text-xs" style="max-width: 160px;" />
+            <button type="button" onclick="removeSubField(${subId})" title="Remove sub-field"
+                    class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg
+                           text-text-muted hover:text-red-500 hover:bg-red-50 transition-colors">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="mapping-pills" id="subPills-${subId}">
+            ${pillsHtml}
+        </div>`;
+
+    document.getElementById(`subfieldsContainer-${parentId}`).appendChild(subRow);
+
+    if (matchAs && SCAN_FIELDS.includes(matchAs)) {
+        subRow.dataset.matchAs = matchAs;
+    }
+
+    refreshExclusivePillStates(scope);
+}
+
+function removeSubField(subId) {
+    const row = document.getElementById(`subRow-${subId}`);
+    if (!row) return;
+    const scope = row.dataset.scope;
+    row.remove();
+    refreshExclusivePillStates(scope);
+}
+
+// ── Unified pill selection (top-level + sub-field) ──────────────────────
+function ownerKeyFor(kind, rowId, subId) {
+    return kind === 'top' ? `top-${rowId}` : `sub-${subId}`;
+}
+
+function getExclusiveOwner(scope, field) {
+    if (!EXCLUSIVE_FIELDS.has(field)) return null;
+
+    const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
+    const container    = document.getElementById(containerId);
+
+    for (const row of container.children) {
+        const rid = row.id.replace('fieldRow-', '');
+
+        if (row.dataset.isJson !== 'true' && row.dataset.matchAs === field) {
+            return `top-${rid}`;
+        }
+
+        const subContainer = document.getElementById(`subfieldsContainer-${rid}`);
+        if (subContainer) {
+            for (const subRow of subContainer.children) {
+                if (subRow.dataset.matchAs === field) {
+                    return `sub-${subRow.id.replace('subRow-', '')}`;
+                }
+            }
+        }
+    }
+    return null;
+}
+
 function selectPill(btn) {
-    const field  = btn.dataset.field;
-    const rowId  = parseInt(btn.dataset.rowid);
-    const scope  = btn.dataset.scope;
-    const row    = document.getElementById(`fieldRow-${rowId}`);
-    const prevMatch = row.dataset.matchAs;
-    const pillsDiv  = document.getElementById(`pills-${rowId}`);
+    const field = btn.dataset.field;
+    const kind  = btn.dataset.kind;   // 'top' | 'sub'
+    const scope = btn.dataset.scope;
+    const rowId = btn.dataset.rowid;
+    const subId = btn.dataset.subid;
+
+    const targetRow = kind === 'top'
+        ? document.getElementById(`fieldRow-${rowId}`)
+        : document.getElementById(`subRow-${subId}`);
+    if (!targetRow) return;
+
+    const prevMatch = targetRow.dataset.matchAs;
+    const pillsDiv  = kind === 'top'
+        ? document.getElementById(`pills-${rowId}`)
+        : document.getElementById(`subPills-${subId}`);
+
+    const ownerKey = ownerKeyFor(kind, rowId, subId);
 
     if (EXCLUSIVE_FIELDS.has(field)) {
-        const owner = getExclusivePillOwner(scope, field);
-        if (owner !== null && owner !== rowId) return;
+        const owner = getExclusiveOwner(scope, field);
+        if (owner !== null && owner !== ownerKey) return;
     }
 
     [...pillsDiv.children].forEach(b =>
-        b.classList.remove('selected-name','selected-email','selected-phone','selected-address')
+        b.classList.remove('selected-name','selected-email','selected-phone','selected-address','selected-dob')
     );
 
     if (prevMatch === field) {
-        row.dataset.matchAs = '';
+        targetRow.dataset.matchAs = '';
     } else {
-        row.dataset.matchAs = field;
+        targetRow.dataset.matchAs = field;
         btn.classList.add(PILL_COLORS[field]);
     }
 
     refreshExclusivePillStates(scope);
+}
+
+function refreshExclusivePillStates(scope) {
+    const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
+    const container    = document.getElementById(containerId);
+
+    // Build a map of field -> ownerKey across top-level rows AND all sub-fields
+    const claimed = {};
+    for (const row of container.children) {
+        const rid = row.id.replace('fieldRow-', '');
+
+        if (row.dataset.isJson !== 'true' && row.dataset.matchAs && EXCLUSIVE_FIELDS.has(row.dataset.matchAs)) {
+            claimed[row.dataset.matchAs] = `top-${rid}`;
+        }
+
+        const subContainer = document.getElementById(`subfieldsContainer-${rid}`);
+        if (subContainer) {
+            for (const subRow of subContainer.children) {
+                const sid = subRow.id.replace('subRow-', '');
+                if (subRow.dataset.matchAs && EXCLUSIVE_FIELDS.has(subRow.dataset.matchAs)) {
+                    claimed[subRow.dataset.matchAs] = `sub-${sid}`;
+                }
+            }
+        }
+    }
+
+    // Apply pill-taken state everywhere
+    for (const row of container.children) {
+        const rid = row.id.replace('fieldRow-', '');
+
+        const pillsDiv = document.getElementById(`pills-${rid}`);
+        if (pillsDiv) {
+            for (const btn of pillsDiv.children) {
+                const field = btn.dataset.field;
+                if (!EXCLUSIVE_FIELDS.has(field)) continue;
+                const owner = claimed[field];
+                btn.classList.toggle('pill-taken', owner !== undefined && owner !== `top-${rid}`);
+            }
+        }
+
+        const subContainer = document.getElementById(`subfieldsContainer-${rid}`);
+        if (subContainer) {
+            for (const subRow of subContainer.children) {
+                const sid = subRow.id.replace('subRow-', '');
+                const subPillsDiv = document.getElementById(`subPills-${sid}`);
+                if (!subPillsDiv) continue;
+                for (const btn of subPillsDiv.children) {
+                    const field = btn.dataset.field;
+                    if (!EXCLUSIVE_FIELDS.has(field)) continue;
+                    const owner = claimed[field];
+                    btn.classList.toggle('pill-taken', owner !== undefined && owner !== `sub-${sid}`);
+                }
+            }
+        }
+    }
 }
 
 function removeFieldRow(id) {
@@ -1691,10 +1896,38 @@ function removeFieldRow(id) {
 
 function collectFieldMappings(scope) {
     const containerId = scope === 'doc' ? 'docFieldMappingsContainer' : 'dbFieldMappingsContainer';
-    return [...document.getElementById(containerId).children].map(row => ({
-        column_name: row.querySelector('[data-field="column_name"]').value.trim(),
-        match_as:    row.dataset.matchAs ?? ''
-    })).filter(f => f.column_name && f.match_as);
+    const rows = [...document.getElementById(containerId).children];
+    const mappings = [];
+
+    rows.forEach(row => {
+        const rid = row.id.replace('fieldRow-', '');
+        const columnName = row.querySelector('[data-field="column_name"]').value.trim();
+        if (!columnName) return;
+
+        const isJson = row.dataset.isJson === 'true';
+
+        if (!isJson) {
+            // ✅ Keep the row even if unmapped — match_as can be ''
+            const matchAs = row.dataset.matchAs ?? '';
+            mappings.push({ column_name: columnName, match_as: matchAs, is_json: false, sub_fields: [] });
+        } else {
+            const subContainer = document.getElementById(`subfieldsContainer-${rid}`);
+            const subFields = subContainer ? [...subContainer.children]
+                .map(subRow => ({
+                    key:      subRow.querySelector('[data-field="key"]').value.trim(),
+                    match_as: subRow.dataset.matchAs ?? '',
+                    as:       subRow.querySelector('[data-field="as"]').value.trim()
+                }))
+                // ✅ Only require a key — match_as can be '' (extracted but unmapped)
+                .filter(sf => sf.key)
+                : [];
+
+            if (subFields.length === 0) return;
+            mappings.push({ column_name: columnName, match_as: '', is_json: true, sub_fields: subFields });
+        }
+    });
+
+    return mappings;
 }
 
 // ── Save target ────────────────────────────────────────────────────────

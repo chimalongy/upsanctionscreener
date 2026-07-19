@@ -697,6 +697,7 @@ namespace Upsanctionscreener.Classess.Search
                 DataTable data_to_scan = new DataTable();
                 DataTable unique_items = new DataTable();
                 DataTable NormalizedDataToScan = new DataTable();
+                List<FieldMapping>FieldMappings= target.DatabaseSettings.DataSettings.OtherFields;
 
                 if (target.TargetType == "document")
                 {
@@ -785,7 +786,35 @@ namespace Upsanctionscreener.Classess.Search
                    
 
                     unique_items = GlobalFunctions.DeduplicateDatatbaleById(data_to_scan, target.DatabaseSettings.DataSettings.IdColumn);
-                    NormalizedDataToScan = GlobalFunctions.NormaLizeNamesinTargetColumn(unique_items, target.DatabaseSettings.DataSettings.OtherFields, "name");
+
+
+                    if (FieldMappings is not null)
+                    {
+                        var jsonFieldGroups = FieldMappings
+                            .Where(f => f.IsJson)
+                            .GroupBy(f => f.ColumnName, StringComparer.OrdinalIgnoreCase);
+
+                        foreach (var group in jsonFieldGroups)
+                        {
+                            var jsonColumnName = group.Key;
+
+                            if (!unique_items.Columns.Contains(jsonColumnName))
+                                continue;
+
+                            var subFields = group.SelectMany(f => f.SubFields).ToList();
+                            if (subFields.Count == 0)
+                                continue;
+
+                            // Reassign — each pass returns a new table built on top of the previous one,
+                            // so multiple JSON columns chain correctly.
+                            unique_items = SubFieldExtractor.ExtractSubFields(unique_items, jsonColumnName, subFields);
+                        }
+                    }
+
+                    FieldMappings = SubFieldExtractor.FlattenFieldMappings(target.DatabaseSettings.DataSettings.OtherFields);
+
+
+                    NormalizedDataToScan = GlobalFunctions.NormaLizeNamesinTargetColumn(unique_items, FieldMappings, "name");
                 }
 
                 data_to_scan = NormalizedDataToScan;
@@ -814,7 +843,7 @@ namespace Upsanctionscreener.Classess.Search
                     folderName,
                     fileName,
                     target.TargetType == "document" ? target.DocumentSettings.IdColumn : target.DatabaseSettings.DataSettings.IdColumn,
-                    target.TargetType == "document" ? target.DocumentSettings.OtherFields : target.DatabaseSettings.DataSettings.OtherFields);
+                    target.TargetType == "document" ? target.DocumentSettings.OtherFields : FieldMappings);
 
                 Logger.LogToFile(folderName, fileName, $"[STEP 4 - COMPLETED]: SCAN COMPLETED");
 

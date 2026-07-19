@@ -47,6 +47,86 @@ namespace Upsanctionscreener.Controllers
             
         }
 
+
+        private static readonly HashSet<string> AllowedMatchFields =
+    new(StringComparer.OrdinalIgnoreCase) { "name", "email", "phone", "address", "dob" };
+
+        private static readonly HashSet<string> ExclusiveMatchFields =
+            new(StringComparer.OrdinalIgnoreCase) { "email", "phone", "address", "dob" };
+
+        private static bool ValidateFieldMappings(List<FieldMappingRequest>? mappings, out string? error)
+        {
+            error = null;
+
+            if (mappings is null || mappings.Count == 0)
+            {
+                error = "At least one field mapping is required.";
+                return false;
+            }
+
+            var claimedExclusive = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var m in mappings)
+            {
+                if (string.IsNullOrWhiteSpace(m.ColumnName))
+                {
+                    error = "Each field mapping must have a column name.";
+                    return false;
+                }
+
+                if (m.IsJson)
+                {
+                    if (m.SubFields is null || m.SubFields.Count == 0)
+                    {
+                        error = $"Column '{m.ColumnName}' is marked as JSON but has no sub-field mappings.";
+                        return false;
+                    }
+
+                    foreach (var sf in m.SubFields)
+                    {
+                        if (string.IsNullOrWhiteSpace(sf.Key))
+                        {
+                            error = $"Every sub-field under '{m.ColumnName}' must have a JSON key.";
+                            return false;
+                        }
+
+                        // ✅ match_as is optional — empty means "extracted but not mapped"
+                        if (string.IsNullOrWhiteSpace(sf.MatchAs)) continue;
+
+                        if (!AllowedMatchFields.Contains(sf.MatchAs))
+                        {
+                            error = $"Sub-field '{sf.Key}' under '{m.ColumnName}' has an invalid match_as value.";
+                            return false;
+                        }
+
+                        if (ExclusiveMatchFields.Contains(sf.MatchAs) && !claimedExclusive.Add(sf.MatchAs.ToLowerInvariant()))
+                        {
+                            error = $"'{sf.MatchAs}' can only be mapped to a single column or sub-field.";
+                            return false;
+                        }
+                    }
+                }
+                else
+                {
+                    // ✅ match_as is optional — empty means "saved but not mapped"
+                    if (string.IsNullOrWhiteSpace(m.MatchAs)) continue;
+
+                    if (!AllowedMatchFields.Contains(m.MatchAs))
+                    {
+                        error = $"Column '{m.ColumnName}' has an invalid match_as value.";
+                        return false;
+                    }
+
+                    if (ExclusiveMatchFields.Contains(m.MatchAs) && !claimedExclusive.Add(m.MatchAs.ToLowerInvariant()))
+                    {
+                        error = $"'{m.MatchAs}' can only be mapped to a single column or sub-field.";
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
         // ══════════════════════════════════════════════════════════════════════
         // VIEWS
         // ══════════════════════════════════════════════════════════════════════
@@ -336,13 +416,7 @@ return BadRequest(new { message = error });
                 return BadRequest(new { success = false, message = result.Error });
 
             // ── Schedule the scan — local Quartz OR the transaction screener app ──
-            if (target.TransactionScan)
-            {
-                // Transaction-scan targets are not scheduled via Quartz at all.
-                // Delegate entirely to the transaction screener app.
-                await _targetScheduler.StartTransactionJobAsync(resolvedId, target.TargetName);
-            }
-            else if (target.AutomationSettings is not null)
+           if (target.AutomationSettings is not null)
             {
                 var automation = new AutomationSettings
                 {
@@ -364,8 +438,7 @@ return BadRequest(new { message = error });
                     target.TargetName,
                     target.TargetType,
                     target.AutomationSettings.Frequency,
-                    automation,
-                    transactionScan: false);
+                    automation);
             }
 
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -428,7 +501,7 @@ return BadRequest(new { message = error });
                 return BadRequest(new { success = false, message = result.Error });
 
             // ── Remove the schedule — local Quartz OR stop-job on the txn screener ──
-            await _targetScheduler.RemoveTargetScheduleAsync(id, isTransactionScan);   // ← pass flag
+            await _targetScheduler.RemoveTargetScheduleAsync(id);   // ← pass flag
 
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var email = User.FindFirstValue(ClaimTypes.Email);
@@ -811,19 +884,10 @@ return BadRequest(new { message = error });
 
             try
             {
-                if (target.TransactionScan)
-                {
-                    // ── Delegate to the transaction screener app ──────────────────
-                    var (success, message) = await _targetScheduler.RunTransactionJobNowAsync(id);
-
-                    if (!success)
-                        return BadRequest(new { success = false, message });
-                }
-                else
-                {
+               
                     // ── Existing local scan trigger ────────────────────────────────
                     Task.Run(async () => { Scanner.TargetScanScreener(target.Id, target.TargetName, target.AutomationSettings?.Frequency ?? "manual", _scopeFactory); });
-                }
+                
 
                 var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
                 var email = User.FindFirstValue(ClaimTypes.Email);

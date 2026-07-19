@@ -32,10 +32,7 @@ namespace Upsanctionscreener.Jobs
             {
                 using var scope = _scopeFactory.CreateScope();
                 await Scanner.TargetScanScreener(targetId, targetName, targetFreqency, _scopeFactory);
-                // ── Plug your actual scan logic here ──────────────────────
-                // var scanService = scope.ServiceProvider.GetRequiredService<IYourScanService>();
-                // await scanService.ScanTargetAsync(targetId, targetType);
-                // ─────────────────────────────────────────────────────────
+         
 
                 _logger.LogInformation(
                     "[TargetScanJob] Completed scan — Target [{Id}] '{Name}'",

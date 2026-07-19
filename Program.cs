@@ -28,14 +28,14 @@ Console.WriteLine("3");
 // Replaces the old one-shot GenerateTransactions(50)/InsertTransactionsAsync
 // call with a background loop that inserts a batch every 3 seconds.
 // txnGenCts is cancelled on app shutdown further down (app.Lifetime.ApplicationStopping).
-var txnGenCts = new CancellationTokenSource();
+//var txnGenCts = new CancellationTokenSource();
 
-_ = TransactionGenerator.RunPeriodicallyAsync(
-    DatabaseType.Postgres,
-    "PvhvuxtEzWuiFUwdqcLCddmDuSbpdNBV1rpYp8m1ezl/XajUjlJH5zxnYNh8lglMZQdsnQFXF4KSiTX0lczG6TiFxUEUte+HHCDyGZkNmCfXQY4lSw3/FQ==",
-    txnGenCts.Token,
-    batchSize: 1,
-    interval: TimeSpan.FromSeconds(3));
+//_ = TransactionGenerator.RunPeriodicallyAsync(
+//    DatabaseType.Postgres,
+//    "PvhvuxtEzWuiFUwdqcLCddmDuSbpdNBV1rpYp8m1ezl/XajUjlJH5zxnYNh8lglMZQdsnQFXF4KSiTX0lczG6TiFxUEUte+HHCDyGZkNmCfXQY4lSw3/FQ==",
+//    txnGenCts.Token,
+//    batchSize: 1,
+//    interval: TimeSpan.FromSeconds(3));
 
 //List<Merchant> merchants = MerchantGenerator.GenerateMerchants(300000);
 //await MerchantGenerator.InsertMerchantsAsync(
@@ -133,11 +133,7 @@ builder.Services.AddHttpClient<SanctionDownloader>(client =>
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<UpSanctionSettingsService>();
-builder.Services.AddHttpClient("TransactionScreenerApi", client =>
-{
-    client.BaseAddress = new Uri("http://localhost:3001");
-    client.Timeout = TimeSpan.FromSeconds(10);
-});
+
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3000, listenOptions =>
@@ -150,7 +146,7 @@ builder.WebHost.ConfigureKestrel(options =>
 var app = builder.Build();
 
 // Stop the periodic transaction generator when the host starts shutting down.
-app.Lifetime.ApplicationStopping.Register(() => txnGenCts.Cancel());
+//app.Lifetime.ApplicationStopping.Register(() => txnGenCts.Cancel());
 
 
 if (!app.Environment.IsDevelopment())
