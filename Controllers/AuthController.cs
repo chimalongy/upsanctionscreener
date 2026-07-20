@@ -1,8 +1,9 @@
-﻿using System.Security.Claims;
+﻿using DuoUniversal;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using Upsanctionscreener.Classess.Utils;
 using Upsanctionscreener.Data;
 
@@ -12,13 +13,16 @@ namespace Upsanctionscreener.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IConfiguration _config;
+        private readonly Client? _duoClient;
+        private readonly bool _useDuo;
 
-        public AuthController(AppDbContext db, IConfiguration config)
+        public AuthController(AppDbContext db, IConfiguration config, Client? duoClient = null)
         {
             _db = db;
             _config = config;
+            _duoClient = duoClient;
+            _useDuo = config.GetValue<bool>("Duo:UseDuo");
         }
-
         // ── GET /Auth/Login ───────────────────────────────────────────────────
         [HttpGet]
         public IActionResult Login()
@@ -44,21 +48,18 @@ namespace Upsanctionscreener.Controllers
                 var user = await _db.SanctionScanUsers
                     .FirstOrDefaultAsync(u => u.Email == email.Trim().ToLower());
 
-                // Generic message — don't reveal whether email exists
                 if (user is null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
                 {
                     ModelState.AddModelError("", "Invalid email or password.");
                     return View();
                 }
 
-                // ── Account must be enabled ───────────────────────────────────────
                 if (!string.Equals(user.ProfileStatus, "enabled", StringComparison.OrdinalIgnoreCase))
                 {
                     ModelState.AddModelError("", "Your account has been disabled. Please contact your administrator.");
                     return View();
                 }
 
-                // ── Default-password check → force change ─────────────────────────
                 var defaultPassword = _config["NEW_PASSWORD"];
                 if (!string.IsNullOrEmpty(defaultPassword) &&
                     BCrypt.Net.BCrypt.Verify(defaultPassword, user.Password))
@@ -67,10 +68,22 @@ namespace Upsanctionscreener.Controllers
                     return RedirectToAction("UpdatePassword");
                 }
 
-                // ── All checks passed — sign the user in ──────────────────────────
+                // ── MFA branch ──────────────────────────────────────────────────
+                if (_useDuo && _duoClient is not null)
+                {
+                    await _duoClient.DoHealthCheck();
+
+                    var state = Client.GenerateState();
+                    HttpContext.Session.SetString("duo_state", state);
+                    HttpContext.Session.SetInt32("duo_user_id", user.Id);
+
+                    string authUrl = _duoClient.GenerateAuthUri(user.Email, state);
+                    return Redirect(authUrl);
+                }
+
+                // ── Duo disabled — original direct sign-in path ─────────────────
                 await SignInUserAsync(user);
 
-                // Update last-login timestamp
                 user.LastLoginDate = DateTime.UtcNow.ToString();
                 await _db.SaveChangesAsync();
                 await AuditLogger.LogAsync(
@@ -85,16 +98,71 @@ namespace Upsanctionscreener.Controllers
             }
             catch (Exception ex)
             {
-                // Log the exception if you have a logger available
-                // _logger.LogError(ex, "Login failed for {Email}", email);
-
                 ModelState.AddModelError("", "Login failed. Please try again.");
                 return View();
             }
         }
+
+        // ── GET /Auth/DuoCallback (only reachable if Duo is enabled) ───────────
+        [HttpGet]
+        public async Task<IActionResult> DuoCallback(string state, string duo_code)
+        {
+            if (!_useDuo || _duoClient is null)
+                return RedirectToAction("Login");
+
+            var savedState = HttpContext.Session.GetString("duo_state");
+            var userId = HttpContext.Session.GetInt32("duo_user_id");
+
+            if (string.IsNullOrEmpty(savedState) || userId is null || state != savedState)
+            {
+                ModelState.AddModelError("", "Your session expired. Please sign in again.");
+                return RedirectToAction("Login");
+            }
+
+            var user = await _db.SanctionScanUsers.FindAsync(userId.Value);
+            if (user is null)
+                return RedirectToAction("Login");
+
+            try
+            {
+                IdToken token = await _duoClient.ExchangeAuthorizationCodeFor2faResult(duo_code, user.Email);
+            }
+            catch (Exception)
+            {
+                ModelState.AddModelError("", "Two-factor authentication failed. Please try again.");
+                return RedirectToAction("Login");
+            }
+
+            HttpContext.Session.Remove("duo_state");
+            HttpContext.Session.Remove("duo_user_id");
+
+            await SignInUserAsync(user);
+
+            user.LastLoginDate = DateTime.UtcNow.ToString();
+            await _db.SaveChangesAsync();
+            await AuditLogger.LogAsync(
+                db: _db,
+                eventName: $"{user.Email} - LOGIN SUCESSFULL (MFA)",
+                userId: user.Id,
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                pageUrl: HttpContext.Request.Path
+            );
+
+            return RedirectToAction("Index", "Dashboard");
+        }
+
+
+
+
+
+
+
+
+
+
+
         // ── GET /Auth/UpdatePassword ──────────────────────────────────────────
         [HttpGet]
-       
         public async Task<IActionResult> UpdatePassword()
         {
             if (TempData["ForceChangeUserId"] is null)

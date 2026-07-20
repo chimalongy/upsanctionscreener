@@ -22,8 +22,8 @@ namespace Upsanctionscreener.Classess.Utils
                 "ID", "Source", "Subject Type", "Reference Number",
                 "Primary Name", "All Names", "Date Designated",
                 "Sanction Imposed", "Addresses", "Phone Numbers",
-                "Email Addresses", "Positions", "ID Documents",
-                "Call Sign", "Vessel Type", "Vessel Flag",
+                "Email Addresses", "Positions", "Gender", "Date of Birth",
+                "ID Documents", "Call Sign", "Vessel Type", "Vessel Flag",
                 "Vessel Owner", "Gross Registered Tonnage", "Comments"
             };
 
@@ -56,13 +56,15 @@ namespace Upsanctionscreener.Classess.Utils
                 ws.Cell(row, 10).Value = string.Join(" | ", e.PhoneNumbers);
                 ws.Cell(row, 11).Value = string.Join(" | ", e.EmailAddresses);
                 ws.Cell(row, 12).Value = string.Join(" | ", e.Positions);
-                ws.Cell(row, 13).Value = string.Join(" | ", e.IdList);
-                ws.Cell(row, 14).Value = e.CallSign;
-                ws.Cell(row, 15).Value = e.VesselType;
-                ws.Cell(row, 16).Value = e.VesselFlag;
-                ws.Cell(row, 17).Value = e.VesselOwner;
-                ws.Cell(row, 18).Value = e.GrossRegisteredTonnage;
-                ws.Cell(row, 19).Value = e.Comments;
+                ws.Cell(row, 13).Value = e.Gender;
+                ws.Cell(row, 14).Value = string.Join(" | ", e.DateofBirth);
+                ws.Cell(row, 15).Value = string.Join(" | ", e.IdList);
+                ws.Cell(row, 16).Value = e.CallSign;
+                ws.Cell(row, 17).Value = e.VesselType;
+                ws.Cell(row, 18).Value = e.VesselFlag;
+                ws.Cell(row, 19).Value = e.VesselOwner;
+                ws.Cell(row, 20).Value = e.GrossRegisteredTonnage;
+                ws.Cell(row, 21).Value = e.Comments;
 
                 // Alternate row shading
                 if (i % 2 == 1)

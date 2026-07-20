@@ -2,11 +2,11 @@
 using System.Text.Json;
 using Upsanctionscreener.Classess.Utils; // wherever SubFieldMapping lives
 
-namespace  Upsanctionscreener.Classess.Utils
+namespace Upsanctionscreener.Classess.Utils
 {
     public static class SubFieldExtractor
     {
-        
+
         public static DataTable ExtractSubFields(DataTable sourceTable, string jsonColumnName, List<SubFieldMapping> subFields)
         {
             if (!sourceTable.Columns.Contains(jsonColumnName))
@@ -77,9 +77,7 @@ namespace  Upsanctionscreener.Classess.Utils
 
             foreach (var subField in subFields)
             {
-                var baseName = !string.IsNullOrWhiteSpace(subField.As)
-                    ? SanitizeColumnName(subField.As)
-                    : SanitizeColumnName(LastSegment(subField.Key));
+                var baseName = ResolveBaseColumnName(subField);
 
                 var candidate = baseName;
                 var suffix = 2;
@@ -94,6 +92,29 @@ namespace  Upsanctionscreener.Classess.Utils
             }
 
             return result;
+        }
+
+        // ── Shared naming rule ──────────────────────────────────────────────
+        // Single source of truth for turning a SubFieldMapping into a column
+        // name. Both ExtractSubFields (which physically creates the DataTable
+        // column) and FlattenFieldMappings (which tells downstream code what
+        // column to look for) must derive the name the same way, or the two
+        // will drift apart and ParallelTargetScan will throw
+        // "Mapped column 'X' does not exist in the DataTable." for a column
+        // that does exist, just under a different name.
+        //
+        // NOTE: this does not account for the collision-suffixing (_2, _3, ...)
+        // that ResolveColumnNames applies against a live table's existing
+        // columns — that part is inherently stateful/order-dependent and has
+        // no equivalent when FlattenFieldMappings runs without a DataTable in
+        // hand. If two sub-fields in the same mapping can produce the same
+        // base name, this is not fully airtight; assumed fine in practice
+        // since sub-field keys/aliases are expected to be unique per mapping.
+        private static string ResolveBaseColumnName(SubFieldMapping subField)
+        {
+            return !string.IsNullOrWhiteSpace(subField.As)
+                ? SanitizeColumnName(subField.As)
+                : SanitizeColumnName(LastSegment(subField.Key));
         }
 
         private static string LastSegment(string key)
@@ -141,6 +162,17 @@ namespace  Upsanctionscreener.Classess.Utils
             };
         }
 
+        // ── Field-mapping flattening ────────────────────────────────────────
+        // Turns a possibly-nested list of FieldMapping (some entries backed by
+        // a JSON blob column with IsJson = true and their own SubFields) into
+        // a flat list of plain, non-JSON FieldMapping entries — one per
+        // eventual DataTable column. This is what downstream scan code
+        // (ParallelTargetScan) expects: a flat column-name -> MatchAs list.
+        //
+        // IMPORTANT: for JSON sub-fields, ColumnName here must be produced by
+        // the exact same rule as the physical column ExtractSubFields creates
+        // (see ResolveBaseColumnName above), or the two structures disagree
+        // about what the column is called.
         public static List<FieldMapping> FlattenFieldMappings(List<FieldMapping> mappings)
         {
             var flattened = new List<FieldMapping>();
@@ -166,7 +198,7 @@ namespace  Upsanctionscreener.Classess.Utils
                 {
                     flattened.Add(new FieldMapping
                     {
-                        ColumnName = subField.Key,
+                        ColumnName = ResolveBaseColumnName(subField), // was: subField.Key — kept in sync with ExtractSubFields' column naming
                         MatchAs = subField.MatchAs,
                         IsJson = false,
                         SubFields = new List<SubFieldMapping>()
@@ -176,16 +208,6 @@ namespace  Upsanctionscreener.Classess.Utils
 
             return flattened;
         }
-
-
-
-
-
-
-
-
-
-
 
     }
 }

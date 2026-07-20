@@ -2,7 +2,9 @@
 using Upsanctionscreener.Models;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace Upsanctionscreener.Classess.Parsers
@@ -110,6 +112,26 @@ namespace Upsanctionscreener.Classess.Parsers
                     if (!string.IsNullOrWhiteSpace(pos.Value))
                         entry.Positions.Add(pos.Value);
 
+                // ── Gender ───────────────────────────────────────────────
+                // Structure: IndividualDetails/Individual/Genders/Gender
+                // Always a single value in the feed, but we defensively take the
+                // first non-empty one in case that ever changes.
+                entry.Gender = des.Descendants(ns + "Gender")
+                                  .Select(g => g.Value)
+                                  .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+
+                // ── Date(s) of birth ─────────────────────────────────────
+                // Structure: IndividualDetails/Individual/DOBs/DOB (can repeat when OFSI
+                // lists multiple possible birth dates). Raw values are normalised to
+                // ISO 8601 (yyyy-MM-dd) where a full date is known.
+                foreach (var dob in des.Descendants(ns + "DOB"))
+                {
+                    if (string.IsNullOrWhiteSpace(dob.Value))
+                        continue;
+
+                    entry.DateofBirth.Add(NormalizeUkDob(dob.Value));
+                }
+
                 // ── ID documents ──────────────────────────────────────────
                 // Passports (individuals)
                 foreach (var passport in des.Descendants(ns + "Passport"))
@@ -148,6 +170,37 @@ namespace Upsanctionscreener.Classess.Parsers
             }
 
             return entries;
+        }
+
+        // The UK Sanctions List feed gives DOBs as dd/MM/yyyy, but OFSI substitutes
+        // literal "dd" / "mm" / "yy" placeholders for date parts that aren't confirmed,
+        // e.g. "dd/mm/1957" (only year known), "1973" (bare year, no slashes),
+        // or "15/08/19yy" (day/month known, year partially unknown).
+        // We convert to ISO 8601 (yyyy-MM-dd) whenever the full date is known;
+        // otherwise we fall back to the best-known fragment rather than guessing.
+        private static string NormalizeUkDob(string raw)
+        {
+            raw = raw.Trim();
+
+            // Full date known, e.g. "30/01/1972" -> "1972-01-30"
+            if (DateTime.TryParseExact(raw, "dd/MM/yyyy", CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out var fullDate))
+            {
+                return fullDate.ToString("yyyy-MM-dd");
+            }
+
+            // Only the year is known, day/month are literal placeholders: "dd/mm/1957" -> "1957"
+            var yearOnly = Regex.Match(raw, @"^dd/mm/(\d{4})$", RegexOptions.IgnoreCase);
+            if (yearOnly.Success)
+                return yearOnly.Groups[1].Value;
+
+            // Already a bare year, e.g. "1973"
+            if (Regex.IsMatch(raw, @"^\d{4}$"))
+                return raw;
+
+            // Anything else (e.g. "15/08/19yy" — year partially unknown) can't be
+            // safely converted to ISO without inventing data, so keep it as-is.
+            return raw;
         }
     }
 }

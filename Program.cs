@@ -15,6 +15,7 @@ using Upsanctionscreener.Data;
 using Upsanctionscreener.Jobs;
 using Upsanctionscreener.Services;
 using Upsanctionscreener.Services;
+using DuoUniversal;
 
 Console.WriteLine("Starting Application");
 
@@ -130,6 +131,32 @@ builder.Services.AddHttpClient<SanctionDownloader>(client =>
     client.Timeout = TimeSpan.FromMinutes(5);
 });
 
+//--------------------------------DUO
+
+var useDuo = builder.Configuration.GetValue<bool>("Duo:UseDuo");
+if (useDuo)
+{
+    builder.Services.AddSingleton(sp =>
+    {
+        var config = builder.Configuration;
+        return new ClientBuilder(
+            config["Duo:ClientId"]!,
+            config["Duo:ClientSecret"]!,
+            config["Duo:ApiHost"]!,
+            config["Duo:RedirectUri"]!
+        ).Build();
+    });
+}
+
+// ── Session (required for Duo state/userId stash between redirect and callback) ──
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(5);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+});
+
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<UpSanctionSettingsService>();
@@ -158,6 +185,11 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+// ── Session must be registered before Authentication so Duo's state/userId ──
+// ── stash (set in AuthController.Login, read in AuthController.DuoCallback) ──
+// ── is available across the redirect round-trip to Duo and back ─────────────
+app.UseSession();
 
 app.UseAuthentication();
 app.UseAuthorization();

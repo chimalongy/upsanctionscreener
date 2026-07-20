@@ -641,7 +641,7 @@ namespace Upsanctionscreener.Classess.Search
      
 
 
-        public static async System.Threading.Tasks.Task TargetScanScreener(
+        public static async System.Threading.Tasks.Task TargetScanScreenerOLD(
     int targetID, string targetName, object targetfrequency, IServiceScopeFactory scopeFactory, int attempt = 1)
         {
             string log_folder = string.Empty;
@@ -902,7 +902,283 @@ namespace Upsanctionscreener.Classess.Search
         }
 
 
+        public static async System.Threading.Tasks.Task TargetScanScreener(
+         int targetID, string targetName, object targetfrequency, IServiceScopeFactory scopeFactory, int attempt = 1)
+        {
+            string log_folder = string.Empty;
+            string log_file = string.Empty;
+            const int maxAttempts = 6;
 
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                string folderName = System.IO.Path.Combine(
+                    GlobalVariables.root_folder, "Logs", "TargetScanLogs");
+                log_folder = folderName;
+
+                string fileName = BuildLogFileName(targetName, targetfrequency.ToString());
+                log_file = fileName;
+
+                Directory.CreateDirectory(folderName);
+                string fullPath = System.IO.Path.Combine(folderName, fileName + ".log");
+
+                Logger.LogToFile(folderName, fileName, $"[START] Target: {targetName} (ID: {targetID}) | Frequency: {targetfrequency} | {DateTime.Now:O}{Environment.NewLine}");
+                Logger.LogToFile(folderName, fileName, $"[STEP 1]: GET SANCTION PORTAL SETTINGS AND TARGET DETAILS");
+
+                var svc = new UpSanctionSettingsService(db);
+                var allSanctionSettings = await svc.GetAllAsync();
+
+                if (!allSanctionSettings.Success)
+                {
+                    throw new Exception($"Error fetching sanction portal settings:\n\n {allSanctionSettings.Error} ");
+                }
+
+                var targets = allSanctionSettings.Data.Targets;
+                var target = targets.FirstOrDefault(t => t.Id == targetID);
+                if (target is null)
+                {
+                    throw new Exception($"Could not find target ");
+                }
+
+                var scansettings = allSanctionSettings.Data.ScanSettings;
+                if (scansettings is null)
+                {
+                    throw new Exception($"Could not find scan settings ");
+                }
+
+                Logger.LogToFile(folderName, fileName, $"[STEP 1 - COMPLETED]: PORTAL SETTINGS AND TARGET DETAILS RETRIEVED.");
+
+                Logger.LogToFile(folderName, fileName, $"[STEP 2]: FETCH DATA TO SCAN");
+
+                TaskFileReadResult file_read_result = new TaskFileReadResult();
+                DatabaseReadResult database_read_result = new DatabaseReadResult();
+                DataTable data_to_scan = new DataTable();
+                DataTable unique_items = new DataTable();
+                DataTable NormalizedDataToScan = new DataTable();
+                List<FieldMapping> FieldMappings = target.DatabaseSettings.DataSettings.OtherFields;
+
+                if (target.TargetType == "document")
+                {
+                    file_read_result = GlobalFunctions.ReadTargetFile(
+                        target.DocumentSettings.UploadPath,
+                        target.DocumentSettings.IdColumn,
+                        target.DocumentSettings.OtherFields);
+
+                    if (!file_read_result.Success)
+                    {
+                        throw new Exception(file_read_result.Error);
+                    }
+
+                    data_to_scan = file_read_result.Data;
+                    unique_items = GlobalFunctions.DeduplicateDatatbaleById(data_to_scan, target.DocumentSettings.IdColumn);
+
+                    // ── Extract JSON subfields (mirrors database branch) ──────────────
+                    var docFieldMappings = target.DocumentSettings.OtherFields;
+
+                    if (docFieldMappings is not null)
+                    {
+                        var jsonFieldGroups = docFieldMappings
+                            .Where(f => f.IsJson)
+                            .GroupBy(f => f.ColumnName, StringComparer.OrdinalIgnoreCase);
+
+                        foreach (var group in jsonFieldGroups)
+                        {
+                            var jsonColumnName = group.Key;
+
+                            if (!unique_items.Columns.Contains(jsonColumnName))
+                                continue;
+
+                            var subFields = group.SelectMany(f => f.SubFields).ToList();
+                            if (subFields.Count == 0)
+                                continue;
+
+                            unique_items = SubFieldExtractor.ExtractSubFields(unique_items, jsonColumnName, subFields);
+                        }
+                    }
+
+                    // ── Flatten mappings so ParallelTargetScan gets the resolved column list ──
+                    FieldMappings = SubFieldExtractor.FlattenFieldMappings(docFieldMappings);
+
+                    NormalizedDataToScan = GlobalFunctions.NormaLizeNamesinTargetColumn(unique_items, FieldMappings, "name");
+                }
+                else
+                {
+                    string lasttrackedtime = string.Empty;
+
+                    if (target.AutomationSettings.TrackTime)
+                    {
+                        TargetScanTimeTracker? targettracker = GetTargetScanTimeTracker(targetID);
+
+                        if (targettracker == null)
+                        {
+                            /// Create a new tracker if it doesn't exist
+                        }
+                        else
+                        {
+                            lasttrackedtime = targettracker.StopTime;
+                        }
+                    }
+
+                    string Query = DatabaseDataReader.DatabaseQueryBuilder.BuildSelectQuery(target.DatabaseSettings, target.AutomationSettings, lasttrackedtime);
+                    Logger.LogToFile(folderName, fileName, $"Original Constructed Query:\n\n {Query}");
+
+                    database_read_result = await DatabaseDataReader.ReadDatabaseRecords(Query, target.DatabaseSettings, folderName, fileName);
+
+                    if (!database_read_result.Successful)
+                    {
+                        throw new Exception(database_read_result.Message);
+                    }
+
+                    data_to_scan = database_read_result.Data;
+
+                    DateTime? startTime = null;
+                    DateTime? stopTime = null;
+
+                    if (target.AutomationSettings.TrackTime)
+                    {
+                        startTime = data_to_scan.AsEnumerable().Min(row => row.Field<DateTime?>(target.AutomationSettings.TimeColumn));
+
+                        stopTime = data_to_scan.AsEnumerable().Max(row => row.Field<DateTime?>(target.AutomationSettings.TimeColumn));
+
+                        //check if the target is already tracked
+                        var tracker = GetTargetScanTimeTracker(targetID);
+
+                        if (tracker == null)
+                        {
+                            var targetTracker = new TargetScanTimeTracker
+                            {
+                                TargetId = targetID,
+                                TargetName = target.TargetName,
+                                StartTime = startTime?.ToString("o"),
+                                StopTime = stopTime?.ToString("o")
+                            };
+
+                            AddTargetScanTimeTracker(targetTracker);
+                        }
+                        else
+                        {
+                            tracker.StartTime = startTime?.ToString("o");
+                            tracker.StopTime = stopTime?.ToString("o");
+
+                            UpdateTargetScanTimeTracker(tracker);
+                        }
+                    }
+
+                    unique_items = GlobalFunctions.DeduplicateDatatbaleById(data_to_scan, target.DatabaseSettings.DataSettings.IdColumn);
+
+                    if (FieldMappings is not null)
+                    {
+                        var jsonFieldGroups = FieldMappings
+                            .Where(f => f.IsJson)
+                            .GroupBy(f => f.ColumnName, StringComparer.OrdinalIgnoreCase);
+
+                        foreach (var group in jsonFieldGroups)
+                        {
+                            var jsonColumnName = group.Key;
+
+                            if (!unique_items.Columns.Contains(jsonColumnName))
+                                continue;
+
+                            var subFields = group.SelectMany(f => f.SubFields).ToList();
+                            if (subFields.Count == 0)
+                                continue;
+
+                            // Reassign — each pass returns a new table built on top of the previous one,
+                            // so multiple JSON columns chain correctly.
+                            unique_items = SubFieldExtractor.ExtractSubFields(unique_items, jsonColumnName, subFields);
+                        }
+                    }
+
+                    FieldMappings = SubFieldExtractor.FlattenFieldMappings(target.DatabaseSettings.DataSettings.OtherFields);
+
+                    NormalizedDataToScan = GlobalFunctions.NormaLizeNamesinTargetColumn(unique_items, FieldMappings, "name");
+                }
+
+                data_to_scan = NormalizedDataToScan;
+
+                Logger.LogToFile(folderName, fileName, $"[STEP 2 - COMPLETED]: {data_to_scan.Rows.Count} Items Fetched, {unique_items.Rows.Count} Unique Items, normalized by ID");
+
+                Logger.LogToFile(folderName, fileName, $"[STEP 3]: LOAD SANCTION ENTRIES AND SEARCH TREE");
+                unique_items = null;
+                NormalizedDataToScan = null;
+
+                List<SanctionEntry> sanction_entries = SanctionExcelReader.LoadFromExcel(GlobalVariables.base_sanction_db_path);
+                var normalized_sanction_entries = GlobalFunctions.NormalizeSanctionListNames(sanction_entries);
+                var tree = new SanctionNamesBKTree(threshold: (scansettings.ScanThreshold / 100.00), caseSensitive: false);
+                tree.Load(normalized_sanction_entries);
+
+                Logger.LogToFile(folderName, fileName, $"[STEP 3 - COMPLETED]: SEARCH TREE LOADED");
+                unique_items = null;
+                NormalizedDataToScan = null;
+
+                Logger.LogToFile(folderName, fileName, $"[STEP 4]: BEGIN SCAN");
+
+                List<TargetScanResult> TargetScreenResults = ParallelTargetScan(
+                    tree,
+                    data_to_scan,
+                    sanction_entries,
+                    folderName,
+                    fileName,
+                    target.TargetType == "document" ? target.DocumentSettings.IdColumn : target.DatabaseSettings.DataSettings.IdColumn,
+                    FieldMappings);
+
+                Logger.LogToFile(folderName, fileName, $"[STEP 4 - COMPLETED]: SCAN COMPLETED");
+
+                Logger.LogToFile(folderName, fileName, $"[STEP 5]: EXPORTING SCAN RESULT");
+
+                string outputDir = System.IO.Path.Combine(GlobalVariables.root_folder, "Targets", "TargetReports");
+                Directory.CreateDirectory(outputDir);
+
+                string outputPath = System.IO.Path.Combine(outputDir, $"{fileName}.xlsx");
+
+                TargetScanResultExporter.ExportToExcel(
+                    TargetScreenResults,
+                    scanType: "Target Scan",
+                    outputPath: outputPath);
+
+                Logger.LogToFile(folderName, fileName, $"[STEP 5 - COMPLETED]: SCAN RESULTS EXPORTED TO: {outputPath}");
+
+                if (target.NotificationSettings.Enabled)
+                {
+                    Logger.LogToFile(folderName, fileName, $"[STEP 6]: SENDING EMAIL NOTIFICATION");
+                    // CALL EMAIL SENDING SERVICE HERE...
+                    Logger.LogToFile(folderName, fileName, $"[STEP 6 - COMPLETED]: EMAIL NOTIFICATION SENT");
+                }
+
+                Logger.LogToFile(folderName, fileName, $"[END] Target: {targetName} (ID: {targetID}) | {DateTime.Now:O}{Environment.NewLine}");
+            }
+            catch (Exception ex)
+            {
+                // Log all errors (unwrap AggregateException if needed)
+                IEnumerable<string> errorMessages = ex is AggregateException agg
+                    ? agg.InnerExceptions.Select(e => e.Message)
+                    : new[] { ex.Message };
+
+                foreach (var msg in errorMessages)
+                {
+                    Logger.LogToFile(log_folder, log_file, $"[ERROR] - {msg}");
+                }
+
+                // Retry if attempts remain
+                if (attempt < maxAttempts)
+                {
+                    int delaySeconds = (int)Math.Pow(2, attempt); // 2s, 4s, 8s ...
+                    Logger.LogToFile(log_folder, log_file,
+                        $"[RETRY] Attempt {attempt} of {maxAttempts} failed. Retrying in {delaySeconds}s...");
+
+                    await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+
+                    await TargetScanScreener(targetID, targetName, targetfrequency, scopeFactory, attempt + 1);
+                }
+                else
+                {
+                    Logger.LogToFile(log_folder, log_file,
+                        $"[FAILED] All {maxAttempts} attempts exhausted for Target: {targetName} (ID: {targetID}). No further retries.");
+                }
+            }
+        }
 
 
 

@@ -96,6 +96,34 @@ namespace Upsanctionscreener.Classess.Parsers
                         entry.Positions.Add(val);
                 }
 
+                // ── GENDER ────────────────────────────────────────────────
+                // Direct child of <INDIVIDUAL> only — entities don't have it.
+                if (isIndividual)
+                {
+                    var gender = GetValue(node, ns, "GENDER");
+                    if (!string.IsNullOrWhiteSpace(gender))
+                        entry.Gender = gender;
+                }
+
+                // ── DATE OF BIRTH ─────────────────────────────────────────
+                // Entities never have this. Individuals can have zero, one, or
+                // several <INDIVIDUAL_DATE_OF_BIRTH> blocks, and the shape of
+                // each depends on TYPE_OF_DATE:
+                //   EXACT + full date  -> <DATE>1973-03-06</DATE>
+                //   EXACT + year only  -> <YEAR>1954</YEAR>
+                //   BETWEEN            -> <FROM_YEAR>1977</FROM_YEAR><TO_YEAR>1982</TO_YEAR>
+                // Some blocks are empty placeholders (<TYPE_OF_DATE/> only) and
+                // are skipped.
+                if (isIndividual)
+                {
+                    foreach (var dobNode in node.Elements(ns + "INDIVIDUAL_DATE_OF_BIRTH"))
+                    {
+                        var dobStr = BuildDateOfBirth(dobNode, ns);
+                        if (!string.IsNullOrWhiteSpace(dobStr))
+                            entry.DateofBirth.Add(dobStr);
+                    }
+                }
+
                 entries.Add(entry);
             }
 
@@ -129,6 +157,29 @@ namespace Upsanctionscreener.Classess.Parsers
             {
                 return GetValue(node, ns, "FIRST_NAME");
             }
+        }
+
+        /// <summary>
+        /// Formats a single &lt;INDIVIDUAL_DATE_OF_BIRTH&gt; block into a display string,
+        /// handling the three shapes the UN list uses (exact date, exact year, year range).
+        /// Returns empty string for placeholder/empty blocks.
+        /// </summary>
+        private static string BuildDateOfBirth(XElement dobNode, XNamespace ns)
+        {
+            var date = GetValue(dobNode, ns, "DATE");
+            if (!string.IsNullOrWhiteSpace(date))
+                return date;
+
+            var year = GetValue(dobNode, ns, "YEAR");
+            if (!string.IsNullOrWhiteSpace(year))
+                return year;
+
+            var fromYear = GetValue(dobNode, ns, "FROM_YEAR");
+            var toYear = GetValue(dobNode, ns, "TO_YEAR");
+            if (!string.IsNullOrWhiteSpace(fromYear) || !string.IsNullOrWhiteSpace(toYear))
+                return $"Between {fromYear} and {toYear}";
+
+            return string.Empty;
         }
     }
 }

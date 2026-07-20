@@ -50,6 +50,8 @@ namespace Upsanctionscreener.Classess.Utils
                         PhoneNumbers = SplitPipe(row, "Phone Numbers"),
                         EmailAddresses = SplitPipe(row, "Email Addresses"),
                         Positions = SplitPipe(row, "Positions"),
+                        Gender = GetNullable(row, "Gender"),
+                        DateofBirth = SplitPipe(row, "Date of Birth"),
                         IdList = SplitPipe(row, "ID Documents"),
                         CallSign = GetNullable(row, "Call Sign"),
                         VesselType = GetNullable(row, "Vessel Type"),
