@@ -5,46 +5,36 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
 {
     public static class TargetScanResultExporter
     {
-        private static readonly string[] Headers = new[]
+        private static readonly string[] FixedHeaders = new[]
         {
-            "Scan Type", "Item ID", "Name", "Address", "Email", "Phone",
-            "Matched Field", "Similarity (%)", "Candidates Count",
+            "Scan Type", "Item ID",
+            "Name", "Address", "Email", "Phone", "Gender", "Date of Birth",
+            "Matched Field",
+            "Name Similarity (%)", "Address Similarity (%)", "Email Similarity (%)",
+            "Phone Similarity (%)", "Gender Similarity (%)", "DOB Similarity (%)",
+            "Average Similarity (%)", "Hits Count",
             "Sanction ID", "Subject Type", "Source", "Reference Number", "Date Designated",
             "Sanction Imposed", "Comments", "Call Sign", "Vessel Type", "Vessel Flag",
             "Vessel Owner", "Gross Registered Tonnage", "Names", "Addresses",
             "Phone Numbers", "Email Addresses", "Positions", "ID List"
         };
 
-        private static readonly double[] ColWidths = new double[]
+        private const double DefaultColWidth = 22.0;
+        private static readonly Dictionary<int, double> FixedColWidths = new()
         {
-            0,       // placeholder (1-based)
-            14.71,   // 1  Scan Type
-            14.71,   // 2  Item ID
-            30.71,   // 3  Name
-            30.71,   // 4  Address
-            25.71,   // 5  Email
-            18.71,   // 6  Phone
-            18.71,   // 7  Matched Field
-            16.71,   // 8  Similarity (%)
-            18.71,   // 9  Candidates Count
-            14.71,   // 10 Sanction ID
-            16.71,   // 11 Subject Type
-            20.71,   // 12 Source
-            14.0,    // 13 Reference Number
-            18.71,   // 14 Date Designated
-            22.71,   // 15 Sanction Imposed
-            35.71,   // 16 Comments
-            14.71,   // 17 Call Sign
-            16.71,   // 18 Vessel Type
-            14.0,    // 19 Vessel Flag
-            22.71,   // 20 Vessel Owner
-            24.71,   // 21 Gross Registered Tonnage
-            40.71,   // 22 Names
-            14.0,    // 23 Addresses
-            25.71,   // 24 Phone Numbers
-            30.71,   // 25 Email Addresses
-            14.0,    // 26 Positions
-            35.71,   // 27 ID List
+            [1] = 14.71,  // Scan Type
+            [2] = 14.71,  // Item ID
+            [3] = 26.71,  // Name
+            [4] = 26.71,  // Address
+            [5] = 24.71,  // Email
+            [6] = 16.71,  // Phone
+            [7] = 12.0,   // Gender
+            [8] = 16.0,   // Date of Birth
+            [9] = 16.71,  // Matched Field
+            [16] = 18.71, // Average Similarity
+            [17] = 12.0,  // Hits Count
+            [30] = 40.71, // Names
+            [35] = 35.71, // ID List
         };
 
         public static void ExportToExcel(
@@ -58,31 +48,44 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
 
             Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
 
+            // Results already come sorted by AverageSimilarity descending from
+            // ParallelTargetScan, but sort again here defensively in case the
+            // exporter is ever called with a differently-ordered list.
+            var ordered = results.OrderByDescending(r => r.AverageSimilarity).ToList();
+
+            // Dynamic source columns — every column from data_to_scan, taken
+            // from the first result (all rows share the same schema).
+            var sourceColumns = ordered.FirstOrDefault()?.RawRowData.Select(kv => kv.Key).ToList()
+                                 ?? new List<string>();
+
+            var headers = FixedHeaders
+                .Concat(sourceColumns.Select(c => $"Source: {c}"))
+                .ToArray();
+
             using var workbook = new XLWorkbook();
 
-            // ── Sheet 1: Scan Results ────────────────────────────────────────────
             var ws = workbook.Worksheets.Add("Scan Results");
 
-            WriteHeaderRow(ws);
-            int dataRowCount = WriteDataRows(ws, results, scanType);
-            ApplyColumnWidths(ws);
+            WriteHeaderRow(ws, headers);
+            WriteDataRows(ws, ordered, scanType, sourceColumns);
+            ApplyColumnWidths(ws, headers.Length);
 
             ws.SheetView.FreezeRows(1);
+            ws.SheetView.FreezeColumns(2);
 
-            // ── Sheet 2: Summary ─────────────────────────────────────────────────
-            WriteSummarySheet(workbook, results, dataRowCount);
+            WriteSummarySheet(workbook, ordered);
 
             workbook.SaveAs(outputPath);
         }
 
         // ── Header ───────────────────────────────────────────────────────────────
 
-        private static void WriteHeaderRow(IXLWorksheet ws)
+        private static void WriteHeaderRow(IXLWorksheet ws, string[] headers)
         {
-            for (int col = 1; col <= Headers.Length; col++)
+            for (int col = 1; col <= headers.Length; col++)
             {
                 var cell = ws.Cell(1, col);
-                cell.Value = Headers[col - 1];
+                cell.Value = headers[col - 1];
                 cell.Style.Font.Bold = true;
                 cell.Style.Font.FontColor = XLColor.White;
                 cell.Style.Font.FontName = "Arial";
@@ -98,110 +101,91 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
 
         // ── Data Rows ────────────────────────────────────────────────────────────
 
-        private static int WriteDataRows(
+        private static void WriteDataRows(
             IXLWorksheet ws,
             List<TargetScanResult> results,
-            string scanType)
+            string scanType,
+            List<string> sourceColumns)
         {
-            bool IsMatch(TargetScanResult r) => r.Hits != null && r.Hits.Count > 0;
-
-            var matchedRows = results
-                .Where(r => IsMatch(r))
-                .Select(r => new { Result = r, TopHit = r.Hits.OrderByDescending(h => h.Similarity).First() })
-                .OrderByDescending(x => x.TopHit.Similarity)
-                .ToList();
-
-            var noMatchRows = results
-                .Where(r => !IsMatch(r))
-                .OrderBy(r => r.RowId)
-                .ToList();
-
             int row = 2;
 
-            // ── Matched rows ─────────────────────────────────────────────────────
-            foreach (var item in matchedRows)
+            foreach (var r in results)
             {
-                double similarityPct = Math.Round(item.TopHit.Similarity * 100, 2);
-                int candidatesCount = item.Result.Hits.Count;
-
-                // Get the resolved SanctionEntry at the same index as the TopHit
-                int topHitIndex = item.Result.Hits.IndexOf(item.TopHit);
-                SanctionEntry? entry = (topHitIndex >= 0 && topHitIndex < item.Result.ResolvedSanctionEntries.Count)
-                    ? item.Result.ResolvedSanctionEntries[topHitIndex]
-                    : null;
+                var entry = r.MatchedSanctionEntry;
 
                 ws.Cell(row, 1).Value = scanType;
-                ws.Cell(row, 2).Value = item.Result.RowId ?? string.Empty;
-                ws.Cell(row, 3).Value = item.Result.Name ?? string.Empty;
-                ws.Cell(row, 4).Value = item.Result.Address ?? string.Empty;
-                ws.Cell(row, 5).Value = item.Result.Email ?? string.Empty;
-                ws.Cell(row, 6).Value = item.Result.Phone ?? string.Empty;
+                ws.Cell(row, 2).Value = r.RowId ?? string.Empty;
+                ws.Cell(row, 3).Value = r.Name ?? string.Empty;
+                ws.Cell(row, 4).Value = r.Address ?? string.Empty;
+                ws.Cell(row, 5).Value = r.Email ?? string.Empty;
+                ws.Cell(row, 6).Value = r.Phone ?? string.Empty;
+                ws.Cell(row, 7).Value = r.Gender ?? string.Empty;
+                ws.Cell(row, 8).Value = r.DateOfBirth ?? string.Empty;
+                ws.Cell(row, 9).Value = r.MatchedColumn ?? string.Empty;
 
-                // Matched Field: shows which source column produced the match
-                // Falls back to TopHit.MatchedName if MatchedColumn is not available
-                string matchedField = !string.IsNullOrEmpty(item.Result.MatchedColumn)
-                    ? item.Result.MatchedColumn
-                    : item.TopHit.MatchedName ?? string.Empty;
-                ws.Cell(row, 7).Value = matchedField;
+                ws.Cell(row, 10).Value = Math.Round(r.NameSimilarity * 100, 2);
+                ws.Cell(row, 11).Value = Math.Round(r.AddressSimilarity * 100, 2);
+                ws.Cell(row, 12).Value = Math.Round(r.EmailSimilarity * 100, 2);
+                ws.Cell(row, 13).Value = Math.Round(r.PhoneSimilarity * 100, 2);
+                ws.Cell(row, 14).Value = Math.Round(r.GenderSimilarity * 100, 2);
+                ws.Cell(row, 15).Value = Math.Round(r.DobSimilarity * 100, 2);
+                for (int c = 10; c <= 15; c++)
+                    ws.Cell(row, c).Style.NumberFormat.Format = "0.00";
 
-                ws.Cell(row, 8).Value = similarityPct;
-                ws.Cell(row, 8).Style.NumberFormat.Format = "0.00";
-                ws.Cell(row, 9).Value = candidatesCount;
+                double avgPct = Math.Round(r.AverageSimilarity * 100, 2);
+                ws.Cell(row, 16).Value = avgPct;
+                ws.Cell(row, 16).Style.NumberFormat.Format = "0.00";
+                ws.Cell(row, 16).Style.Fill.BackgroundColor = ConfidenceColor(avgPct);
+
+                ws.Cell(row, 17).Value = r.HitsCount;
 
                 if (entry != null)
                 {
-                    ws.Cell(row, 10).Value = entry.ID ?? string.Empty;
-                    ws.Cell(row, 11).Value = entry.SubjectType ?? string.Empty;
-                    ws.Cell(row, 12).Value = entry.Source ?? string.Empty;
-                    ws.Cell(row, 13).Value = entry.ReferenceNumber ?? string.Empty;
-                    ws.Cell(row, 14).Value = entry.DateDesignated ?? string.Empty;
-                    ws.Cell(row, 15).Value = entry.SanctionImposed ?? string.Empty;
-                    ws.Cell(row, 16).Value = entry.Comments ?? string.Empty;
-                    ws.Cell(row, 17).Value = entry.CallSign ?? string.Empty;
-                    ws.Cell(row, 18).Value = entry.VesselType ?? string.Empty;
-                    ws.Cell(row, 19).Value = entry.VesselFlag ?? string.Empty;
-                    ws.Cell(row, 20).Value = entry.VesselOwner ?? string.Empty;
-                    ws.Cell(row, 21).Value = entry.GrossRegisteredTonnage ?? string.Empty;
+                    ws.Cell(row, 18).Value = entry.ID ?? string.Empty;
+                    ws.Cell(row, 19).Value = entry.SubjectType ?? string.Empty;
+                    ws.Cell(row, 20).Value = entry.Source ?? string.Empty;
+                    ws.Cell(row, 21).Value = entry.ReferenceNumber ?? string.Empty;
+                    ws.Cell(row, 22).Value = entry.DateDesignated ?? string.Empty;
+                    ws.Cell(row, 23).Value = entry.SanctionImposed ?? string.Empty;
+                    ws.Cell(row, 24).Value = entry.Comments ?? string.Empty;
+                    ws.Cell(row, 25).Value = entry.CallSign ?? string.Empty;
+                    ws.Cell(row, 26).Value = entry.VesselType ?? string.Empty;
+                    ws.Cell(row, 27).Value = entry.VesselFlag ?? string.Empty;
+                    ws.Cell(row, 28).Value = entry.VesselOwner ?? string.Empty;
+                    ws.Cell(row, 29).Value = entry.GrossRegisteredTonnage ?? string.Empty;
 
-                    // List<string> fields — join with " | " for readability in Excel
-                    ws.Cell(row, 22).Value = entry.Names != null ? string.Join(" | ", entry.Names) : string.Empty;
-                    ws.Cell(row, 23).Value = entry.Addresses != null ? string.Join(" | ", entry.Addresses) : string.Empty;
-                    ws.Cell(row, 24).Value = entry.PhoneNumbers != null ? string.Join(" | ", entry.PhoneNumbers) : string.Empty;
-                    ws.Cell(row, 25).Value = entry.EmailAddresses != null ? string.Join(" | ", entry.EmailAddresses) : string.Empty;
-                    ws.Cell(row, 26).Value = entry.Positions != null ? string.Join(" | ", entry.Positions) : string.Empty;
-                    ws.Cell(row, 27).Value = entry.IdList != null ? string.Join(" | ", entry.IdList) : string.Empty;
+                    ws.Cell(row, 30).Value = entry.Names != null ? string.Join(" | ", entry.Names) : string.Empty;
+                    ws.Cell(row, 31).Value = entry.Addresses != null ? string.Join(" | ", entry.Addresses) : string.Empty;
+                    ws.Cell(row, 32).Value = entry.PhoneNumbers != null ? string.Join(" | ", entry.PhoneNumbers) : string.Empty;
+                    ws.Cell(row, 33).Value = entry.EmailAddresses != null ? string.Join(" | ", entry.EmailAddresses) : string.Empty;
+                    ws.Cell(row, 34).Value = entry.Positions != null ? string.Join(" | ", entry.Positions) : string.Empty;
+                    ws.Cell(row, 35).Value = entry.IdList != null ? string.Join(" | ", entry.IdList) : string.Empty;
                 }
 
-                ws.Cell(row, 8).Style.Fill.BackgroundColor = XLColor.FromHtml("#C6EFCE");
-                ApplyDataRowStyle(ws, row);
+                // Dynamic source columns — dump every field of data_to_scan
+                int col = FixedHeaders.Length + 1;
+                var rawLookup = r.RawRowData.ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+                foreach (var sourceCol in sourceColumns)
+                {
+                    ws.Cell(row, col).Value = rawLookup.TryGetValue(sourceCol, out var val) ? val : string.Empty;
+                    col++;
+                }
+
+                ApplyDataRowStyle(ws, row, FixedHeaders.Length + sourceColumns.Count);
                 row++;
             }
-
-            // ── No-match rows ────────────────────────────────────────────────────
-            foreach (var result in noMatchRows)
-            {
-                ws.Cell(row, 1).Value = scanType;
-                ws.Cell(row, 2).Value = result.RowId ?? string.Empty;
-                ws.Cell(row, 3).Value = result.Name ?? string.Empty;
-                ws.Cell(row, 4).Value = result.Address ?? string.Empty;
-                ws.Cell(row, 5).Value = result.Email ?? string.Empty;
-                ws.Cell(row, 6).Value = result.Phone ?? string.Empty;
-                ws.Cell(row, 7).Value = string.Empty;
-                ws.Cell(row, 8).Value = 0;
-                ws.Cell(row, 8).Style.NumberFormat.Format = "0.00";
-                ws.Cell(row, 9).Value = 0;
-
-                ws.Cell(row, 8).Style.Fill.BackgroundColor = XLColor.FromHtml("#FFC7CE");
-                ApplyDataRowStyle(ws, row);
-                row++;
-            }
-
-            return row - 2;
         }
 
-        private static void ApplyDataRowStyle(IXLWorksheet ws, int row)
+        private static XLColor ConfidenceColor(double avgPct)
         {
-            var rowRange = ws.Range(row, 1, row, Headers.Length);
+            if (avgPct >= 95) return XLColor.FromHtml("#C6EFCE"); // high — green
+            if (avgPct >= 75) return XLColor.FromHtml("#FFEB9C"); // medium — amber
+            return XLColor.FromHtml("#FFC7CE");                   // low — red
+        }
+
+        private static void ApplyDataRowStyle(IXLWorksheet ws, int row, int totalCols)
+        {
+            var rowRange = ws.Range(row, 1, row, totalCols);
             rowRange.Style.Font.FontName = "Arial";
             rowRange.Style.Font.FontSize = 11;
             rowRange.Style.Alignment.WrapText = true;
@@ -211,40 +195,37 @@ namespace Upsanctionscreener.Classess.Search.ScanExporters
 
         // ── Column Widths ─────────────────────────────────────────────────────────
 
-        private static void ApplyColumnWidths(IXLWorksheet ws)
+        private static void ApplyColumnWidths(IXLWorksheet ws, int totalCols)
         {
-            for (int col = 1; col < ColWidths.Length; col++)
+            for (int col = 1; col <= totalCols; col++)
             {
-                ws.Column(col).Width = ColWidths[col];
+                ws.Column(col).Width = FixedColWidths.TryGetValue(col, out var w) ? w : DefaultColWidth;
             }
         }
 
         // ── Summary Sheet ─────────────────────────────────────────────────────────
 
-        private static void WriteSummarySheet(XLWorkbook workbook, List<TargetScanResult> results, int totalRecords)
+        private static void WriteSummarySheet(XLWorkbook workbook, List<TargetScanResult> results)
         {
             var ws = workbook.Worksheets.Add("Summary");
 
-            bool IsMatch(TargetScanResult r) => r.Hits != null && r.Hits.Count > 0;
-
-            int matched = results.Count(r => IsMatch(r));
-            int highConf = results.Count(r => IsMatch(r) && r.Hits.Any(h => h.Similarity * 100 >= 95));
-            int medConf = results.Count(r => IsMatch(r) && r.Hits.Any(h => h.Similarity * 100 >= 75 && h.Similarity * 100 < 95));
-            int lowConf = results.Count(r => IsMatch(r) && r.Hits.Any(h => h.Similarity * 100 < 75));
-            int noMatch = results.Count(r => !IsMatch(r));
+            int total = results.Count;
+            int highConf = results.Count(r => r.AverageSimilarity * 100 >= 95);
+            int medConf = results.Count(r => r.AverageSimilarity * 100 >= 75 && r.AverageSimilarity * 100 < 95);
+            int lowConf = results.Count(r => r.AverageSimilarity * 100 < 75);
+            double avgOfAll = total > 0 ? Math.Round(results.Average(r => r.AverageSimilarity) * 100, 2) : 0;
 
             var summaryData = new (string Label, object Value)[]
             {
-                ("Total Records",              totalRecords),
-                ("Matched (Similarity > 0)",   matched),
+                ("Total Matched Records",      total),
                 ("High Confidence (≥ 95%)",    highConf),
                 ("Medium Confidence (75–94%)", medConf),
                 ("Low Confidence (< 75%)",     lowConf),
-                ("No Match Found",             noMatch),
+                ("Mean Average Similarity (%)", avgOfAll),
                 ("Report Generated",           DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")),
             };
 
-            ws.Column(1).Width = 30;
+            ws.Column(1).Width = 32;
             ws.Column(2).Width = 20;
 
             for (int i = 0; i < summaryData.Length; i++)

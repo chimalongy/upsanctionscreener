@@ -126,6 +126,7 @@
     .field-type-btn.selected-phone   { background: #f0fdf4; color: #15803d; border-color: #86efac; }
     .field-type-btn.selected-address { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
     .field-type-btn.selected-dob     { background: #f0fdfa; color: #0f766e; border-color: #5eead4; }
+    .field-type-btn.selected-gender  { background: #fdf2f8; color: #be185d; border-color: #f9a8d4; }
 
     /* Disabled (claimed by another row/sub-field) exclusive pill */
     .field-type-btn.pill-taken {
@@ -263,16 +264,16 @@
                         </div>
                     </div>
 
-                    @* Transaction Scan Toggle — sits right after Target Type *@
+                    @* Stream Results Toggle — sits right after Target Type *@
                     <div class="flex items-center gap-3 pt-1">
-                        <button type="button" id="transactionScanToggle" onclick="toggleTransactionScan()"
+                        <button type="button" id="streamResultsToggle" onclick="toggleStreamResults()"
                                 class="relative w-10 h-5 rounded-full transition-colors duration-200 bg-border focus:outline-none">
-                            <span id="transactionScanThumb"
+                            <span id="streamResultsThumb"
                                   class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"></span>
                         </button>
                         <div>
-                            <span id="transactionScanLabel" class="text-sm text-text-secondary">Transaction Scan</span>
-                            <p class="text-xs text-text-muted">Flag this target as a transaction-based scan (vs. a customer/entity scan).</p>
+                            <span id="streamResultsLabel" class="text-sm text-text-secondary">Stream Results</span>
+                            <p class="text-xs text-text-muted">Stream scan results as they're found instead of waiting for the full scan to finish.</p>
                         </div>
                     </div>
                 </div>
@@ -386,7 +387,7 @@
                                 <p class="text-xs font-medium text-text-secondary">Field Mappings <span class="text-red-400">*</span></p>
                                 <p class="text-xs text-text-muted mt-0.5">
                                     <strong>Name</strong> can be mapped to multiple columns.
-                                    <strong>Email, Phone, Address, DOB</strong> are limited to one column (or sub-field) each.
+                                    <strong>Email, Phone, Address, DOB, Gender</strong> are limited to one column (or sub-field) each.
                                     Mark a column as JSON to extract multiple sub-fields from it.
                                 </p>
                             </div>
@@ -487,7 +488,7 @@
                                 <p class="text-xs font-medium text-text-secondary">Field Mappings <span class="text-red-400">*</span></p>
                                 <p class="text-xs text-text-muted mt-0.5">
                                     <strong>Name</strong> can be mapped to multiple columns.
-                                    <strong>Email, Phone, Address, DOB</strong> are limited to one column (or sub-field) each.
+                                    <strong>Email, Phone, Address, DOB, Gender</strong> are limited to one column (or sub-field) each.
                                     Mark a column as JSON to extract multiple sub-fields from it.
                                 </p>
                             </div>
@@ -698,18 +699,19 @@
 @section Scripts {
 <script>
 // ── Constants ──────────────────────────────────────────────────────────
-const SCAN_FIELDS = ['name', 'email', 'phone', 'address', 'dob'];
+const SCAN_FIELDS = ['name', 'email', 'phone', 'address', 'dob', 'gender'];
 
 // Fields that allow only ONE column/sub-field mapping across all rows.
 // 'name' is intentionally absent — it is unrestricted (multi-column allowed).
-const EXCLUSIVE_FIELDS = new Set(['email', 'phone', 'address', 'dob']);
+const EXCLUSIVE_FIELDS = new Set(['email', 'phone', 'address', 'dob', 'gender']);
 
 const PILL_COLORS = {
     name:    'selected-name',
     email:   'selected-email',
     phone:   'selected-phone',
     address: 'selected-address',
-    dob:     'selected-dob'
+    dob:     'selected-dob',
+    gender:  'selected-gender'
 };
 
 function fieldLabel(f) {
@@ -750,7 +752,7 @@ let subFieldRowId    = 0;
 let currentTargetType = 'database';
 let trackTime = false;
 let useCustomQuery = false;
-let transactionScan = false;
+let streamResults = false;
 
 // File upload state
 let uploadedFileInfo = null;
@@ -831,8 +833,8 @@ function renderCards() {
             ? `<span class="text-xs px-2 py-0.5 rounded-full border bg-indigo-50 text-indigo-700 border-indigo-100" title="Custom query scan enabled">🔎 Custom Query</span>`
             : '';
 
-        const transactionScanBadge = t.transaction_scan
-            ? `<span class="text-xs px-2 py-0.5 rounded-full border bg-cyan-50 text-cyan-700 border-cyan-100" title="This target is flagged as a transaction scan">💱 Transaction Scan</span>`
+        const streamResultsBadge = t.stream_results
+            ? `<span class="text-xs px-2 py-0.5 rounded-full border bg-cyan-50 text-cyan-700 border-cyan-100" title="This target streams results as they're found">📡 Stream Results</span>`
             : '';
 
         const fields      = ds.other_fields ?? [];
@@ -894,7 +896,7 @@ function renderCards() {
                             ${notifBadge}
                             ${trackTimeBadge}
                             ${customQueryBadge}
-                            ${transactionScanBadge}
+                            ${streamResultsBadge}
                         </div>
                         ${connLine}
                     </div>
@@ -1049,8 +1051,8 @@ function openEditModal(id) {
     const isDoc = t.target_type === 'document';
     setTargetType(isDoc ? 'document' : 'database');
 
-    transactionScan = t.transaction_scan ?? false;
-    syncTransactionScanToggle();
+    streamResults = t.stream_results ?? false;
+    syncStreamResultsToggle();
 
     if (isDoc) {
         const doc = t.document_settings ?? {};
@@ -1231,9 +1233,9 @@ function resetForm() {
     syncCustomQueryToggle();
     document.getElementById('fCustomQuery').value = '';
 
-    // Reset transaction scan
-    transactionScan = false;
-    syncTransactionScanToggle();
+    // Reset stream results
+    streamResults = false;
+    syncStreamResultsToggle();
 }
 
 // ── Password eye toggle ────────────────────────────────────────────────
@@ -1277,18 +1279,18 @@ function syncAutomateToggle() {
     refreshCustomQueryVisibility();
 }
 
-// ── Transaction Scan Toggle ───────────────────────────────────────────
-function toggleTransactionScan() {
-    transactionScan = !transactionScan;
-    syncTransactionScanToggle();
+// ── Stream Results Toggle ──────────────────────────────────────────────
+function toggleStreamResults() {
+    streamResults = !streamResults;
+    syncStreamResultsToggle();
 }
 
-function syncTransactionScanToggle() {
-    const btn   = document.getElementById('transactionScanToggle');
-    const thumb = document.getElementById('transactionScanThumb');
-    const label = document.getElementById('transactionScanLabel');
+function syncStreamResultsToggle() {
+    const btn   = document.getElementById('streamResultsToggle');
+    const thumb = document.getElementById('streamResultsThumb');
+    const label = document.getElementById('streamResultsLabel');
 
-    if (transactionScan) {
+    if (streamResults) {
         btn.classList.replace('bg-border', 'bg-brand-500');
         thumb.style.transform = 'translateX(20px)';
         label.classList.replace('text-text-secondary', 'text-brand-600');
@@ -1676,7 +1678,7 @@ function toggleJsonMode(rowId) {
         row.dataset.matchAs = '';
         const pillsDiv = document.getElementById(`pills-${rowId}`);
         [...pillsDiv.children].forEach(b =>
-            b.classList.remove('selected-name','selected-email','selected-phone','selected-address','selected-dob'));
+            b.classList.remove('selected-name','selected-email','selected-phone','selected-address','selected-dob','selected-gender'));
     } else {
         btn.classList.replace('bg-brand-500', 'bg-border');
         thumb.style.transform = 'translateX(0)';
@@ -1809,7 +1811,7 @@ function selectPill(btn) {
     }
 
     [...pillsDiv.children].forEach(b =>
-        b.classList.remove('selected-name','selected-email','selected-phone','selected-address','selected-dob')
+        b.classList.remove('selected-name','selected-email','selected-phone','selected-address','selected-dob','selected-gender')
     );
 
     if (prevMatch === field) {
@@ -2085,7 +2087,7 @@ async function saveTarget() {
                 id: editingId ?? 0,
                 target_name: targetName,
                 target_type: 'database',
-                transaction_scan: transactionScan,
+                stream_results: streamResults,
                 db_settings_changed: true,
                 database_settings: {
                     database_type: dbType, host, port,
@@ -2102,7 +2104,7 @@ async function saveTarget() {
                 id: editingId ?? 0,
                 target_name: targetName,
                 target_type: 'database',
-                transaction_scan: transactionScan,
+                stream_results: streamResults,
                 db_settings_changed: false,
                 database_settings: {
                     data_settings: { table_name: tableName, id_column: idColumn, other_fields: mappings }
@@ -2127,7 +2129,7 @@ async function saveTarget() {
             id: editingId ?? 0,
             target_name: targetName,
             target_type: 'document',
-            transaction_scan: transactionScan,
+            stream_results: streamResults,
             document_settings: {
                 file_name:      uploadedFileInfo.fileName,
                 upload_path:    uploadedFileInfo.uploadPath,

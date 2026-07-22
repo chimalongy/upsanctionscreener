@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Upsanctionscreener.Classess.Utils;
 
 namespace Upsanctionscreener.Models
 {
@@ -21,7 +23,7 @@ namespace Upsanctionscreener.Models
 
     public class MultiScanTask
     {
-       public  int Id { get; set; }  
+        public int Id { get; set; }
         public string FileName { get; set; }
         public string FilePath { get; set; }
         public string ResultFileName { get; set; }
@@ -30,13 +32,15 @@ namespace Upsanctionscreener.Models
         public string RowCount { get; set; }
         public string AutoGenerateId { get; set; }
         public string IdColumn { get; set; }
-        
-        public string ScanColumn { get; set; }
+
+        // ✅ replaces ScanColumn
+        [JsonPropertyName("field_mappings")]
+        public List<FieldMapping> FieldMappings { get; set; } = new();
+
         public string Status { get; set; }
         public string StartTime { get; set; }
-        public  string CompletionTIme { get; set; }
-        public string ErrorMessage { get; set; }    
-
+        public string CompletionTIme { get; set; }
+        public string ErrorMessage { get; set; }
     }
 
 
@@ -44,7 +48,10 @@ namespace Upsanctionscreener.Models
     {
         public string FilePath { get; set; } = "";
         public string ScanType { get; set; } = "document";
-        public string? ScanColumn { get; set; }
+
+        [JsonPropertyName("field_mappings")]
+        public List<FieldMapping>? FieldMappings { get; set; }
+
         public string? IdColumn { get; set; }
         public bool AutoGenerateId { get; set; }
     }

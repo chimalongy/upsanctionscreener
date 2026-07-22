@@ -67,6 +67,9 @@ namespace Upsanctionscreener.Classess.Utils
         [JsonPropertyName("target_name")]
         public string TargetName { get; set; } = "";
 
+        [JsonPropertyName("stream_results")]
+        public bool StreamResults { get; set; }
+
         [JsonPropertyName("target_type")]
         public string TargetType { get; set; } = "database";
 
@@ -240,8 +243,10 @@ namespace Upsanctionscreener.Classess.Utils
         [JsonPropertyName("target_type")]
         public string TargetType { get; set; } = "database";
 
-        [JsonPropertyName("transaction_scan")]
-        public bool TransactionScan { get; set; }
+        //[JsonPropertyName("transaction_scan")]
+        //public bool TransactionScan { get; set; }
+        [JsonPropertyName("stream_results")]
+        public bool StreamResults { get; set; }
 
         [JsonPropertyName("db_settings_changed")]
         public bool DbSettingsChanged { get; set; }
@@ -798,7 +803,7 @@ namespace Upsanctionscreener.Classess.Utils
                 {
                     target = targets[existing];
                     target.TargetName = request.TargetName;
-                    target.TransactionScan = request.TransactionScan;   // ← add this line
+                    target.StreamResults = request.StreamResults;   // ← fixed (was assigning bool to target)
                     target.AutomationSettings = MapAutomation(request.AutomationSettings);
                     target.NotificationSettings = MapNotification(request.NotificationSettings);
 
@@ -850,7 +855,7 @@ namespace Upsanctionscreener.Classess.Utils
                         Id = newId,
                         TargetName = request.TargetName,
                         TargetType = request.TargetType,
-                        TransactionScan = request.TransactionScan,       // ← add this line
+                        StreamResults = request.StreamResults,       // ← renamed from TransactionScan
                         AutomationSettings = MapAutomation(request.AutomationSettings),
                         NotificationSettings = MapNotification(request.NotificationSettings)
                     };
@@ -886,7 +891,6 @@ namespace Upsanctionscreener.Classess.Utils
                 return SettingsResult<bool>.Fail($"Failed to upsert target: {ex.Message}");
             }
         }
-
         public async Task<SettingsResult<bool>> DeleteTargetAsync(int targetId)
         {
             var result = await GetTargetSettingsAsync();

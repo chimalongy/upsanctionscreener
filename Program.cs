@@ -15,7 +15,7 @@ using Upsanctionscreener.Data;
 using Upsanctionscreener.Jobs;
 using Upsanctionscreener.Services;
 using Upsanctionscreener.Services;
-using DuoUniversal;
+
 
 Console.WriteLine("Starting Application");
 
@@ -29,14 +29,14 @@ Console.WriteLine("3");
 // Replaces the old one-shot GenerateTransactions(50)/InsertTransactionsAsync
 // call with a background loop that inserts a batch every 3 seconds.
 // txnGenCts is cancelled on app shutdown further down (app.Lifetime.ApplicationStopping).
-//var txnGenCts = new CancellationTokenSource();
+var txnGenCts = new CancellationTokenSource();
 
-//_ = TransactionGenerator.RunPeriodicallyAsync(
-//    DatabaseType.Postgres,
-//    "PvhvuxtEzWuiFUwdqcLCddmDuSbpdNBV1rpYp8m1ezl/XajUjlJH5zxnYNh8lglMZQdsnQFXF4KSiTX0lczG6TiFxUEUte+HHCDyGZkNmCfXQY4lSw3/FQ==",
-//    txnGenCts.Token,
-//    batchSize: 1,
-//    interval: TimeSpan.FromSeconds(3));
+_ = TransactionGenerator.RunPeriodicallyAsync(
+    DatabaseType.Postgres,
+    "PvhvuxtEzWuiFUwdqcLCddmDuSbpdNBV1rpYp8m1ezl/XajUjlJH5zxnYNh8lglMZQdsnQFXF4KSiTX0lczG6TiFxUEUte+HHCDyGZkNmCfXQY4lSw3/FQ==",
+    txnGenCts.Token,
+    batchSize: 1,
+    interval: TimeSpan.FromSeconds(3));
 
 //List<Merchant> merchants = MerchantGenerator.GenerateMerchants(300000);
 //await MerchantGenerator.InsertMerchantsAsync(
@@ -131,24 +131,9 @@ builder.Services.AddHttpClient<SanctionDownloader>(client =>
     client.Timeout = TimeSpan.FromMinutes(5);
 });
 
-//--------------------------------DUO
 
-var useDuo = builder.Configuration.GetValue<bool>("Duo:UseDuo");
-if (useDuo)
-{
-    builder.Services.AddSingleton(sp =>
-    {
-        var config = builder.Configuration;
-        return new ClientBuilder(
-            config["Duo:ClientId"]!,
-            config["Duo:ClientSecret"]!,
-            config["Duo:ApiHost"]!,
-            config["Duo:RedirectUri"]!
-        ).Build();
-    });
-}
-
-// ── Session (required for Duo state/userId stash between redirect and callback) ──
+// ── Session (required for MFA state stash between Login and MfaVerify/MfaSetup,
+// ── and previously for Duo state/userId stash between redirect and callback) ──
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -160,6 +145,9 @@ builder.Services.AddSession(options =>
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<UpSanctionSettingsService>();
+// ── Register MFA Services ──────────────────────────────────────────────────
+builder.Services.AddSingleton<MfaJsonStore>(); // Or AddScoped depending on how MfaJsonStore is implemented
+builder.Services.AddScoped<IMfaService, MfaService>();
 
 builder.WebHost.ConfigureKestrel(options =>
 {
@@ -173,7 +161,7 @@ builder.WebHost.ConfigureKestrel(options =>
 var app = builder.Build();
 
 // Stop the periodic transaction generator when the host starts shutting down.
-//app.Lifetime.ApplicationStopping.Register(() => txnGenCts.Cancel());
+app.Lifetime.ApplicationStopping.Register(() => txnGenCts.Cancel());
 
 
 if (!app.Environment.IsDevelopment())
@@ -186,9 +174,9 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
-// ── Session must be registered before Authentication so Duo's state/userId ──
-// ── stash (set in AuthController.Login, read in AuthController.DuoCallback) ──
-// ── is available across the redirect round-trip to Duo and back ─────────────
+// ── Session must be registered before Authentication so MFA's pending-login ──
+// ── userId stash (set in AuthController.Login, read in MfaVerify/MfaSetup) ──
+// ── and Duo's old state/userId stash are available across redirects ─────────
 app.UseSession();
 
 app.UseAuthentication();
