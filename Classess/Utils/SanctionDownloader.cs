@@ -34,12 +34,12 @@ namespace Upsanctionscreener.Classess
         private readonly Dictionary<string, string> _sourceUrls = new()
         {
             ["UN"] = "https://scsanctions.un.org/resources/xml/en/name/consolidated.xml",
-            //["UN"] = "https://scsanctions.un.org/resources/xml/en/consolidated.xml",
-            // https://scsanctions.un.org/resources/xml/en/name/consolidated.xml
+            
+          
 
             ["EU"] = "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList/content?token=dG9rZW4tMjAxNw",
-            //["EU"] = "https://webgate.ec.europa.eu/fsd/fsf/public/files/xmlFullSanctionsList_1_1/content?token=dG9rZW4tMjAxNw",
-            // 
+          
+           
             ["OFAC"] = "https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.XML",
           
         };

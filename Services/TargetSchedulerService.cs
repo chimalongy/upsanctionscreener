@@ -68,7 +68,7 @@ namespace Upsanctionscreener.Services
                 targetId, targetName, automation.Frequency);
         }
 
-        // ── Remove a target's job entirely ────────────────────────────────────
+        // ── Remove a target's schedule entirely ────────────────────────────────
         public async Task RemoveTargetScheduleAsync(int targetId)
         {
             var scheduler = await _schedulerFactory.GetScheduler();
@@ -92,8 +92,6 @@ namespace Upsanctionscreener.Services
 
             switch (auto.Frequency?.ToLowerInvariant())
             {
-                // ── Every N minutes ───────────────────────────────────────────
-                // e.g. IntervalMinutes = 30  →  runs every 30 minutes
                 case "minutely":
                     {
                         int mins = auto.IntervalMinutes > 0 ? auto.IntervalMinutes : 30;
@@ -104,8 +102,6 @@ namespace Upsanctionscreener.Services
                             .Build();
                     }
 
-                // ── Every N hours ─────────────────────────────────────────────
-                // e.g. IntervalHours = 6  →  runs every 6 hours
                 case "hourly":
                     {
                         int hours = auto.IntervalHours > 0 ? auto.IntervalHours : 1;
@@ -116,8 +112,6 @@ namespace Upsanctionscreener.Services
                             .Build();
                     }
 
-                // ── Every day at a fixed time ─────────────────────────────────
-                // e.g. StartTime = "02:30"  →  cron "0 30 2 * * ?"
                 case "daily":
                     {
                         var (h, m) = ParseTime(auto.StartTime);
@@ -126,10 +120,6 @@ namespace Upsanctionscreener.Services
                             .Build();
                     }
 
-                // ── A specific weekday at a fixed time ────────────────────────
-                // e.g. Weekday = 1 (Mon), StartTime = "09:00"  →  cron "0 0 9 ? * 2"
-                // auto.Weekday is 0-based (0=Sun…6=Sat)
-                // Quartz weekday is 1-based (1=Sun…7=Sat)  →  add 1
                 case "weekly":
                     {
                         var (h, m) = ParseTime(auto.StartTime);
@@ -139,8 +129,6 @@ namespace Upsanctionscreener.Services
                             .Build();
                     }
 
-                // ── A specific day of the month at a fixed time ───────────────
-                // e.g. DayOfMonth = 15, StartTime = "08:00"  →  cron "0 0 8 15 * ?"
                 case "monthly":
                     {
                         var (h, m) = ParseTime(auto.StartTime);

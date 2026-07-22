@@ -16,6 +16,7 @@ using Upsanctionscreener.Jobs;
 using Upsanctionscreener.Services;
 using Upsanctionscreener.Services;
 
+
 Console.WriteLine("Starting Application");
 
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -24,7 +25,18 @@ Console.WriteLine("EnsuringBrowserAsync");
 
 Console.WriteLine("3");
 
+// ── Periodic transaction generation ─────────────────────────────────────────
+// Replaces the old one-shot GenerateTransactions(50)/InsertTransactionsAsync
+// call with a background loop that inserts a batch every 3 seconds.
+// txnGenCts is cancelled on app shutdown further down (app.Lifetime.ApplicationStopping).
+var txnGenCts = new CancellationTokenSource();
 
+_ = TransactionGenerator.RunPeriodicallyAsync(
+    DatabaseType.Postgres,
+    "PvhvuxtEzWuiFUwdqcLCddmDuSbpdNBV1rpYp8m1ezl/XajUjlJH5zxnYNh8lglMZQdsnQFXF4KSiTX0lczG6TiFxUEUte+HHCDyGZkNmCfXQY4lSw3/FQ==",
+    txnGenCts.Token,
+    batchSize: 1,
+    interval: TimeSpan.FromSeconds(3));
 
 //List<Merchant> merchants = MerchantGenerator.GenerateMerchants(300000);
 //await MerchantGenerator.InsertMerchantsAsync(
@@ -34,7 +46,7 @@ Console.WriteLine("3");
 //string connstr = "jsyuRZJQPpHLg9EcVnk13vQHH8LKxs5AkyGngaqx7XoENtCcv9bRHq4w3uJBB28DCvsyU0p0+xEekqdCkyROx642+j+m8p2cdD68iD44R7H5XTt9D8V+Vg==";
 //string decryptedConnStr = Cryptor.Decrypt(connstr, true);
 
-//string newconstring = "User Id=upsanctions;Password=1;Data Source=localhost:1521/XEPDB1;";
+//string newconstring = "Host=localhost;Port=5432;Database=transactions_mock;Username=postgres;Password=1";
 //string newencryped = Cryptor.Encrypt(newconstring, true);
 
 
@@ -120,21 +132,36 @@ builder.Services.AddHttpClient<SanctionDownloader>(client =>
 });
 
 
+// ── Session (required for MFA state stash between Login and MfaVerify/MfaSetup,
+// ── and previously for Duo state/userId stash between redirect and callback) ──
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(5);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+});
+
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<UpSanctionSettingsService>();
+// ── Register MFA Services ──────────────────────────────────────────────────
+builder.Services.AddSingleton<MfaJsonStore>(); // Or AddScoped depending on how MfaJsonStore is implemented
+builder.Services.AddScoped<IMfaService, MfaService>();
 
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(3000, listenOptions =>
     {
-        // listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
+        //listenOptions.UseHttps(GlobalVariables.certificate_path, "1");
         listenOptions.UseHttps();
     });
 });
 
 var app = builder.Build();
 
-
+// Stop the periodic transaction generator when the host starts shutting down.
+app.Lifetime.ApplicationStopping.Register(() => txnGenCts.Cancel());
 
 
 if (!app.Environment.IsDevelopment())
@@ -147,10 +174,15 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
+// ── Session must be registered before Authentication so MFA's pending-login ──
+// ── userId stash (set in AuthController.Login, read in MfaVerify/MfaSetup) ──
+// ── and Duo's old state/userId stash are available across redirects ─────────
+app.UseSession();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseMiddleware<Upsanctionscreener.Middleware.ApiKeyAuthMiddleware>(); 
+app.UseMiddleware<Upsanctionscreener.Middleware.ApiKeyAuthMiddleware>();
 
 
 app.MapControllerRoute(

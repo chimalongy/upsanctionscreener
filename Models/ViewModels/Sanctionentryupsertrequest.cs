@@ -34,6 +34,10 @@ namespace Upsanctionscreener.Models.ViewModels
         [JsonPropertyName("comments")]
         public string? Comments { get; set; }
 
+        [JsonPropertyName("Gender")]
+        public string? Gender { get; set; }
+       
+
         // ── Lists ─────────────────────────────────────────────────────────
         [JsonPropertyName("names")]
         public List<string>? Names { get; set; }
@@ -52,6 +56,9 @@ namespace Upsanctionscreener.Models.ViewModels
 
         [JsonPropertyName("idList")]
         public List<string>? IdList { get; set; }
+
+        [JsonPropertyName("DateofBirth")]
+        public List<string>? DateofBirth { get; set; }
 
         // ── Vessel ────────────────────────────────────────────────────────
         [JsonPropertyName("callSign")]

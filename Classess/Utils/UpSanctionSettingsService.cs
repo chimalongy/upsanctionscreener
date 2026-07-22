@@ -67,8 +67,14 @@ namespace Upsanctionscreener.Classess.Utils
         [JsonPropertyName("target_name")]
         public string TargetName { get; set; } = "";
 
+        [JsonPropertyName("stream_results")]
+        public bool StreamResults { get; set; }
+
         [JsonPropertyName("target_type")]
         public string TargetType { get; set; } = "database";
+
+        [JsonPropertyName("transaction_scan")]
+        public bool TransactionScan { get; set; }
 
         [JsonPropertyName("database_settings")]
         public DatabaseSettings? DatabaseSettings { get; set; }
@@ -90,6 +96,27 @@ namespace Upsanctionscreener.Classess.Utils
 
         [JsonPropertyName("match_as")]
         public string MatchAs { get; set; } = "";
+
+        // ✅ NEW
+        [JsonPropertyName("is_json")]
+        public bool IsJson { get; set; }
+
+        // ✅ NEW
+        [JsonPropertyName("sub_fields")]
+        public List<SubFieldMapping> SubFields { get; set; } = new();
+    }
+
+    // ✅ NEW
+    public class SubFieldMapping
+    {
+        [JsonPropertyName("key")]
+        public string Key { get; set; } = "";
+
+        [JsonPropertyName("match_as")]
+        public string MatchAs { get; set; } = "";
+
+        [JsonPropertyName("as")]
+        public string As { get; set; } = "";
     }
 
     public class DataSettings
@@ -216,6 +243,11 @@ namespace Upsanctionscreener.Classess.Utils
         [JsonPropertyName("target_type")]
         public string TargetType { get; set; } = "database";
 
+        //[JsonPropertyName("transaction_scan")]
+        //public bool TransactionScan { get; set; }
+        [JsonPropertyName("stream_results")]
+        public bool StreamResults { get; set; }
+
         [JsonPropertyName("db_settings_changed")]
         public bool DbSettingsChanged { get; set; }
 
@@ -255,6 +287,8 @@ namespace Upsanctionscreener.Classess.Utils
 
         [JsonPropertyName("target_type")]
         public string? TargetType { get; set; }
+        [JsonPropertyName("transaction_scan")]
+        public bool TransactionScan { get; set; }
 
         [JsonPropertyName("document_settings")]
         public TargetDocumentSettingsEntry? DocumentSettings { get; set; }
@@ -300,6 +334,18 @@ namespace Upsanctionscreener.Classess.Utils
     {
         [JsonPropertyName("column_name")] public string ColumnName { get; set; } = string.Empty;
         [JsonPropertyName("match_as")] public string MatchAs { get; set; } = string.Empty;
+
+        // ✅ NEW
+        [JsonPropertyName("is_json")] public bool IsJson { get; set; }
+        [JsonPropertyName("sub_fields")] public List<SubFieldMappingRequest>? SubFields { get; set; }
+    }
+
+    // ✅ NEW
+    public class SubFieldMappingRequest
+    {
+        [JsonPropertyName("key")] public string Key { get; set; } = string.Empty;
+        [JsonPropertyName("match_as")] public string MatchAs { get; set; } = string.Empty;
+        [JsonPropertyName("as")] public string As { get; set; } = string.Empty;
     }
 
     public class NotificationSettingsRequest
@@ -419,7 +465,19 @@ namespace Upsanctionscreener.Classess.Utils
                 NotifyOnError = req.NotifyOnError
             };
         }
+       
+        // ✅ NEW — shared by both MapDataSettings and MapDocumentSettings
+        private static FieldMapping MapFieldMapping(FieldMappingRequest f) => new FieldMapping
+        {
+            ColumnName = f.ColumnName,
+            MatchAs = f.MatchAs ?? "",
+            IsJson = f.IsJson,
+            SubFields = f.SubFields?
+                .Select(sf => new SubFieldMapping { Key = sf.Key, MatchAs = sf.MatchAs, As = sf.As })
+                .ToList() ?? new List<SubFieldMapping>()
+        };
 
+        // ✅ REPLACED
         private static DataSettings MapDataSettings(DataSettingsRequest? req)
         {
             if (req is null) return new DataSettings();
@@ -427,12 +485,11 @@ namespace Upsanctionscreener.Classess.Utils
             {
                 TableName = req.TableName ?? "",
                 IdColumn = req.IdColumn ?? "",
-                OtherFields = req.OtherFields?
-                    .Select(f => new FieldMapping { ColumnName = f.ColumnName, MatchAs = f.MatchAs })
-                    .ToList() ?? new List<FieldMapping>()
+                OtherFields = req.OtherFields?.Select(MapFieldMapping).ToList() ?? new List<FieldMapping>()
             };
         }
 
+        // ✅ REPLACED
         private static DocumentSettings MapDocumentSettings(DocumentSettingsRequest? req)
         {
             if (req is null) return new DocumentSettings();
@@ -442,11 +499,13 @@ namespace Upsanctionscreener.Classess.Utils
                 UploadPath = req.UploadPath,
                 FileExtension = req.FileExtension,
                 IdColumn = req.IdColumn ?? "",
-                OtherFields = req.OtherFields?
-                    .Select(f => new FieldMapping { ColumnName = f.ColumnName, MatchAs = f.MatchAs })
-                    .ToList() ?? new List<FieldMapping>()
+                OtherFields = req.OtherFields?.Select(MapFieldMapping).ToList() ?? new List<FieldMapping>()
             };
         }
+
+
+
+
 
         // ══════════════════════════════════════════════════════════════════════
         // CONNECTION STRING HELPERS
@@ -744,6 +803,7 @@ namespace Upsanctionscreener.Classess.Utils
                 {
                     target = targets[existing];
                     target.TargetName = request.TargetName;
+                    target.StreamResults = request.StreamResults;   // ← fixed (was assigning bool to target)
                     target.AutomationSettings = MapAutomation(request.AutomationSettings);
                     target.NotificationSettings = MapNotification(request.NotificationSettings);
 
@@ -795,6 +855,7 @@ namespace Upsanctionscreener.Classess.Utils
                         Id = newId,
                         TargetName = request.TargetName,
                         TargetType = request.TargetType,
+                        StreamResults = request.StreamResults,       // ← renamed from TransactionScan
                         AutomationSettings = MapAutomation(request.AutomationSettings),
                         NotificationSettings = MapNotification(request.NotificationSettings)
                     };
@@ -830,7 +891,6 @@ namespace Upsanctionscreener.Classess.Utils
                 return SettingsResult<bool>.Fail($"Failed to upsert target: {ex.Message}");
             }
         }
-
         public async Task<SettingsResult<bool>> DeleteTargetAsync(int targetId)
         {
             var result = await GetTargetSettingsAsync();

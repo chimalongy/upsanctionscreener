@@ -243,6 +243,21 @@
         background: #6366f1; color: #fff; cursor: pointer; transition: opacity 0.15s;
     }
     .modal-btn-neutral:hover { opacity: 0.88; }
+
+    /* ── Field mapping badges (mirrors TargetSettings.cshtml) ── */
+    .fm-badge {
+        display: inline-flex; align-items: center; gap: 0.25rem;
+        font-size: 0.68rem; padding: 0.15rem 0.5rem; border-radius: 9999px;
+        background: var(--color-surface, #f9fafb);
+        border: 1px solid var(--color-border, #e5e7eb);
+        color: var(--color-text-secondary, #6b7280);
+    }
+    .fm-badge .fm-col { color: var(--color-text-muted, #9ca3af); }
+    .fm-badge .fm-match { font-weight: 600; color: #4f46e5; }
+    .fm-badge .fm-json-tag {
+        font-size: 0.6rem; padding: 0.05rem 0.35rem; border-radius: 4px;
+        background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; font-weight: 600;
+    }
 </style>
 
 @* ── Confirmation Modal ── *@
@@ -506,6 +521,33 @@ function isCancelled(status) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
+   FIELD MAPPING BADGES  (mirrors TargetSettings.cshtml fieldBadges renderer)
+══════════════════════════════════════════════════════════════════════════ */
+function fieldMappingBadges(fieldMappings) {
+    const fields = fieldMappings || [];
+    if (fields.length === 0) {
+        return '<span class="text-xs text-text-muted">No fields mapped</span>';
+    }
+
+    return fields.map(f => {
+        if (f.is_json) {
+            const subs = (f.sub_fields || [])
+                .map(sf => sf.as ? `${sf.match_as || '(unmapped)'}→${escHtml(sf.as)}` : (sf.match_as || sf.key))
+                .join(', ');
+            return `<span class="fm-badge">
+                        <span class="fm-col">${escHtml(f.column_name)}</span>
+                        <span class="fm-json-tag">JSON</span>
+                        <span class="fm-match">${escHtml(subs || 'none')}</span>
+                    </span>`;
+        }
+        return `<span class="fm-badge">
+                    <span class="fm-col">${escHtml(f.column_name)}</span>
+                    <span class="fm-match">${escHtml(f.match_as || '(unmapped)')}</span>
+                </span>`;
+    }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
    TASK CARD HTML
 ══════════════════════════════════════════════════════════════════════════ */
 function taskCardHtml(t) {
@@ -515,6 +557,8 @@ function taskCardHtml(t) {
     const rowCount  = parseInt(t.rowCount) || 0;
     const scanType  = (t.scanType || 'document').toLowerCase();
     const isDoc     = scanType === 'document';
+    const fieldMappings = t.field_mappings || [];
+    const fieldCount = fieldMappings.length;
 
     const badgeClass = {
         pending  : 's-pending',
@@ -667,6 +711,10 @@ function taskCardHtml(t) {
         </div>
     </div>`;
 
+    const idColDisplay = t.autoGenerateId === 'true' || t.autoGenerateId === true
+        ? 'auto-generated'
+        : (t.idColumn || '—');
+
     const detailHtml = `
     <div class="task-detail" id="detail-${t.id}">
         <div class="detail-grid">
@@ -679,12 +727,8 @@ function taskCardHtml(t) {
                 <span class="val">${escHtml(t.scanType || '—')}</span>
             </div>
             <div class="detail-row-item">
-                <span class="lbl">Scan Column</span>
-                <span class="val mono">${escHtml(t.scanColumn || '—')}</span>
-            </div>
-            <div class="detail-row-item">
                 <span class="lbl">ID Column</span>
-                <span class="val mono">${escHtml(t.autoGenerateId === 'true' || t.autoGenerateId === true ? 'auto-generated' : (t.idColumn || '—'))}</span>
+                <span class="val mono">${escHtml(idColDisplay)}</span>
             </div>
             <div class="detail-row-item">
                 <span class="lbl">Started</span>
@@ -697,6 +741,12 @@ function taskCardHtml(t) {
             <div class="detail-row-item" style="grid-column:1/-1">
                 <span class="lbl">File Path</span>
                 <span class="val mono" style="font-size:0.65rem;opacity:0.7">${escHtml(t.filePath || '—')}</span>
+            </div>
+            <div class="detail-row-item" style="grid-column:1/-1">
+                <span class="lbl">Field Mappings</span>
+                <div class="flex flex-wrap gap-1.5 mt-1">
+                    ${isDoc ? fieldMappingBadges(fieldMappings) : '<span class="text-xs text-text-muted">— (non-document scan, names matched directly)</span>'}
+                </div>
             </div>
         </div>
     </div>`;
@@ -739,13 +789,11 @@ function taskCardHtml(t) {
                 <div class="task-stat-lbl">Records</div>
             </div>
             <div class="task-stat">
-                <div class="task-stat-val text-xs font-mono truncate">${escHtml(t.scanColumn || '—')}</div>
-                <div class="task-stat-lbl">Scan Col</div>
+                <div class="task-stat-val">${isDoc ? fieldCount : '—'}</div>
+                <div class="task-stat-lbl">Fields Mapped</div>
             </div>
             <div class="task-stat">
-                <div class="task-stat-val text-xs font-mono truncate">
-                    ${t.autoGenerateId === 'true' || t.autoGenerateId === true ? 'auto' : escHtml(t.idColumn || '—')}
-                </div>
+                <div class="task-stat-val text-xs font-mono truncate">${escHtml(idColDisplay)}</div>
                 <div class="task-stat-lbl">ID Col</div>
             </div>
         </div>

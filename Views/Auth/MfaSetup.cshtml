@@ -1,0 +1,84 @@
+﻿@{
+    ViewData["Title"] = "Two-Factor Setup";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Two-Factor Setup — UP Sanction Scan Portal</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-surface min-h-screen flex flex-col font-body">
+    <main class="flex-1 flex items-center justify-center px-4 py-10">
+        <div class="w-full max-w-md">
+            <div class="bg-surface-card border border-border rounded-2xl px-8 py-8 shadow-sm">
+
+                @if (ViewBag.AlreadyEnabled == true)
+                {
+                    <h1 class="font-display text-text-primary text-lg font-semibold mb-4">Two-Factor Authentication</h1>
+                    <p class="text-text-secondary text-sm mb-6">MFA is currently enabled on your account.</p>
+                    <form asp-controller="Auth" asp-action="MfaDisable" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="w-full py-2.5 bg-error text-white font-medium text-sm rounded-lg">
+                            Disable two-factor authentication
+                        </button>
+                    </form>
+                }
+                else if (ViewBag.JustEnabled == true)
+                {
+                    <h1 class="font-display text-text-primary text-lg font-semibold mb-4">Two-Factor Enabled</h1>
+                    <p class="text-text-secondary text-sm mb-4">Save these recovery codes somewhere safe. Each can be used once if you lose your device.</p>
+                    <div class="bg-surface border border-border rounded-lg p-4 font-mono text-sm grid grid-cols-2 gap-2">
+                        @foreach (var rc in (List<string>)ViewBag.RecoveryCodes)
+                        {
+                            <span>@rc</span>
+                        }
+                    </div>
+
+                    <a asp-controller="Dashboard" asp-action="Index"
+                           class="block w-full text-center py-2.5 mt-6 bg-accent-500 hover:bg-accent-600 text-white
+                        font-medium text-sm rounded-lg transition-colors shadow-sm">
+                        Continue to dashboard
+                    </a>
+                }
+                else
+                {
+                    <h1 class="font-display text-text-primary text-lg font-semibold mb-4">Set Up Two-Factor Authentication</h1>
+                    <p class="text-text-secondary text-sm mb-4">Scan this QR code with Google Authenticator, Authy, or a similar app.</p>
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="bg-error-bg border border-error-border text-error text-sm rounded-lg px-4 py-3 mb-5">
+                            @Html.ValidationSummary(false)
+                        </div>
+                    }
+
+                    <div id="qrcode" class="flex justify-center mb-4"></div>
+                    <p class="text-text-muted text-xs text-center mb-6">Or enter manually: <span class="font-mono">@ViewBag.Secret</span></p>
+
+                    <form asp-controller="Auth" asp-action="MfaSetup" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="text" name="code" placeholder="123456" required
+                               class="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-sm text-center tracking-widest mb-4" />
+                        <button type="submit" class="w-full py-2.5 bg-accent-500 hover:bg-accent-600 text-white font-medium text-sm rounded-lg">
+                            Confirm and enable
+                        </button>
+                    </form>
+
+                    <script>
+                        new QRCode(document.getElementById("qrcode"), {
+                        text: "@Html.Raw(ViewBag.OtpauthUri)",
+                        width: 200,
+                        height: 200
+                        });
+                    </script>
+                }
+            </div>
+        </div>
+    </main>
+</body>
+</html>

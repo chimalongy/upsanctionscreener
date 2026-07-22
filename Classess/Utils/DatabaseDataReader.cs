@@ -615,7 +615,7 @@ namespace Upsanctionscreener.Classess.Utils
                 {
                     foreach (var field in settings.OtherFields)
                     {
-                        if (!string.IsNullOrWhiteSpace(field.ColumnName) && !string.IsNullOrWhiteSpace(field.MatchAs))
+                        if (!string.IsNullOrWhiteSpace(field.ColumnName))
                             columns.Add(Quote(field.ColumnName));
                     }
                 }

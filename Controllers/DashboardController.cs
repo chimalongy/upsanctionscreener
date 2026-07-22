@@ -47,6 +47,86 @@ namespace Upsanctionscreener.Controllers
             
         }
 
+
+        private static readonly HashSet<string> AllowedMatchFields =
+      new(StringComparer.OrdinalIgnoreCase) { "name", "email", "phone", "address", "dob", "gender" };
+
+        private static readonly HashSet<string> ExclusiveMatchFields =
+            new(StringComparer.OrdinalIgnoreCase) { "email", "phone", "address", "dob", "gender" };
+
+        private static bool ValidateFieldMappings(List<FieldMappingRequest>? mappings, out string? error)
+        {
+            error = null;
+
+            if (mappings is null || mappings.Count == 0)
+            {
+                error = "At least one field mapping is required.";
+                return false;
+            }
+
+            var claimedExclusive = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var m in mappings)
+            {
+                if (string.IsNullOrWhiteSpace(m.ColumnName))
+                {
+                    error = "Each field mapping must have a column name.";
+                    return false;
+                }
+
+                if (m.IsJson)
+                {
+                    if (m.SubFields is null || m.SubFields.Count == 0)
+                    {
+                        error = $"Column '{m.ColumnName}' is marked as JSON but has no sub-field mappings.";
+                        return false;
+                    }
+
+                    foreach (var sf in m.SubFields)
+                    {
+                        if (string.IsNullOrWhiteSpace(sf.Key))
+                        {
+                            error = $"Every sub-field under '{m.ColumnName}' must have a JSON key.";
+                            return false;
+                        }
+
+                        // ✅ match_as is optional — empty means "extracted but not mapped"
+                        if (string.IsNullOrWhiteSpace(sf.MatchAs)) continue;
+
+                        if (!AllowedMatchFields.Contains(sf.MatchAs))
+                        {
+                            error = $"Sub-field '{sf.Key}' under '{m.ColumnName}' has an invalid match_as value.";
+                            return false;
+                        }
+
+                        if (ExclusiveMatchFields.Contains(sf.MatchAs) && !claimedExclusive.Add(sf.MatchAs.ToLowerInvariant()))
+                        {
+                            error = $"'{sf.MatchAs}' can only be mapped to a single column or sub-field.";
+                            return false;
+                        }
+                    }
+                }
+                else
+                {
+                    // ✅ match_as is optional — empty means "saved but not mapped"
+                    if (string.IsNullOrWhiteSpace(m.MatchAs)) continue;
+
+                    if (!AllowedMatchFields.Contains(m.MatchAs))
+                    {
+                        error = $"Column '{m.ColumnName}' has an invalid match_as value.";
+                        return false;
+                    }
+
+                    if (ExclusiveMatchFields.Contains(m.MatchAs) && !claimedExclusive.Add(m.MatchAs.ToLowerInvariant()))
+                    {
+                        error = $"'{m.MatchAs}' can only be mapped to a single column or sub-field.";
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
         // ══════════════════════════════════════════════════════════════════════
         // VIEWS
         // ══════════════════════════════════════════════════════════════════════
@@ -335,8 +415,8 @@ return BadRequest(new { message = error });
             if (!result.Success)
                 return BadRequest(new { success = false, message = result.Error });
 
-            // ── Schedule / reschedule the Quartz job ──────────────────────────────
-            if (target.AutomationSettings is not null)
+            // ── Schedule the scan — local Quartz OR the transaction screener app ──
+           if (target.AutomationSettings is not null)
             {
                 var automation = new AutomationSettings
                 {
@@ -378,52 +458,54 @@ return BadRequest(new { message = error });
 
 
 
-
         [HttpPost]
         [Route("Dashboard/Settings/TargetSettings/Delete/{id:int}")]
         public async Task<IActionResult> TargetSettingsDelete(int id)
         {
             var svc = new UpSanctionSettingsService(_db);
 
-            // ── Clean up uploaded document file if applicable ─────────────────────
             var getAllResult = await svc.GetTargetSettingsAsync();
+          
+
             if (getAllResult.Success && getAllResult.Data is not null)
             {
                 var target = getAllResult.Data.FirstOrDefault(t => t.Id == id);
-                if (target?.TargetType == "document")
+                if (target is not null)
                 {
-                    var uploadPath = target.DocumentSettings?.UploadPath;
-                    if (!string.IsNullOrWhiteSpace(uploadPath) && System.IO.File.Exists(uploadPath))
-                    {
-                        var uploadRoot = Path.GetFullPath(
-                            Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
-                        var resolvedPath = Path.GetFullPath(uploadPath);
+                   
 
-                        if (resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
+                    if (target.TargetType == "document")
+                    {
+                        var uploadPath = target.DocumentSettings?.UploadPath;
+                        if (!string.IsNullOrWhiteSpace(uploadPath) && System.IO.File.Exists(uploadPath))
                         {
-                            try { System.IO.File.Delete(uploadPath); }
-                            catch (Exception ex)
+                            var uploadRoot = Path.GetFullPath(
+                                Path.Combine(GlobalVariables.root_folder, "Targets", "TargetUploads"));
+                            var resolvedPath = Path.GetFullPath(uploadPath);
+
+                            if (resolvedPath.StartsWith(uploadRoot, StringComparison.OrdinalIgnoreCase))
                             {
-                                // Non-fatal — log and continue
-                             Console.WriteLine($"{ex}- \\n[TargetDelete] Could not delete uploaded file for target .");
+                                try { System.IO.File.Delete(uploadPath); }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"{ex}- \\n[TargetDelete] Could not delete uploaded file for target .");
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // ── Delete from database ──────────────────────────────────────────────
             var result = await svc.DeleteTargetAsync(id);
             if (!result.Success)
                 return BadRequest(new { success = false, message = result.Error });
 
-            // ── Remove the Quartz job ─────────────────────────────────────────────
-            await _targetScheduler.RemoveTargetScheduleAsync(id);
+            // ── Remove the schedule — local Quartz OR stop-job on the txn screener ──
+            await _targetScheduler.RemoveTargetScheduleAsync(id);   // ← pass flag
 
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var email = User.FindFirstValue(ClaimTypes.Email);
 
-            // e.g. log who fetched the audit logs
             await AuditLogger.LogAsync(
                 db: _db,
                 eventName: $"{email} - DELETED TARGET {id}",
@@ -434,7 +516,6 @@ return BadRequest(new { message = error });
 
             return Json(new { success = true });
         }
-
 
 
 
@@ -803,9 +884,10 @@ return BadRequest(new { message = error });
 
             try
             {
-        
-                Task.Run(async () =>{Scanner.TargetScanScreener(target.Id, target.TargetName, target.AutomationSettings?.Frequency ?? "manual", _scopeFactory);});
-
+               
+                    // ── Existing local scan trigger ────────────────────────────────
+                    Task.Run(async () => { Scanner.TargetScanScreener(target.Id, target.TargetName, target.AutomationSettings?.Frequency ?? "manual", _scopeFactory); });
+                
 
                 var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
                 var email = User.FindFirstValue(ClaimTypes.Email);
@@ -824,7 +906,6 @@ return BadRequest(new { message = error });
                 return BadRequest(new { success = false, message = $"Failed to trigger scan: {ex.Message}" });
             }
         }
-
 
 
 
@@ -1080,80 +1161,7 @@ return BadRequest(new { message = error });
             }
         }
 
-        //[HttpPost]
-        //[Route("Dashboard/List/NigerianSanctionList/Upsert")]
-        //public async Task<IActionResult> NigerianSanctionListUpsert([FromBody] SanctionEntryUpsertRequest req)
-        //{
-        //    try
-        //    {
-        //        var filePath = Path.Combine(GlobalVariables.root_folder, "Lists", "NIGERIANSANCTIONLIST.json");
-
-        //        List<SanctionEntry> entries;
-        //        try { entries = NigerianSanctionListReader.LoadFromFile(filePath); }
-        //        catch { entries = new List<SanctionEntry>(); }
-
-        //        if (req.IsEdit && req.OriginalId is not null)
-        //            entries = entries.Where(e => e.ID != req.OriginalId).ToList();
-
-        //        var newId = string.IsNullOrWhiteSpace(req.Id)
-        //            ? $"NSL-{Guid.NewGuid().ToString("N")[..8].ToUpper()}"
-        //            : req.Id.Trim();
-
-        //        if (!req.IsEdit && entries.Any(e => e.ID == newId))
-        //            return BadRequest(new { success = false, message = $"An entry with ID '{newId}' already exists." });
-
-        //        var entry = new SanctionEntry
-        //        {
-        //            ID = newId,
-        //            SubjectType = req.SubjectType ?? string.Empty,
-        //            Source = req.Source ?? string.Empty,
-        //            ReferenceNumber = req.ReferenceNumber ?? string.Empty,
-        //            DateDesignated = req.DateDesignated ?? string.Empty,
-        //            SanctionImposed = req.SanctionImposed ?? string.Empty,
-        //            Comments = req.Comments ?? string.Empty,
-        //            Names = req.Names ?? new(),
-        //            Addresses = req.Addresses ?? new(),
-        //            PhoneNumbers = req.PhoneNumbers ?? new(),
-        //            EmailAddresses = req.EmailAddresses ?? new(),
-        //            Positions = req.Positions ?? new(),
-        //            IdList = req.IdList ?? new(),
-        //            CallSign = req.CallSign,
-        //            VesselType = req.VesselType,
-        //            VesselFlag = req.VesselFlag,
-        //            VesselOwner = req.VesselOwner,
-        //            GrossRegisteredTonnage = req.GrossRegisteredTonnage
-        //        };
-
-        //        entries.Add(entry);
-
-        //        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-        //        var json = System.Text.Json.JsonSerializer.Serialize(entries, new System.Text.Json.JsonSerializerOptions
-        //        {
-        //            WriteIndented = true,
-        //            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        //        });
-        //        await System.IO.File.WriteAllTextAsync(filePath, json);
-
-        //        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        //        var email = User.FindFirstValue(ClaimTypes.Email);
-
-        //        // e.g. log who fetched the audit logs
-        //        await AuditLogger.LogAsync(
-        //            db: _db,
-        //            eventName: $"{email} - UPDATED NIGERIAN SANCTION LIST",
-        //            userId: userId,
-        //            ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
-        //            pageUrl: HttpContext.Request.Path
-        //        );
-
-        //        return Json(new { success = true, id = newId });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(new { success = false, message = ex.Message });
-        //    }
-        //}
-
+     
         [HttpPost]
         [Route("Dashboard/List/NigerianSanctionList/Upsert")]
         public async Task<IActionResult> NigerianSanctionListUpsert([FromBody] SanctionEntryUpsertRequest req)
@@ -1208,6 +1216,8 @@ return BadRequest(new { message = error });
                     EmailAddresses = req.EmailAddresses ?? new(),
                     Positions = req.Positions ?? new(),
                     IdList = req.IdList ?? new(),
+                    Gender = req.Gender,                          // ← added
+                    DateofBirth = req.DateofBirth ?? new(),        // ← adde
                     CallSign = req.CallSign,
                     VesselType = req.VesselType,
                     VesselFlag = req.VesselFlag,
@@ -1756,62 +1766,81 @@ return BadRequest(new { message = error });
         [RequestFormLimits(MultipartBodyLengthLimit = 524288000)]
         [Route("Dashboard/MultiScan/Upload/Document")]
         public async Task<IActionResult> MultiScanUploadDocument(
-            IFormFile? file,
-            [FromForm] string? scanColumn,
-            [FromForm] string? idColumn,
-            [FromForm] bool autoGenerateId)
+      IFormFile? file,
+      [FromForm] string? fieldMappingsJson,
+      [FromForm] string? idColumn,
+      [FromForm] bool autoGenerateId)
         {
             if (file == null || file.Length == 0)
                 return BadRequest(new { success = false, message = "No file provided." });
 
-            if (string.IsNullOrWhiteSpace(scanColumn))
-                return BadRequest(new { success = false, message = "scanColumn is required." });
-
             if (!autoGenerateId && string.IsNullOrWhiteSpace(idColumn))
                 return BadRequest(new { success = false, message = "idColumn is required when autoGenerateId is false." });
 
+            List<FieldMappingRequest>? mappingRequests;
+            try
+            {
+                mappingRequests = string.IsNullOrWhiteSpace(fieldMappingsJson)
+                    ? null
+                    : JsonSerializer.Deserialize<List<FieldMappingRequest>>(fieldMappingsJson);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = $"Invalid field mappings payload: {ex.Message}" });
+            }
+
+            if (!ValidateFieldMappings(mappingRequests, out var mappingError))
+                return BadRequest(new { success = false, message = mappingError });
+
+            var fieldMappings = mappingRequests!.Select(MapToFieldMapping).ToList();
+
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-            DataTable data_to_scan = new DataTable();
+            if (ext != ".csv" && ext != ".xlsx" && ext != ".xls")
+                return BadRequest(new { success = false, message = "Unsupported file type." });
+
+            var uploadDir = Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanUploads");
+            Directory.CreateDirectory(uploadDir);
+
+            var safeFileName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Path.GetFileName(file.FileName)}";
+            var savedFilePath = Path.Combine(uploadDir, safeFileName);
+
+            await using (var stream = new FileStream(savedFilePath, FileMode.Create, FileAccess.Write))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            DataTable data_to_scan;
 
             if (ext == ".csv")
             {
-                var csvReader = new CsvFileReader();
-                var csvResult = csvReader.ReadCsvFile(file, idColumn!, scanColumn);
+                var csvResult = new CsvFileReader().ReadTargetCsvFile(savedFilePath, idColumn ?? "", fieldMappings, autoGenerateId);
                 if (!csvResult.Success)
+                {
+                    TryDeleteFile(savedFilePath);
                     return BadRequest(new { success = false, message = csvResult.Error });
+                }
                 data_to_scan = csvResult.Data!;
             }
             else
             {
-                var excelReader = new ExcelMultiSheetReader();
-                var excelResult = excelReader.ReadExcelFile(file, idColumn!, scanColumn);
+                var excelResult = new ExcelMultiSheetReader().ReadTargetExcelFile(savedFilePath, idColumn ?? "", fieldMappings, autoGenerateId);
                 if (!excelResult.Success)
+                {
+                    TryDeleteFile(savedFilePath);
                     return BadRequest(new { success = false, message = excelResult.Error });
+                }
                 data_to_scan = excelResult.Data!;
             }
 
-            string? savedFilePath = null;
-            string? safeFileName = null;
-
-            if (data_to_scan.Rows.Count > 0)
+            if (data_to_scan.Rows.Count == 0)
             {
-                if (ext != ".csv" && ext != ".xlsx" && ext != ".xls")
-                    return BadRequest(new { success = false, message = "Unsupported file type." });
-
-                var uploadDir = Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanUploads");
-                Directory.CreateDirectory(uploadDir);
-
-                safeFileName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Path.GetFileName(file.FileName)}";
-                savedFilePath = Path.Combine(uploadDir, safeFileName);
-
-                await using var stream = new FileStream(savedFilePath, FileMode.Create, FileAccess.Write);
-                await file.CopyToAsync(stream);
+                TryDeleteFile(savedFilePath);
+                return BadRequest(new { success = false, message = "No valid rows found for the mapped fields." });
             }
 
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var email = User.FindFirstValue(ClaimTypes.Email);
 
-            // e.g. log who fetched the audit logs
             await AuditLogger.LogAsync(
                 db: _db,
                 eventName: $"{email} - UPLOADED FILE {file.FileName} to {savedFilePath}",
@@ -1826,9 +1855,32 @@ return BadRequest(new { message = error });
                 scanType = "document",
                 rowCount = data_to_scan.Rows.Count,
                 savedFilePath,
-                fileName = safeFileName
+                fileName = safeFileName,
+                fieldMappings // echoed back so "Start Screening" can carry it forward without re-collecting the form
             });
         }
+
+        private static void TryDeleteFile(string path)
+        {
+            try { if (System.IO.File.Exists(path)) System.IO.File.Delete(path); }
+            catch { /* best-effort cleanup */ }
+        }
+
+        private static FieldMapping MapToFieldMapping(FieldMappingRequest r) => new FieldMapping
+        {
+            ColumnName = r.ColumnName,
+            MatchAs = r.MatchAs,
+            IsJson = r.IsJson,
+            SubFields = (r.SubFields ?? new List<SubFieldMappingRequest>())
+                .Select(sf => new SubFieldMapping
+                {
+                    Key = sf.Key,
+                    MatchAs = sf.MatchAs,
+                    As = sf.As
+                }).ToList()
+        };
+
+
 
         [HttpPost]
         [IgnoreAntiforgeryToken]
@@ -1864,52 +1916,61 @@ return BadRequest(new { message = error });
         [HttpGet]
         [Route("Dashboard/MultiScan/Screen")]
         public IActionResult MultiScanScreen(
-            string filePath,
-            string? fileName,
-            int rowCount,
-            string scanType,
-            string? scanColumn,
-            string? idColumn,
-            bool autoGenerateId)
-        {
-            if (string.IsNullOrWhiteSpace(filePath) || !System.IO.File.Exists(filePath))
-                return RedirectToAction(nameof(MultiScan));
-
-            var uploadDir = Path.GetFullPath(Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanUploads"));
-            var targetPath = Path.GetFullPath(filePath);
-
-            if (!targetPath.StartsWith(uploadDir, StringComparison.OrdinalIgnoreCase))
-                return RedirectToAction(nameof(MultiScan));
-
-            var newTask = new MultiScanTask
+          string filePath,
+          string? fileName,
+          int rowCount,
+          string scanType,
+          string? fieldMappingsJson,
+          string? idColumn,
+          bool autoGenerateId)
             {
-                FileName = fileName ?? Path.GetFileName(filePath),
-                FilePath = filePath,
-                ScanType = scanType,
-                RowCount = rowCount.ToString(),
-                AutoGenerateId = autoGenerateId.ToString(),
-                IdColumn = idColumn ?? string.Empty,
-                ScanColumn = scanColumn ?? string.Empty,
-                Status = "Pending",
-                StartTime = DateTime.UtcNow.ToString("o"),
-                CompletionTIme = string.Empty,
-                ErrorMessage = string.Empty
-            };
+                if (string.IsNullOrWhiteSpace(filePath) || !System.IO.File.Exists(filePath))
+                    return RedirectToAction(nameof(MultiScan));
 
-            int newId = Scanner.AddMultiScanTask(newTask);
-            Task.Run(() => Scanner.MultiScanScreener(newTask, _scopeFactory));
+                var uploadDir = Path.GetFullPath(Path.Combine(GlobalVariables.root_folder, "MultiScan", "MultiScanUploads"));
+                var targetPath = Path.GetFullPath(filePath);
 
-            ViewData["TaskId"] = newId;
-            ViewData["FilePath"] = filePath;
-            ViewData["FileName"] = newTask.FileName;
-            ViewData["RowCount"] = rowCount;
-            ViewData["ScanType"] = scanType;
-            ViewData["ScanColumn"] = scanColumn;
-            ViewData["IdColumn"] = idColumn;
-            ViewData["AutoGenerateId"] = autoGenerateId;
+                if (!targetPath.StartsWith(uploadDir, StringComparison.OrdinalIgnoreCase))
+                    return RedirectToAction(nameof(MultiScan));
 
-            return View("~/Views/Dashboard/MultiScanScreen.cshtml");
-        }
+                List<FieldMapping> fieldMappings = new();
+                if (scanType == "document" && !string.IsNullOrWhiteSpace(fieldMappingsJson))
+                {
+                    try { fieldMappings = JsonSerializer.Deserialize<List<FieldMapping>>(fieldMappingsJson) ?? new(); }
+                    catch { fieldMappings = new(); }
+                }
+
+                var newTask = new MultiScanTask
+                {
+                    FileName = fileName ?? Path.GetFileName(filePath),
+                    FilePath = filePath,
+                    ScanType = scanType,
+                    RowCount = rowCount.ToString(),
+                    AutoGenerateId = autoGenerateId.ToString(),
+                    IdColumn = idColumn ?? string.Empty,
+                    FieldMappings = fieldMappings,
+                    Status = "Pending",
+                    StartTime = DateTime.UtcNow.ToString("o"),
+                    CompletionTIme = string.Empty,
+                    ErrorMessage = string.Empty
+                };
+
+                int newId = Scanner.AddMultiScanTask(newTask);
+                Task.Run(() => Scanner.MultiScanScreener(newTask, _scopeFactory));
+
+                ViewData["TaskId"] = newId;
+                ViewData["FilePath"] = filePath;
+                ViewData["FileName"] = newTask.FileName;
+                ViewData["RowCount"] = rowCount;
+                ViewData["ScanType"] = scanType;
+                ViewData["IdColumn"] = idColumn;
+                ViewData["AutoGenerateId"] = autoGenerateId;
+
+                return View("~/Views/Dashboard/MultiScanScreen.cshtml");
+            }
+
+
+
 
         [HttpGet]
         [Route("Dashboard/MultiScan/GetTasks")]
@@ -2138,7 +2199,33 @@ return BadRequest(new { message = error });
         }
 
 
+        // ── GET /Dashboard/Reports/TargetScanReports/GetStreamResult?targetName=... ──
+        // Returns today's consolidated stream counts for a target.
+        // Response: { success, totalScansToday, totalMatchedToday, lastUpdated }
+        [HttpGet]
+        [Route("Dashboard/Reports/TargetScanReports/GetStreamResult")]
+        public IActionResult TargetScanReportsGetStreamResult([FromQuery] string targetName)
+        {
+            if (string.IsNullOrWhiteSpace(targetName))
+                return BadRequest(new { success = false, message = "targetName is required." });
 
+            try
+            {
+                var result = Scanner.GetTodayStreamResult(targetName);
+
+                return Json(new
+                {
+                    success = true,
+                    totalScansToday = result?.TotalScansToday ?? 0,
+                    totalMatchedToday = result?.TotalMatchedToday ?? 0,
+                    lastUpdated = result?.LastUpdated
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
 
 
 

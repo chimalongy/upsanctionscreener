@@ -15,5 +15,12 @@
   "devDependencies": {
     "@tailwindcss/cli": "^4.2.2",
     "tailwindcss": "^4.2.2"
+  },
+  "Duo": {
+    "UseDuo": true,
+    "ClientId": "YOUR_DUO_CLIENT_ID",
+    "ClientSecret": "YOUR_DUO_CLIENT_SECRET",
+    "ApiHost": "api-xxxxxxxx.duosecurity.com",
+    "RedirectUri": "https://yourapp.com/Auth/DuoCallback"
   }
 }

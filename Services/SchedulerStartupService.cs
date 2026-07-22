@@ -3,11 +3,6 @@ using Upsanctionscreener.Data;
 
 namespace Upsanctionscreener.Services
 {
-    /// <summary>
-    /// Runs on application startup and restores all automated target schedules
-    /// from the database. Required because Quartz uses an in-memory store,
-    /// so all jobs are lost when the application restarts.
-    /// </summary>
     public class SchedulerStartupService : IHostedService
     {
         private readonly IServiceScopeFactory _scopeFactory;
@@ -24,20 +19,20 @@ namespace Upsanctionscreener.Services
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("[SchedulerStartup] Restoring target schedules…");
+            Console.WriteLine("[SchedulerStartup] Restoring target schedules…");
 
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var schedulerSvc = scope.ServiceProvider.GetRequiredService<TargetSchedulerService>();
             var settingsSvc = new UpSanctionSettingsService(db);
 
-            // GetTargetSettingsAsync returns List<TargetSetting> which already has
-            // AutomationSettings fully typed — no re-deserialization needed
             var result = await settingsSvc.GetTargetSettingsAsync();
 
             if (!result.Success || result.Data is null)
             {
                 _logger.LogWarning(
                     "[SchedulerStartup] Could not load targets: {Error}", result.Error);
+                Console.WriteLine($"[SchedulerStartup] Could not load targets: {result.Error}");
                 return;
             }
 
@@ -46,7 +41,6 @@ namespace Upsanctionscreener.Services
 
             foreach (var target in result.Data)
             {
-                // AutomationSettings is never null on TargetSetting (initialised with new())
                 if (!target.AutomationSettings.Automate)
                 {
                     skipped++;
@@ -69,12 +63,14 @@ namespace Upsanctionscreener.Services
                     _logger.LogError(ex,
                         "[SchedulerStartup] Failed to restore schedule for target [{Id}] '{Name}'.",
                         target.Id, target.TargetName);
+                    Console.WriteLine($"[SchedulerStartup] Failed to restore schedule for target [{target.Id}] '{target.TargetName}'.");
                 }
             }
 
             _logger.LogInformation(
-                "[SchedulerStartup] Done — {Restored} schedule(s) restored, {Skipped} manual target(s) skipped.",
+                "[SchedulerStartup] Done — {Restored} Quartz schedule(s) restored, {Skipped} manual target(s) skipped.",
                 restored, skipped);
+            Console.WriteLine($"[SchedulerStartup] Done — {restored} Quartz schedule(s) restored, {skipped} manual target(s) skipped.");
         }
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

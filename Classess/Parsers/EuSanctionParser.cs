@@ -101,10 +101,77 @@ namespace Upsanctionscreener.Classess.Parsers
                         entry.IdList.Add($"{typeDesc}: {number}");
                 }
 
+                // ── Gender ────────────────────────────────────────────────
+                // Not its own element — it's a "gender" attribute on <nameAlias>,
+                // and typically only set on the "strong" (primary) alias, though
+                // it's often repeated across several aliases for the same person.
+                // Conflicting values across aliases are extremely rare; take the
+                // first non-empty one found.
+                var gender = subject.Descendants(ns + "nameAlias")
+                                     .Select(n => n.Attribute("gender")?.Value)
+                                     .FirstOrDefault(g => !string.IsNullOrWhiteSpace(g));
+                if (!string.IsNullOrWhiteSpace(gender))
+                    entry.Gender = NormalizeGender(gender);
+
+                // ── Date of birth ─────────────────────────────────────────
+                // A subject can have zero, one, or several <birthdate> elements
+                // (multiple candidate birth dates from different sources are
+                // common). Each element's precision varies:
+                //   full date known -> birthdate="1937-04-28" attribute is set
+                //   year only known -> no birthdate attribute, but year="1957" is
+                //   neither known   -> only place/country info, no date or year
+                // circa="true" flags an approximate date (usually pairs with
+                // year-only, occasionally with a full date) and is preserved
+                // with a "Circa " prefix rather than dropped.
+                foreach (var birthdate in subject.Descendants(ns + "birthdate"))
+                {
+                    var dobStr = BuildDateOfBirth(birthdate);
+                    if (!string.IsNullOrWhiteSpace(dobStr))
+                        entry.DateofBirth.Add(dobStr);
+                }
+
                 entries.Add(entry);
             }
 
             return entries;
+        }
+
+        /// <summary>
+        /// Formats a single &lt;birthdate&gt; element into a display string,
+        /// handling full-date, year-only, and circa (approximate) cases.
+        /// Returns empty string when neither a date nor a year is present.
+        /// </summary>
+        private static string BuildDateOfBirth(XElement birthdate)
+        {
+            bool isCirca = string.Equals(birthdate.Attribute("circa")?.Value, "true", System.StringComparison.OrdinalIgnoreCase);
+
+            var fullDate = birthdate.Attribute("birthdate")?.Value;
+            if (!string.IsNullOrWhiteSpace(fullDate))
+                return isCirca ? $"Circa {fullDate}" : fullDate;
+
+            var year = birthdate.Attribute("year")?.Value;
+            if (!string.IsNullOrWhiteSpace(year))
+                return isCirca ? $"Circa {year}" : year;
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Maps the raw gender code found in the XML ("M" / "F", case-insensitive)
+        /// to a full-text value ("Male" / "Female"). Any other/unexpected value
+        /// is passed through unchanged so nothing is silently lost.
+        /// </summary>
+        private static string NormalizeGender(string genderCode)
+        {
+            switch (genderCode.Trim().ToUpperInvariant())
+            {
+                case "M":
+                    return "Male";
+                case "F":
+                    return "Female";
+                default:
+                    return genderCode;
+            }
         }
     }
 }
